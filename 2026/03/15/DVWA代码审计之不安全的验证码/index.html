@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="SoloWalker">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="http://example.com/2026/03/15/dvwa代码审计之不安全的验证码/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="Hexo Theme Redefine, Redefine Your Hexo Journey.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DVWA代码审计之不安全的验证码">
+<meta property="og:url" content="http://example.com/2026/03/15/DVWA%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="Hexo Theme Redefine, Redefine Your Hexo Journey.">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://example.com/images/redefine-og.webp">
+<meta property="article:published_time" content="2026-03-14T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-03-21T08:19:41.556Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="代码审计">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/redefine-og.webp">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/redefine-favicon.svg" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/redefine-favicon.svg">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/redefine-favicon.svg">
+    <!--- Page Info-->
+    
+    <title>
+        
+            DVWA代码审计之不安全的验证码 | SoloWalker
+        
+    </title>
+
+    
+<link rel="stylesheet" href="/fonts/Chillax/chillax.css">
+
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        
+<link rel="stylesheet" href="/css/build/tailwind.css">
+
+    
+
+    
+<link rel="stylesheet" href="/fonts/GeistMono/geist-mono.css">
+
+    
+<link rel="stylesheet" href="/fonts/Geist/geist.css">
+
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"example.com","root":"/","language":"en"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":true,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":{"enable":true,"default":"cc_by_nc_sa"},"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":null,"url":null},"english":{"enable":false,"family":null,"url":null},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":false,"percentage":true},"website_counter":{"url":"https://cn.vercount.one/js","enable":true,"site_pv":true,"site_uv":true,"post_pv":true},"single_page":true,"preloader":{"enable":false,"custom_message":null},"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true,"image":"/images/redefine-og.webp","description":"Hexo Theme Redefine, Redefine Your Hexo Journey."},"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/wallhaven-wqery6-light.webp","dark":"/images/wallhaven-wqery6-dark.webp"},"title":"SoloWalker","subtitle":{"text":["WebSecurity Learner"],"hitokoto":{"enable":false,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":[{"icon":"fa-brands fa-github","url":null},{"icon":"fa-brands fa-twitter","url":null},{"icon":"fa-solid fa-at","url":"you@example.com"},{"icon":"fa-brands fa-telegram","url":null},{"icon":"/images/custom-icon.svg","url":null}],"qrs":[{"icon":"fa-brands fa-weixin","qr":null},{"icon":"/images/custom-icon.svg","qr":null}]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"11.4.1","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Tags":{"path":"/tags","icon":"fa-solid fa-tags"},"Friends":{"path":"/links/","icon":"fa-solid fa-link"}},"search":{"enable":false,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":null},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":3},"tags":{"enable":true,"limit":3}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-heart fa-beat\" style=\"--fa-animation-duration: 0.5s; color: #f54545\"></i>","start":"2022/8/17 11:45:14","statistics":true,"customize":null,"icp":{"enable":false,"number":null,"url":null}},"footerStart":"2022/8/17 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    
+<link rel="stylesheet" href="/fontawesome/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/brands.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/solid.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/regular.min.css">
+
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+            <a class="logo-title" href="/">
+                
+                SoloWalker
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/tags"
+                                        >
+                                    <i class="fa-solid fa-tags fa-fw"></i>
+                                    TAGS
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/links/"
+                                        >
+                                    <i class="fa-solid fa-link fa-fw"></i>
+                                    FRIENDS
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/tags"
+                        >
+                            <span>
+                                TAGS
+                            </span>
+                            
+                                <i class="fa-solid fa-tags fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/links/"
+                        >
+                            <span>
+                                FRIENDS
+                            </span>
+                            
+                                <i class="fa-solid fa-link fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+
+            
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">2</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">1</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">6</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">DVWA代码审计之不安全的验证码</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/redefine-avatar.svg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">SoloWalker</span>
+					
+					<span class="author-label ml-1.5 text-xs px-2 py-0.5 rounded-small text-third-text-color border border-shadow-color-1">Lv1</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-03-15</span>
+        <span class="mobile">2026-03-15</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-03-21 16:19:41</span>
+            <span class="mobile">2026-03-21 16:19:41</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Web%E5%AE%89%E5%85%A8/">Web安全</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/">代码审计</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h1 id="DVWA代码审计之不安全的验证码"><a href="#DVWA代码审计之不安全的验证码" class="headerlink" title="DVWA代码审计之不安全的验证码"></a>DVWA代码审计之不安全的验证码</h1><h2 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h2><p>简单来说，这个漏洞的成因是：开发者把验证码的“验证”和密码的“修改”两个步骤在服务器端完全分开，从而导致了业务流程上的逻辑漏洞。</p>
+<p>一般正常的逻辑是：如果验证码正确，我们才能修改密码，否则不能修改。如果把这两个步骤分开，就变成：当你提交验证码服务器验证通过后，让你重新发一个请求来修改密码，然后用户提交了新密码，而服务器不再验证验证码。这样就造成了逻辑上的“脱节”，如果我们精心地构造一个“修改密码”的请求，假装你已经通过验证，就能绕过直接修改。</p>
+<h2 id="等级low"><a href="#等级low" class="headerlink" title="等级low"></a>等级low</h2><h3 id="源码"><a href="#源码" class="headerlink" title="源码"></a>源码</h3><div class="code-container" data-rel="Php"><figure class="iseeu highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>( <span class="keyword">isset</span>( <span class="variable">$_POST</span>[ <span class="string">&#x27;Change&#x27;</span> ] ) &amp;&amp; ( <span class="variable">$_POST</span>[ <span class="string">&#x27;step&#x27;</span> ] == <span class="string">&#x27;1&#x27;</span> ) ) &#123;</span><br><span class="line">	<span class="comment">// Hide the CAPTCHA form</span></span><br><span class="line">	<span class="variable">$hide_form</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Get input</span></span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_new&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_conf&#x27;</span> ];</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Check CAPTCHA from 3rd party</span></span><br><span class="line">	<span class="variable">$resp</span> = <span class="title function_ invoke__">recaptcha_check_answer</span>(</span><br><span class="line">		<span class="variable">$_DVWA</span>[ <span class="string">&#x27;recaptcha_private_key&#x27;</span>],</span><br><span class="line">		<span class="variable">$_POST</span>[<span class="string">&#x27;g-recaptcha-response&#x27;</span>]</span><br><span class="line">	);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Did the CAPTCHA fail?</span></span><br><span class="line">	<span class="keyword">if</span>( !<span class="variable">$resp</span> ) &#123;</span><br><span class="line">		<span class="comment">// What happens when the CAPTCHA was entered incorrectly</span></span><br><span class="line">		<span class="variable">$html</span>     .= <span class="string">&quot;&lt;pre&gt;&lt;br /&gt;The CAPTCHA was incorrect. Please try again.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// CAPTCHA was correct. Do both new passwords match?</span></span><br><span class="line">		<span class="keyword">if</span>( <span class="variable">$pass_new</span> == <span class="variable">$pass_conf</span> ) &#123;</span><br><span class="line">			<span class="comment">// Show next stage for the user</span></span><br><span class="line">			<span class="variable">$html</span> .= <span class="string">&quot;</span></span><br><span class="line"><span class="string">				&lt;pre&gt;&lt;br /&gt;You passed the CAPTCHA! Click the button to confirm your changes.&lt;br /&gt;&lt;/pre&gt;</span></span><br><span class="line"><span class="string">				&lt;form action=\&quot;#\&quot; method=\&quot;POST\&quot;&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;hidden\&quot; name=\&quot;step\&quot; value=\&quot;2\&quot; /&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;hidden\&quot; name=\&quot;password_new\&quot; value=\&quot;<span class="subst">&#123;$pass_new&#125;</span>\&quot; /&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;hidden\&quot; name=\&quot;password_conf\&quot; value=\&quot;<span class="subst">&#123;$pass_conf&#125;</span>\&quot; /&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;submit\&quot; name=\&quot;Change\&quot; value=\&quot;Change\&quot; /&gt;</span></span><br><span class="line"><span class="string">				&lt;/form&gt;&quot;</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">// Both new passwords do not match.</span></span><br><span class="line">			<span class="variable">$html</span>     .= <span class="string">&quot;&lt;pre&gt;Both passwords must match.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">			<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>( <span class="keyword">isset</span>( <span class="variable">$_POST</span>[ <span class="string">&#x27;Change&#x27;</span> ] ) &amp;&amp; ( <span class="variable">$_POST</span>[ <span class="string">&#x27;step&#x27;</span> ] == <span class="string">&#x27;2&#x27;</span> ) ) &#123;</span><br><span class="line">	<span class="comment">// Hide the CAPTCHA form</span></span><br><span class="line">	<span class="variable">$hide_form</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Get input</span></span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_new&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_conf&#x27;</span> ];</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Check to see if both password match</span></span><br><span class="line">	<span class="keyword">if</span>( <span class="variable">$pass_new</span> == <span class="variable">$pass_conf</span> ) &#123;</span><br><span class="line">		<span class="comment">// They do!</span></span><br><span class="line">		<span class="variable">$pass_new</span> = ((<span class="keyword">isset</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) &amp;&amp; <span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_real_escape_string</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$pass_new</span> ) : ((<span class="title function_ invoke__">trigger_error</span>(<span class="string">&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;</span>, E_USER_ERROR)) ? <span class="string">&quot;&quot;</span> : <span class="string">&quot;&quot;</span>));</span><br><span class="line">		<span class="variable">$pass_new</span> = <span class="title function_ invoke__">md5</span>( <span class="variable">$pass_new</span> );</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Update database</span></span><br><span class="line">		<span class="variable">$insert</span> = <span class="string">&quot;UPDATE `users` SET password = &#x27;<span class="subst">$pass_new</span>&#x27; WHERE user = &#x27;&quot;</span> . <span class="title function_ invoke__">dvwaCurrentUser</span>() . <span class="string">&quot;&#x27;;&quot;</span>;</span><br><span class="line">		<span class="variable">$result</span> = <span class="title function_ invoke__">mysqli_query</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$insert</span> ) <span class="keyword">or</span> <span class="keyword">die</span>( <span class="string">&#x27;&lt;pre&gt;&#x27;</span> . ((<span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_error</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) : ((<span class="variable">$___mysqli_res</span> = <span class="title function_ invoke__">mysqli_connect_error</span>()) ? <span class="variable">$___mysqli_res</span> : <span class="literal">false</span>)) . <span class="string">&#x27;&lt;/pre&gt;&#x27;</span> );</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Feedback for the end user</span></span><br><span class="line">		<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;Password Changed.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// Issue with the passwords matching</span></span><br><span class="line">		<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;Passwords did not match.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	((<span class="title function_ invoke__">is_null</span>(<span class="variable">$___mysqli_res</span> = <span class="title function_ invoke__">mysqli_close</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]))) ? <span class="literal">false</span> : <span class="variable">$___mysqli_res</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="漏洞成因"><a href="#漏洞成因" class="headerlink" title="漏洞成因"></a>漏洞成因</h3><p>这里有两个step，就是把两个步骤分开了，造成了漏洞。</p>
+<p>首先，经过<code>$resp = recaptcha_check_answer($_DVWA[ &#39;recaptcha_private_key&#39;],$_POST[&#39;g-recaptcha-response&#39;]);</code>这一步检验验证码后，如果验证码正确，服务器会返回一个新的表单且包含一个隐藏字段<code>step=2</code>并保存了我们的密码，并没有立即修改密码。</p>
+<p>然后我们点击确认后，当step&#x3D;2时进行修改密码的操作，但是此时没有进行验证，只要后端收到<code>step=2</code>的请求就会修改密码。</p>
+<h3 id="利用手法"><a href="#利用手法" class="headerlink" title="利用手法"></a>利用手法</h3><p>抓包之后我们把请求体里的<code>step=1</code>修改为<code>step=2</code>即可。</p>
+<h2 id="等级medium"><a href="#等级medium" class="headerlink" title="等级medium"></a>等级medium</h2><h3 id="源码-1"><a href="#源码-1" class="headerlink" title="源码"></a>源码</h3><div class="code-container" data-rel="Php"><figure class="iseeu highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>( <span class="keyword">isset</span>( <span class="variable">$_POST</span>[ <span class="string">&#x27;Change&#x27;</span> ] ) &amp;&amp; ( <span class="variable">$_POST</span>[ <span class="string">&#x27;step&#x27;</span> ] == <span class="string">&#x27;1&#x27;</span> ) ) &#123;</span><br><span class="line">	<span class="comment">// Hide the CAPTCHA form</span></span><br><span class="line">	<span class="variable">$hide_form</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Get input</span></span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_new&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_conf&#x27;</span> ];</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Check CAPTCHA from 3rd party</span></span><br><span class="line">	<span class="variable">$resp</span> = <span class="title function_ invoke__">recaptcha_check_answer</span>(</span><br><span class="line">		<span class="variable">$_DVWA</span>[ <span class="string">&#x27;recaptcha_private_key&#x27;</span> ],</span><br><span class="line">		<span class="variable">$_POST</span>[<span class="string">&#x27;g-recaptcha-response&#x27;</span>]</span><br><span class="line">	);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Did the CAPTCHA fail?</span></span><br><span class="line">	<span class="keyword">if</span>( !<span class="variable">$resp</span> ) &#123;</span><br><span class="line">		<span class="comment">// What happens when the CAPTCHA was entered incorrectly</span></span><br><span class="line">		<span class="variable">$html</span>     .= <span class="string">&quot;&lt;pre&gt;&lt;br /&gt;The CAPTCHA was incorrect. Please try again.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// CAPTCHA was correct. Do both new passwords match?</span></span><br><span class="line">		<span class="keyword">if</span>( <span class="variable">$pass_new</span> == <span class="variable">$pass_conf</span> ) &#123;</span><br><span class="line">			<span class="comment">// Show next stage for the user</span></span><br><span class="line">			<span class="variable">$html</span> .= <span class="string">&quot;</span></span><br><span class="line"><span class="string">				&lt;pre&gt;&lt;br /&gt;You passed the CAPTCHA! Click the button to confirm your changes.&lt;br /&gt;&lt;/pre&gt;</span></span><br><span class="line"><span class="string">				&lt;form action=\&quot;#\&quot; method=\&quot;POST\&quot;&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;hidden\&quot; name=\&quot;step\&quot; value=\&quot;2\&quot; /&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;hidden\&quot; name=\&quot;password_new\&quot; value=\&quot;<span class="subst">&#123;$pass_new&#125;</span>\&quot; /&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;hidden\&quot; name=\&quot;password_conf\&quot; value=\&quot;<span class="subst">&#123;$pass_conf&#125;</span>\&quot; /&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;hidden\&quot; name=\&quot;passed_captcha\&quot; value=\&quot;true\&quot; /&gt;</span></span><br><span class="line"><span class="string">					&lt;input type=\&quot;submit\&quot; name=\&quot;Change\&quot; value=\&quot;Change\&quot; /&gt;</span></span><br><span class="line"><span class="string">				&lt;/form&gt;&quot;</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">// Both new passwords do not match.</span></span><br><span class="line">			<span class="variable">$html</span>     .= <span class="string">&quot;&lt;pre&gt;Both passwords must match.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">			<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>( <span class="keyword">isset</span>( <span class="variable">$_POST</span>[ <span class="string">&#x27;Change&#x27;</span> ] ) &amp;&amp; ( <span class="variable">$_POST</span>[ <span class="string">&#x27;step&#x27;</span> ] == <span class="string">&#x27;2&#x27;</span> ) ) &#123;</span><br><span class="line">	<span class="comment">// Hide the CAPTCHA form</span></span><br><span class="line">	<span class="variable">$hide_form</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Get input</span></span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_new&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_conf&#x27;</span> ];</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Check to see if they did stage 1</span></span><br><span class="line">	<span class="keyword">if</span>( !<span class="variable">$_POST</span>[ <span class="string">&#x27;passed_captcha&#x27;</span> ] ) &#123;</span><br><span class="line">		<span class="variable">$html</span>     .= <span class="string">&quot;&lt;pre&gt;&lt;br /&gt;You have not passed the CAPTCHA.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Check to see if both password match</span></span><br><span class="line">	<span class="keyword">if</span>( <span class="variable">$pass_new</span> == <span class="variable">$pass_conf</span> ) &#123;</span><br><span class="line">		<span class="comment">// They do!</span></span><br><span class="line">		<span class="variable">$pass_new</span> = ((<span class="keyword">isset</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) &amp;&amp; <span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_real_escape_string</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$pass_new</span> ) : ((<span class="title function_ invoke__">trigger_error</span>(<span class="string">&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;</span>, E_USER_ERROR)) ? <span class="string">&quot;&quot;</span> : <span class="string">&quot;&quot;</span>));</span><br><span class="line">		<span class="variable">$pass_new</span> = <span class="title function_ invoke__">md5</span>( <span class="variable">$pass_new</span> );</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Update database</span></span><br><span class="line">		<span class="variable">$insert</span> = <span class="string">&quot;UPDATE `users` SET password = &#x27;<span class="subst">$pass_new</span>&#x27; WHERE user = &#x27;&quot;</span> . <span class="title function_ invoke__">dvwaCurrentUser</span>() . <span class="string">&quot;&#x27;;&quot;</span>;</span><br><span class="line">		<span class="variable">$result</span> = <span class="title function_ invoke__">mysqli_query</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$insert</span> ) <span class="keyword">or</span> <span class="keyword">die</span>( <span class="string">&#x27;&lt;pre&gt;&#x27;</span> . ((<span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_error</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) : ((<span class="variable">$___mysqli_res</span> = <span class="title function_ invoke__">mysqli_connect_error</span>()) ? <span class="variable">$___mysqli_res</span> : <span class="literal">false</span>)) . <span class="string">&#x27;&lt;/pre&gt;&#x27;</span> );</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Feedback for the end user</span></span><br><span class="line">		<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;Password Changed.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// Issue with the passwords matching</span></span><br><span class="line">		<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;Passwords did not match.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	((<span class="title function_ invoke__">is_null</span>(<span class="variable">$___mysqli_res</span> = <span class="title function_ invoke__">mysqli_close</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]))) ? <span class="literal">false</span> : <span class="variable">$___mysqli_res</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="漏洞成因-1"><a href="#漏洞成因-1" class="headerlink" title="漏洞成因"></a>漏洞成因</h3><p>简单看一下源码，发现与low相比，medium做出的防护是在修改密码时增加了一个<code>if(!$_POST[&#39;passed_captcha&#39;])</code>来进行是否通过验证，同时在上面的表单中也增加了对应的字段。</p>
+<h3 id="利用手法-1"><a href="#利用手法-1" class="headerlink" title="利用手法"></a>利用手法</h3><p>利用的时候和low的方法没有区别，只需要在请求体添加<code>passed_captcha=true</code>即可，因为后端是这样校验的。</p>
+<h2 id="等级high"><a href="#等级high" class="headerlink" title="等级high"></a>等级high</h2><h3 id="源码-2"><a href="#源码-2" class="headerlink" title="源码"></a>源码</h3><div class="code-container" data-rel="Php"><figure class="iseeu highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>( <span class="keyword">isset</span>( <span class="variable">$_POST</span>[ <span class="string">&#x27;Change&#x27;</span> ] ) ) &#123;</span><br><span class="line">	<span class="comment">// Hide the CAPTCHA form</span></span><br><span class="line">	<span class="variable">$hide_form</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Get input</span></span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_new&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_conf&#x27;</span> ];</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Check CAPTCHA from 3rd party</span></span><br><span class="line">	<span class="variable">$resp</span> = <span class="title function_ invoke__">recaptcha_check_answer</span>(</span><br><span class="line">		<span class="variable">$_DVWA</span>[ <span class="string">&#x27;recaptcha_private_key&#x27;</span> ],</span><br><span class="line">		<span class="variable">$_POST</span>[<span class="string">&#x27;g-recaptcha-response&#x27;</span>]</span><br><span class="line">	);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (</span><br><span class="line">		<span class="variable">$resp</span> || </span><br><span class="line">		(</span><br><span class="line">			<span class="variable">$_POST</span>[ <span class="string">&#x27;g-recaptcha-response&#x27;</span> ] == <span class="string">&#x27;hidd3n_valu3&#x27;</span></span><br><span class="line">			&amp;&amp; <span class="variable">$_SERVER</span>[ <span class="string">&#x27;HTTP_USER_AGENT&#x27;</span> ] == <span class="string">&#x27;reCAPTCHA&#x27;</span></span><br><span class="line">		)</span><br><span class="line">	)&#123;</span><br><span class="line">		<span class="comment">// CAPTCHA was correct. Do both new passwords match?</span></span><br><span class="line">		<span class="keyword">if</span> (<span class="variable">$pass_new</span> == <span class="variable">$pass_conf</span>) &#123;</span><br><span class="line">			<span class="variable">$pass_new</span> = ((<span class="keyword">isset</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) &amp;&amp; <span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_real_escape_string</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$pass_new</span> ) : ((<span class="title function_ invoke__">trigger_error</span>(<span class="string">&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;</span>, E_USER_ERROR)) ? <span class="string">&quot;&quot;</span> : <span class="string">&quot;&quot;</span>));</span><br><span class="line">			<span class="variable">$pass_new</span> = <span class="title function_ invoke__">md5</span>( <span class="variable">$pass_new</span> );</span><br><span class="line"></span><br><span class="line">			<span class="comment">// Update database</span></span><br><span class="line">			<span class="variable">$insert</span> = <span class="string">&quot;UPDATE `users` SET password = &#x27;<span class="subst">$pass_new</span>&#x27; WHERE user = &#x27;&quot;</span> . <span class="title function_ invoke__">dvwaCurrentUser</span>() . <span class="string">&quot;&#x27; LIMIT 1;&quot;</span>;</span><br><span class="line">			<span class="variable">$result</span> = <span class="title function_ invoke__">mysqli_query</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$insert</span> ) <span class="keyword">or</span> <span class="keyword">die</span>( <span class="string">&#x27;&lt;pre&gt;&#x27;</span> . ((<span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_error</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) : ((<span class="variable">$___mysqli_res</span> = <span class="title function_ invoke__">mysqli_connect_error</span>()) ? <span class="variable">$___mysqli_res</span> : <span class="literal">false</span>)) . <span class="string">&#x27;&lt;/pre&gt;&#x27;</span> );</span><br><span class="line"></span><br><span class="line">			<span class="comment">// Feedback for user</span></span><br><span class="line">			<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;Password Changed.&lt;/pre&gt;&quot;</span>;</span><br><span class="line"></span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">// Ops. Password mismatch</span></span><br><span class="line">			<span class="variable">$html</span>     .= <span class="string">&quot;&lt;pre&gt;Both passwords must match.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">			<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// What happens when the CAPTCHA was entered incorrectly</span></span><br><span class="line">		<span class="variable">$html</span>     .= <span class="string">&quot;&lt;pre&gt;&lt;br /&gt;The CAPTCHA was incorrect. Please try again.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	((<span class="title function_ invoke__">is_null</span>(<span class="variable">$___mysqli_res</span> = <span class="title function_ invoke__">mysqli_close</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]))) ? <span class="literal">false</span> : <span class="variable">$___mysqli_res</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Generate Anti-CSRF token</span></span><br><span class="line"><span class="title function_ invoke__">generateSessionToken</span>();</span><br><span class="line"></span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="漏洞成因-2"><a href="#漏洞成因-2" class="headerlink" title="漏洞成因"></a>漏洞成因</h3><p>这里的漏洞点其实已经不是验证和修改分离了，而是开发者预留的后门被利用了。</p>
+<div class="code-container" data-rel="Php"><figure class="iseeu highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (</span><br><span class="line">		<span class="variable">$resp</span> || </span><br><span class="line">		(</span><br><span class="line">			<span class="variable">$_POST</span>[ <span class="string">&#x27;g-recaptcha-response&#x27;</span> ] == <span class="string">&#x27;hidd3n_valu3&#x27;</span></span><br><span class="line">			&amp;&amp; <span class="variable">$_SERVER</span>[ <span class="string">&#x27;HTTP_USER_AGENT&#x27;</span> ] == <span class="string">&#x27;reCAPTCHA&#x27;</span></span><br><span class="line">		)</span><br><span class="line">	)</span><br></pre></td></tr></table></figure></div>
+
+<p>这段代码说明：如果验证码正确或者请求体中有<code>g-recaptcha-response=hidd3n_valu3</code>且User-Agent&#x3D;reCAPTCHA时会进行密码修改。攻击者可以利用这个后门实现密码修改。</p>
+<h3 id="利用手法-2"><a href="#利用手法-2" class="headerlink" title="利用手法"></a>利用手法</h3><p>抓包之后请求体中添加g-recaptcha-response&#x3D;hidd3n_valu3，并设置UA头为reCAPTCHA。</p>
+<h2 id="等级impossible"><a href="#等级impossible" class="headerlink" title="等级impossible"></a>等级impossible</h2><h3 id="源码-3"><a href="#源码-3" class="headerlink" title="源码"></a>源码</h3><div class="code-container" data-rel="Php"><figure class="iseeu highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span>( <span class="keyword">isset</span>( <span class="variable">$_POST</span>[ <span class="string">&#x27;Change&#x27;</span> ] ) ) &#123;</span><br><span class="line">	<span class="comment">// Check Anti-CSRF token</span></span><br><span class="line">	<span class="title function_ invoke__">checkToken</span>( <span class="variable">$_REQUEST</span>[ <span class="string">&#x27;user_token&#x27;</span> ], <span class="variable">$_SESSION</span>[ <span class="string">&#x27;session_token&#x27;</span> ], <span class="string">&#x27;index.php&#x27;</span> );</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Hide the CAPTCHA form</span></span><br><span class="line">	<span class="variable">$hide_form</span> = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Get input</span></span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_new&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="title function_ invoke__">stripslashes</span>( <span class="variable">$pass_new</span> );</span><br><span class="line">	<span class="variable">$pass_new</span>  = ((<span class="keyword">isset</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) &amp;&amp; <span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_real_escape_string</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$pass_new</span> ) : ((<span class="title function_ invoke__">trigger_error</span>(<span class="string">&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;</span>, E_USER_ERROR)) ? <span class="string">&quot;&quot;</span> : <span class="string">&quot;&quot;</span>));</span><br><span class="line">	<span class="variable">$pass_new</span>  = <span class="title function_ invoke__">md5</span>( <span class="variable">$pass_new</span> );</span><br><span class="line"></span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_conf&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="title function_ invoke__">stripslashes</span>( <span class="variable">$pass_conf</span> );</span><br><span class="line">	<span class="variable">$pass_conf</span> = ((<span class="keyword">isset</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) &amp;&amp; <span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_real_escape_string</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$pass_conf</span> ) : ((<span class="title function_ invoke__">trigger_error</span>(<span class="string">&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;</span>, E_USER_ERROR)) ? <span class="string">&quot;&quot;</span> : <span class="string">&quot;&quot;</span>));</span><br><span class="line">	<span class="variable">$pass_conf</span> = <span class="title function_ invoke__">md5</span>( <span class="variable">$pass_conf</span> );</span><br><span class="line"></span><br><span class="line">	<span class="variable">$pass_curr</span> = <span class="variable">$_POST</span>[ <span class="string">&#x27;password_current&#x27;</span> ];</span><br><span class="line">	<span class="variable">$pass_curr</span> = <span class="title function_ invoke__">stripslashes</span>( <span class="variable">$pass_curr</span> );</span><br><span class="line">	<span class="variable">$pass_curr</span> = ((<span class="keyword">isset</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>]) &amp;&amp; <span class="title function_ invoke__">is_object</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>])) ? <span class="title function_ invoke__">mysqli_real_escape_string</span>(<span class="variable">$GLOBALS</span>[<span class="string">&quot;___mysqli_ston&quot;</span>],  <span class="variable">$pass_curr</span> ) : ((<span class="title function_ invoke__">trigger_error</span>(<span class="string">&quot;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&quot;</span>, E_USER_ERROR)) ? <span class="string">&quot;&quot;</span> : <span class="string">&quot;&quot;</span>));</span><br><span class="line">	<span class="variable">$pass_curr</span> = <span class="title function_ invoke__">md5</span>( <span class="variable">$pass_curr</span> );</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Check CAPTCHA from 3rd party</span></span><br><span class="line">	<span class="variable">$resp</span> = <span class="title function_ invoke__">recaptcha_check_answer</span>(</span><br><span class="line">		<span class="variable">$_DVWA</span>[ <span class="string">&#x27;recaptcha_private_key&#x27;</span> ],</span><br><span class="line">		<span class="variable">$_POST</span>[<span class="string">&#x27;g-recaptcha-response&#x27;</span>]</span><br><span class="line">	);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Did the CAPTCHA fail?</span></span><br><span class="line">	<span class="keyword">if</span>( !<span class="variable">$resp</span> ) &#123;</span><br><span class="line">		<span class="comment">// What happens when the CAPTCHA was entered incorrectly</span></span><br><span class="line">		<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;&lt;br /&gt;The CAPTCHA was incorrect. Please try again.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// Check that the current password is correct</span></span><br><span class="line">		<span class="variable">$data</span> = <span class="variable">$db</span>-&gt;<span class="title function_ invoke__">prepare</span>( <span class="string">&#x27;SELECT password FROM users WHERE user = (:user) AND password = (:password) LIMIT 1;&#x27;</span> );</span><br><span class="line">		<span class="variable">$data</span>-&gt;<span class="title function_ invoke__">bindParam</span>( <span class="string">&#x27;:user&#x27;</span>, <span class="title function_ invoke__">dvwaCurrentUser</span>(), PDO::<span class="variable constant_">PARAM_STR</span> );</span><br><span class="line">		<span class="variable">$data</span>-&gt;<span class="title function_ invoke__">bindParam</span>( <span class="string">&#x27;:password&#x27;</span>, <span class="variable">$pass_curr</span>, PDO::<span class="variable constant_">PARAM_STR</span> );</span><br><span class="line">		<span class="variable">$data</span>-&gt;<span class="title function_ invoke__">execute</span>();</span><br><span class="line"></span><br><span class="line">		<span class="comment">// Do both new password match and was the current password correct?</span></span><br><span class="line">		<span class="keyword">if</span>( ( <span class="variable">$pass_new</span> == <span class="variable">$pass_conf</span>) &amp;&amp; ( <span class="variable">$data</span>-&gt;<span class="title function_ invoke__">rowCount</span>() == <span class="number">1</span> ) ) &#123;</span><br><span class="line">			<span class="comment">// Update the database</span></span><br><span class="line">			<span class="variable">$data</span> = <span class="variable">$db</span>-&gt;<span class="title function_ invoke__">prepare</span>( <span class="string">&#x27;UPDATE users SET password = (:password) WHERE user = (:user);&#x27;</span> );</span><br><span class="line">			<span class="variable">$data</span>-&gt;<span class="title function_ invoke__">bindParam</span>( <span class="string">&#x27;:password&#x27;</span>, <span class="variable">$pass_new</span>, PDO::<span class="variable constant_">PARAM_STR</span> );</span><br><span class="line">			<span class="variable">$data</span>-&gt;<span class="title function_ invoke__">bindParam</span>( <span class="string">&#x27;:user&#x27;</span>, <span class="title function_ invoke__">dvwaCurrentUser</span>(), PDO::<span class="variable constant_">PARAM_STR</span> );</span><br><span class="line">			<span class="variable">$data</span>-&gt;<span class="title function_ invoke__">execute</span>();</span><br><span class="line"></span><br><span class="line">			<span class="comment">// Feedback for the end user - success!</span></span><br><span class="line">			<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;Password Changed.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">// Feedback for the end user - failed!</span></span><br><span class="line">			<span class="variable">$html</span> .= <span class="string">&quot;&lt;pre&gt;Either your current password is incorrect or the new passwords did not match.&lt;br /&gt;Please try again.&lt;/pre&gt;&quot;</span>;</span><br><span class="line">			<span class="variable">$hide_form</span> = <span class="literal">false</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Generate Anti-CSRF token</span></span><br><span class="line"><span class="title function_ invoke__">generateSessionToken</span>();</span><br><span class="line"></span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>在impossible的代码中，没有设置会被利用的后门，用参数化查询防御SQL注入，验证和修改的步骤也没有分离，验证码因此无法绕过，同时加强了身份认证。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>在web开发时，涉及到验证码问题，要把验证码和修改密码的操作结合，同时减少后门，还要注意其他漏洞点的存在。在漏洞利用时，可以看看网页源码来猜测后端是怎么进行验证码校验和修改操作的。</p>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> DVWA代码审计之不安全的验证码</li>
+        <li><strong>Author:</strong> SoloWalker</li>
+        <li><strong>Created at
+                :</strong> 2026-03-15 00:00:00</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-03-21 16:19:41
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://s0lowalker.github.io/2026/03/15/DVWA代码审计之不安全的验证码/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+		<ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+			
+			<li class="tag-item mx-0.5">
+				<a href="/tags/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/">#代码审计</a>&nbsp;
+			</li>
+			
+		</ul>
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/03/15/DVWA%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">DVWA代码审计之暴力破解</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/03/14/DVWA%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8BSQL%E6%B3%A8%E5%85%A5/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">DVWA代码审计之SQL注入</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="waline"></div>
+    <script type="module" data-swup-reload-script>
+      import { init } from '/js/libs/waline.js';
+
+      (function() {
+        const startPath = location.pathname;
+        const startTime = Date.now();
+        const retryDelay = 200;
+        const retryLimit = 5000;
+
+        const runWaline = () => {
+          if (location.pathname !== startPath) {
+            return;
+          }
+
+          const container = document.getElementById('waline');
+          if (!container) {
+            if (Date.now() - startTime < retryLimit) {
+              setTimeout(runWaline, retryDelay);
+            }
+            return;
+          }
+
+          if (window.redefineWalineInstance?.destroy) {
+            window.redefineWalineInstance.destroy();
+          }
+
+          container.innerHTML = '';
+          window.redefineWalineInstance = init({
+            el: '#waline',
+            serverURL: 'https://example.example.com',
+            path: location.pathname,
+            dark: 'body[class~="dark-mode"]',
+            reaction: false,
+            requiredMeta: ['nick', 'mail'],
+            emoji: [],
+                      lang: 'zh-CN',
+          });
+        };
+
+        runWaline();
+      })();
+    </script>
+
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">DVWA代码审计之不安全的验证码</div>
+		<ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#DVWA%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81"><span class="nav-text">DVWA代码审计之不安全的验证码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8E%9F%E7%90%86"><span class="nav-text">原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AD%89%E7%BA%A7low"><span class="nav-text">等级low</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BA%90%E7%A0%81"><span class="nav-text">源码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BC%8F%E6%B4%9E%E6%88%90%E5%9B%A0"><span class="nav-text">漏洞成因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A9%E7%94%A8%E6%89%8B%E6%B3%95"><span class="nav-text">利用手法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AD%89%E7%BA%A7medium"><span class="nav-text">等级medium</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BA%90%E7%A0%81-1"><span class="nav-text">源码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BC%8F%E6%B4%9E%E6%88%90%E5%9B%A0-1"><span class="nav-text">漏洞成因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A9%E7%94%A8%E6%89%8B%E6%B3%95-1"><span class="nav-text">利用手法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AD%89%E7%BA%A7high"><span class="nav-text">等级high</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BA%90%E7%A0%81-2"><span class="nav-text">源码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BC%8F%E6%B4%9E%E6%88%90%E5%9B%A0-2"><span class="nav-text">漏洞成因</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A9%E7%94%A8%E6%89%8B%E6%B3%95-2"><span class="nav-text">利用手法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AD%89%E7%BA%A7impossible"><span class="nav-text">等级impossible</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%BA%90%E7%A0%81-3"><span class="nav-text">源码</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-text">总结</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2022</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-heart fa-beat" style="--fa-animation-duration: 0.5s; color: #f54545"></i>&nbsp;&nbsp;<a href="/">SoloWalker</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        6 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://cn.vercount.one/js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                    <span id="busuanzi_container_site_uv" class="lg:!block">
+                        <span class="text-sm">VISITOR COUNT</span>
+                        <span id="busuanzi_value_site_uv"></span>
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv" class="lg:!block">
+                        <span class="text-sm">TOTAL PAGE VIEWS</span>
+                        <span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+
+</main>
+
+
+
+<script src="/js/build/libs/Swup.min.js"></script>
+
+<script src="/js/build/libs/SwupSlideTheme.min.js"></script>
+
+<script src="/js/build/libs/SwupScriptsPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupProgressPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupScrollPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupPreloadPlugin.min.js"></script>
+
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	
+<script src="/js/build/main.js" type="module"></script>
+
+
+
+    
+<script src="/js/build/libs/odometer.min.js"></script>
+
+    
+<link rel="stylesheet" href="/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+
+  
+<script src="/js/build/libs/Typed.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+<script src="/js/build/libs/moment-with-locales.min.js" data-swup-reload-script=""></script>
+
+
+
+	
+</body>
+
+</html>
