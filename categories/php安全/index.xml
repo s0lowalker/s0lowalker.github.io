@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>PHP安全 on S0lowalker</title><link>https://s0lowalker.github.io/categories/php%E5%AE%89%E5%85%A8/</link><description>Recent content in PHP安全 on S0lowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Sat, 18 Apr 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/categories/php%E5%AE%89%E5%85%A8/index.xml" rel="self" type="application/rss+xml"/><item><title>PHP文件上传不含PHP代码实现RCE的方法</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/</link><pubDate>Sat, 18 Apr 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/</guid><description>&lt;h1 id="php文件上传不含php代码实现rce的方法"&gt;
+ PHP文件上传不含PHP代码实现RCE的方法
+ &lt;a class="anchor" href="#php%e6%96%87%e4%bb%b6%e4%b8%8a%e4%bc%a0%e4%b8%8d%e5%90%abphp%e4%bb%a3%e7%a0%81%e5%ae%9e%e7%8e%b0rce%e7%9a%84%e6%96%b9%e6%b3%95"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="ctf2025复现"&gt;
+ ?CTF2025复现
+ &lt;a class="anchor" href="#ctf2025%e5%a4%8d%e7%8e%b0"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="题目源码"&gt;
+ 题目源码
+ &lt;a class="anchor" href="#%e9%a2%98%e7%9b%ae%e6%ba%90%e7%a0%81"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-php" data-lang="php"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;&amp;lt;?&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;php&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#a6e22e"&gt;error_reporting&lt;/span&gt;(&lt;span style="color:#ae81ff"&gt;0&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$allowed_extensions &lt;span style="color:#f92672"&gt;=&lt;/span&gt; [&lt;span style="color:#e6db74"&gt;&amp;#39;zip&amp;#39;&lt;/span&gt;, &lt;span style="color:#e6db74"&gt;&amp;#39;bz2&amp;#39;&lt;/span&gt;, &lt;span style="color:#e6db74"&gt;&amp;#39;gz&amp;#39;&lt;/span&gt;, &lt;span style="color:#e6db74"&gt;&amp;#39;xz&amp;#39;&lt;/span&gt;, &lt;span style="color:#e6db74"&gt;&amp;#39;7z&amp;#39;&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$allowed_mime_types &lt;span style="color:#f92672"&gt;=&lt;/span&gt; [
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;application/zip&amp;#39;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;application/x-bzip2&amp;#39;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;application/gzip&amp;#39;&lt;/span&gt;,&lt;span style="color:#960050;background-color:#1e0010"&gt;`&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;application/x-gzip&amp;#39;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;application/x-xz&amp;#39;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;application/x-7z-compressed&amp;#39;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;function&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;filter&lt;/span&gt;($tempfile)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $data &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;file_get_contents&lt;/span&gt;($tempfile);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;stripos&lt;/span&gt;($data, &lt;span style="color:#e6db74"&gt;&amp;#34;__HALT_COMPILER();&amp;#34;&lt;/span&gt;) &lt;span style="color:#f92672"&gt;!==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;stripos&lt;/span&gt;($data, &lt;span style="color:#e6db74"&gt;&amp;#34;PK&amp;#34;&lt;/span&gt;) &lt;span style="color:#f92672"&gt;!==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;stripos&lt;/span&gt;($data, &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;lt;?&amp;#34;&lt;/span&gt;) &lt;span style="color:#f92672"&gt;!==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;stripos&lt;/span&gt;(&lt;span style="color:#a6e22e"&gt;strtolower&lt;/span&gt;($data), &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;lt;?php&amp;#34;&lt;/span&gt;) &lt;span style="color:#f92672"&gt;!==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;true&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; ($_SERVER[&lt;span style="color:#e6db74"&gt;&amp;#34;REQUEST_METHOD&amp;#34;&lt;/span&gt;] &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;POST&amp;#39;&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#a6e22e"&gt;is_uploaded_file&lt;/span&gt;($_FILES[&lt;span style="color:#e6db74"&gt;&amp;#39;file&amp;#39;&lt;/span&gt;][&lt;span style="color:#e6db74"&gt;&amp;#39;tmp_name&amp;#39;&lt;/span&gt;])) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#a6e22e"&gt;filter&lt;/span&gt;($_FILES[&lt;span style="color:#e6db74"&gt;&amp;#39;file&amp;#39;&lt;/span&gt;][&lt;span style="color:#e6db74"&gt;&amp;#39;tmp_name&amp;#39;&lt;/span&gt;]) &lt;span style="color:#f92672"&gt;||&lt;/span&gt; &lt;span style="color:#f92672"&gt;!&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;isset&lt;/span&gt;($_FILES[&lt;span style="color:#e6db74"&gt;&amp;#39;file&amp;#39;&lt;/span&gt;][&lt;span style="color:#e6db74"&gt;&amp;#39;name&amp;#39;&lt;/span&gt;])) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;die&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;Nope :&amp;lt;&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// mimetype check
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $finfo &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;finfo_open&lt;/span&gt;(&lt;span style="color:#a6e22e"&gt;FILEINFO_MIME_TYPE&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $mime_type &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;finfo_file&lt;/span&gt;($finfo, $_FILES[&lt;span style="color:#e6db74"&gt;&amp;#39;file&amp;#39;&lt;/span&gt;][&lt;span style="color:#e6db74"&gt;&amp;#39;tmp_name&amp;#39;&lt;/span&gt;]);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;finfo_close&lt;/span&gt;($finfo);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#f92672"&gt;!&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;in_array&lt;/span&gt;($mime_type, $allowed_mime_types)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;die&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#39;unexpected mimetype&amp;#39;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// ext check
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $ext &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;strtolower&lt;/span&gt;(&lt;span style="color:#a6e22e"&gt;pathinfo&lt;/span&gt;(&lt;span style="color:#a6e22e"&gt;basename&lt;/span&gt;($_FILES[&lt;span style="color:#e6db74"&gt;&amp;#39;file&amp;#39;&lt;/span&gt;][&lt;span style="color:#e6db74"&gt;&amp;#39;name&amp;#39;&lt;/span&gt;]), &lt;span style="color:#a6e22e"&gt;PATHINFO_EXTENSION&lt;/span&gt;));
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#f92672"&gt;!&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;in_array&lt;/span&gt;($ext, $allowed_extensions)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;die&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#39;unexpected extension&amp;#39;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#a6e22e"&gt;move_uploaded_file&lt;/span&gt;($_FILES[&lt;span style="color:#e6db74"&gt;&amp;#39;file&amp;#39;&lt;/span&gt;][&lt;span style="color:#e6db74"&gt;&amp;#39;tmp_name&amp;#39;&lt;/span&gt;], &lt;span style="color:#e6db74"&gt;&amp;#34;/tmp/&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;.&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;basename&lt;/span&gt;($_FILES[&lt;span style="color:#e6db74"&gt;&amp;#39;file&amp;#39;&lt;/span&gt;][&lt;span style="color:#e6db74"&gt;&amp;#39;name&amp;#39;&lt;/span&gt;]))) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;echo&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;File upload success!Please include with &amp;#39;url&amp;#39;&amp;#34;&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }&lt;span style="color:#66d9ef"&gt;else&lt;/span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;echo&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;fail&amp;#34;&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; } 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#a6e22e"&gt;isset&lt;/span&gt;($_GET[&lt;span style="color:#e6db74"&gt;&amp;#39;url&amp;#39;&lt;/span&gt;])) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$include_url &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;basename&lt;/span&gt;($_GET[&lt;span style="color:#e6db74"&gt;&amp;#39;url&amp;#39;&lt;/span&gt;]);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#f92672"&gt;!&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;preg_match&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;/\.(zip|bz2|gz|xz|7z)/i&amp;#34;&lt;/span&gt;, $include_url)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;die&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;unexpected extension&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;include&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;/tmp/&amp;#39;&lt;/span&gt; &lt;span style="color:#f92672"&gt;.&lt;/span&gt; $include_url;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;exit&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;?&amp;gt;&lt;/span&gt;&lt;span style="color:#960050;background-color:#1e0010"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h4 id="源码分析"&gt;
+ 源码分析
+ &lt;a class="anchor" href="#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;p&gt;这里我们很明显能看到有三道防线：&lt;/p&gt;</description></item><item><title>SSTI之twig</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/</link><pubDate>Sat, 11 Apr 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/</guid><description>&lt;h1 id="twig与ssti"&gt;
+ Twig与SSTI
+ &lt;a class="anchor" href="#twig%e4%b8%8essti"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="twig简介"&gt;
+ twig简介
+ &lt;a class="anchor" href="#twig%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;twig是一个PHP的现代模板引擎，广泛用于Symfony框架。&lt;/p&gt;
+&lt;h3 id="twig的三种基础语法结构"&gt;
+ twig的三种基础语法结构
+ &lt;a class="anchor" href="#twig%e7%9a%84%e4%b8%89%e7%a7%8d%e5%9f%ba%e7%a1%80%e8%af%ad%e6%b3%95%e7%bb%93%e6%9e%84"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;{{...}}&lt;/code&gt;：用于输出变量或表达式的值。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-twig" data-lang="twig"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;hello,&lt;span style="color:#75715e"&gt;{{&lt;/span&gt;user.name&lt;span style="color:#75715e"&gt;}}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;{%...%}&lt;/code&gt;：用于执行逻辑控制，如 if 判断，for 循环&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-twig" data-lang="twig"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;{# 判断是否显示 #}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;{%&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; user.is_admin &lt;span style="color:#75715e"&gt;%}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &amp;lt;a href=&amp;#34;/admin&amp;#34;&amp;gt;管理后台&amp;lt;/a&amp;gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;{%&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;endif&lt;/span&gt; &lt;span style="color:#75715e"&gt;%}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;{{#...#}}&lt;/code&gt;：用于写注释，在最终的HTML源码中是看不到的&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-twig" data-lang="twig"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;{# 这是给程序员看的备注，用户看不见 #}&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;twig也有沙箱模式，默认禁用危险函数（如system），但需要手动启用完整沙箱限制。&lt;/p&gt;
+&lt;h2 id="开发中的代码样例"&gt;
+ 开发中的代码样例
+ &lt;a class="anchor" href="#%e5%bc%80%e5%8f%91%e4%b8%ad%e7%9a%84%e4%bb%a3%e7%a0%81%e6%a0%b7%e4%be%8b"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="安全的样例"&gt;
+ 安全的样例
+ &lt;a class="anchor" href="#%e5%ae%89%e5%85%a8%e7%9a%84%e6%a0%b7%e4%be%8b"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-php" data-lang="php"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;// PHP控制器逻辑（安全用法）
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;require_once&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;vendor/autoload.php&amp;#39;&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$loader &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;\Twig\Loader\ArrayLoader&lt;/span&gt;([
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;index&amp;#39;&lt;/span&gt; &lt;span style="color:#f92672"&gt;=&amp;gt;&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;Hello, {{ name }}!&amp;#39;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;]);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$twig &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;\Twig\Environment&lt;/span&gt;($loader);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$name &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;htmlspecialchars&lt;/span&gt;($_GET[&lt;span style="color:#e6db74"&gt;&amp;#39;name&amp;#39;&lt;/span&gt;]); &lt;span style="color:#75715e"&gt;// 输入过滤
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;echo&lt;/span&gt; $twig&lt;span style="color:#f92672"&gt;-&amp;gt;&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;render&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#39;index&amp;#39;&lt;/span&gt;, [&lt;span style="color:#e6db74"&gt;&amp;#39;name&amp;#39;&lt;/span&gt; &lt;span style="color:#f92672"&gt;=&amp;gt;&lt;/span&gt; $name]);
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;为什么这样是安全的？&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;$twig-&amp;gt;render('index', ['name' =&amp;gt; $name])&lt;/code&gt;在这段代码中，&lt;code&gt;'index'&lt;/code&gt;让twig去加载预先写好的模板文件，这个文件内容是服务器上硬编码的，用户无法修改。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;['name' =&amp;gt; $name]&lt;/code&gt;这里则是告诉twig把这个变量的值直接填充到模板里的&lt;code&gt;{{name}}&lt;/code&gt;。&lt;/p&gt;
+&lt;h3 id="不安全的样例"&gt;
+ 不安全的样例
+ &lt;a class="anchor" href="#%e4%b8%8d%e5%ae%89%e5%85%a8%e7%9a%84%e6%a0%b7%e4%be%8b"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-php" data-lang="php"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;// PHP控制器逻辑（危险操作！）
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$twig &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;\Twig\Environment&lt;/span&gt;($loader);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;$user_input &lt;span style="color:#f92672"&gt;=&lt;/span&gt; $_GET[&lt;span style="color:#e6db74"&gt;&amp;#39;content&amp;#39;&lt;/span&gt;]; &lt;span style="color:#75715e"&gt;// 未过滤直接传入模板
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;echo&lt;/span&gt; $twig&lt;span style="color:#f92672"&gt;-&amp;gt;&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;render&lt;/span&gt;($user_input, []); &lt;span style="color:#75715e"&gt;// 直接渲染用户输入
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;为什么这样不安全？&lt;/p&gt;</description></item><item><title>phpMyAdmin文件包含漏洞(CVE-2018-12613)</title><link>https://s0lowalker.github.io/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/</link><pubDate>Fri, 10 Apr 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/</guid><description>&lt;h1 id="phpmyadmin文件包含漏洞"&gt;
+ phpMyAdmin文件包含漏洞
+ &lt;a class="anchor" href="#phpmyadmin%e6%96%87%e4%bb%b6%e5%8c%85%e5%90%ab%e6%bc%8f%e6%b4%9e"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="phpmyadmin简介"&gt;
+ phpMyAdmin简介
+ &lt;a class="anchor" href="#phpmyadmin%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="什么是phpmyadmin"&gt;
+ 什么是phpMyAdmin
+ &lt;a class="anchor" href="#%e4%bb%80%e4%b9%88%e6%98%afphpmyadmin"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;phpMyAdmin是一个基于网页的 MySQL / MariaDB 数据库可视化管理工具，使用PHP编写。phpMyAdmin最大的作用就是让我们不用敲复杂的命令行也能轻松管理数据库。它提供一个直观的图形界面，所有操作都可以在浏览器点击鼠标完成。&lt;/p&gt;
+&lt;h3 id="phpmyadmin能干什么"&gt;
+ phpMyAdmin能干什么
+ &lt;a class="anchor" href="#phpmyadmin%e8%83%bd%e5%b9%b2%e4%bb%80%e4%b9%88"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;它的功能几乎覆盖数据库管理的所有方面：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;基本操作：创建、浏览、编辑、删除数据库、数据表、字段和索引。&lt;/li&gt;
+&lt;li&gt;执行 SQL 语句、通过表单搜索数据、批量导入导出数据（支持 CSV、SQL、XML、PDF 等多种格式）。&lt;/li&gt;
+&lt;li&gt;权限与维护：管理 MySQL 用户账号和权限，检查和修复数据表，追踪数据库变更。&lt;/li&gt;
+&lt;li&gt;其他高级功能：支持创建数据库关系图（PDF）、管理存储过程和触发器、支持 80 多种语言等。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="cve-2018-12613"&gt;
+ CVE-2018-12613
+ &lt;a class="anchor" href="#cve-2018-12613"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="漏洞分析"&gt;
+ 漏洞分析
+ &lt;a class="anchor" href="#%e6%bc%8f%e6%b4%9e%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;在index.php中出现问题：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-php" data-lang="php"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#f92672"&gt;!&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;empty&lt;/span&gt;($_REQUEST[&lt;span style="color:#e6db74"&gt;&amp;#39;target&amp;#39;&lt;/span&gt;])
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;is_string&lt;/span&gt;($_REQUEST[&lt;span style="color:#e6db74"&gt;&amp;#39;target&amp;#39;&lt;/span&gt;])
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span style="color:#f92672"&gt;!&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;preg_match&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#39;/^index/&amp;#39;&lt;/span&gt;, $_REQUEST[&lt;span style="color:#e6db74"&gt;&amp;#39;target&amp;#39;&lt;/span&gt;])
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span style="color:#f92672"&gt;!&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;in_array&lt;/span&gt;($_REQUEST[&lt;span style="color:#e6db74"&gt;&amp;#39;target&amp;#39;&lt;/span&gt;], $target_blacklist)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;Core&lt;/span&gt;&lt;span style="color:#f92672"&gt;::&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;checkPageValidity&lt;/span&gt;($_REQUEST[&lt;span style="color:#e6db74"&gt;&amp;#39;target&amp;#39;&lt;/span&gt;])
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;include&lt;/span&gt; $_REQUEST[&lt;span style="color:#e6db74"&gt;&amp;#39;target&amp;#39;&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;exit&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;前面三条不用关注，没什么作用，第四条规定target不能在黑名单中，也就是import.php和export.php。&lt;/p&gt;
+&lt;p&gt;第五条&lt;code&gt;Core::checkPageValidity()&lt;/code&gt;方法在libraries\classes\Core.php，源码：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-php" data-lang="php"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;function&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;checkPageValidity&lt;/span&gt;(&lt;span style="color:#f92672"&gt;&amp;amp;&lt;/span&gt;$page, &lt;span style="color:#66d9ef"&gt;array&lt;/span&gt; $whitelist &lt;span style="color:#f92672"&gt;=&lt;/span&gt; [])
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;empty&lt;/span&gt;($whitelist)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $whitelist &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;self&lt;/span&gt;&lt;span style="color:#f92672"&gt;::&lt;/span&gt;$goto_whitelist;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#f92672"&gt;!&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;isset&lt;/span&gt;($page) &lt;span style="color:#f92672"&gt;||&lt;/span&gt; &lt;span style="color:#f92672"&gt;!&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;is_string&lt;/span&gt;($page)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#a6e22e"&gt;in_array&lt;/span&gt;($page, $whitelist)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;true&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $_page &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;mb_substr&lt;/span&gt;(
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $page,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#ae81ff"&gt;0&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;mb_strpos&lt;/span&gt;($page &lt;span style="color:#f92672"&gt;.&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;?&amp;#39;&lt;/span&gt;, &lt;span style="color:#e6db74"&gt;&amp;#39;?&amp;#39;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; );
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#a6e22e"&gt;in_array&lt;/span&gt;($_page, $whitelist)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;true&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $_page &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;urldecode&lt;/span&gt;($page);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $_page &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;mb_substr&lt;/span&gt;(
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; $_page,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#ae81ff"&gt;0&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;mb_strpos&lt;/span&gt;($_page &lt;span style="color:#f92672"&gt;.&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;?&amp;#39;&lt;/span&gt;, &lt;span style="color:#e6db74"&gt;&amp;#39;?&amp;#39;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; );
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#a6e22e"&gt;in_array&lt;/span&gt;($_page, $whitelist)) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;true&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;验证的白名单为：&lt;/p&gt;</description></item></channel></rss>

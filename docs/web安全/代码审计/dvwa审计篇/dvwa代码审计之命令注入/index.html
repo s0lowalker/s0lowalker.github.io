@@ -1,0 +1,224 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  DVWA代码审计之命令注入
+  #
+
+
+  原理
+  #
+
+在操作系统中，&，&&，|，||都可以作为命令连接符使用，用户通过浏览器提交执行命令，由于服务器端没有对执行函数进行过滤，从而造成可以执行危险命令。
+PHP的主要命令执行函数有：system、exec、passthru、shell_exec。反引号同样能够执行命令，但不是函数。
+
+  连接符的使用
+  #
+
+cmd1 & cmd2：不管cmd1执行成功与否，都执行cmd2，即cmd1和cmd2都执行。
+cmd1 && cmd2：先执行cmd1，成功后再执行cmd2，若cmd1执行失败，cmd2也不执行。
+cmd1 | cmd2：把cmd1的输出作为cmd2的输入。
+cmd1 || cmd2：若cmd1执行失败，再执行cmd2；反之，cmd2不执行。
+
+  等级low
+  #
+
+
+  源码
+  #
+
+<?php
+
+if( isset( $_POST[ 'Submit' ]  ) ) {
+	// Get input
+	$target = $_REQUEST[ 'ip' ];
+
+	// Determine OS and execute the ping command.
+	if( stristr( php_uname( 's' ), 'Windows NT' ) ) {
+		// Windows
+		$cmd = shell_exec( 'ping  ' . $target );
+	}
+	else {
+		// *nix
+		$cmd = shell_exec( 'ping  -c 4 ' . $target );
+	}
+
+	// Feedback for the end user
+	$html .= &#34;<pre>{$cmd}</pre>&#34;;
+}
+
+?>
+
+  函数简介
+  #
+
+php_uname()：返回运行PHP的操作系统的描述，当参数为s时表示指定只返回操作系统名称。"><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="DVWA代码审计之命令注入"><meta property="og:description" content="DVWA代码审计之命令注入 # 原理 # 在操作系统中，&，&&，|，||都可以作为命令连接符使用，用户通过浏览器提交执行命令，由于服务器端没有对执行函数进行过滤，从而造成可以执行危险命令。
+PHP的主要命令执行函数有：system、exec、passthru、shell_exec。反引号同样能够执行命令，但不是函数。
+连接符的使用 # cmd1 & cmd2：不管cmd1执行成功与否，都执行cmd2，即cmd1和cmd2都执行。
+cmd1 && cmd2：先执行cmd1，成功后再执行cmd2，若cmd1执行失败，cmd2也不执行。
+cmd1 | cmd2：把cmd1的输出作为cmd2的输入。
+cmd1 || cmd2：若cmd1执行失败，再执行cmd2；反之，cmd2不执行。
+等级low # 源码 # <?php if( isset( $_POST[ 'Submit' ] ) ) { // Get input $target = $_REQUEST[ 'ip' ]; // Determine OS and execute the ping command. if( stristr( php_uname( 's' ), 'Windows NT' ) ) { // Windows $cmd = shell_exec( 'ping ' . $target ); } else { // *nix $cmd = shell_exec( 'ping -c 4 ' . $target ); } // Feedback for the end user $html .= &#34;<pre>{$cmd}</pre>&#34;; } ?> 函数简介 # php_uname()：返回运行PHP的操作系统的描述，当参数为s时表示指定只返回操作系统名称。"><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-03-29T00:00:00+00:00"><meta property="article:modified_time" content="2026-03-29T00:00:00+00:00"><meta property="article:tag" content="代码审计"><title>DVWA代码审计之命令注入 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle checked>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle checked>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle checked>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/ class=active>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>DVWA代码审计之命令注入</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#原理>原理</a><ul><li><a href=#连接符的使用>连接符的使用</a></li></ul></li><li><a href=#等级low>等级low</a><ul><li><a href=#源码>源码</a></li><li><a href=#漏洞点>漏洞点</a></li></ul></li><li><a href=#等级medium>等级medium</a><ul><li><a href=#源码-1>源码</a></li><li><a href=#与low的区别>与low的区别</a></li></ul></li><li><a href=#等级high>等级high</a><ul><li><a href=#源码-2>源码</a></li><li><a href=#防御手法>防御手法</a></li></ul></li><li><a href=#等级impossible>等级impossible</a><ul><li><a href=#源码-3>源码</a></li><li><a href=#关键函数解析>关键函数解析</a></li><li><a href=#防御逻辑>防御逻辑</a></li></ul></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=dvwa代码审计之命令注入>DVWA代码审计之命令注入
+<a class=anchor href=#dvwa%e4%bb%a3%e7%a0%81%e5%ae%a1%e8%ae%a1%e4%b9%8b%e5%91%bd%e4%bb%a4%e6%b3%a8%e5%85%a5>#</a></h1><h2 id=原理>原理
+<a class=anchor href=#%e5%8e%9f%e7%90%86>#</a></h2><p>在操作系统中，&，&&，|，||都可以作为命令连接符使用，用户通过浏览器提交执行命令，由于服务器端没有对执行函数进行过滤，从而造成可以执行危险命令。</p><p>PHP的主要命令执行函数有：<code>system</code>、<code>exec</code>、<code>passthru</code>、<code>shell_exec</code>。反引号同样能够执行命令，但不是函数。</p><h3 id=连接符的使用>连接符的使用
+<a class=anchor href=#%e8%bf%9e%e6%8e%a5%e7%ac%a6%e7%9a%84%e4%bd%bf%e7%94%a8>#</a></h3><p><code>cmd1 & cmd2</code>：不管<code>cmd1</code>执行成功与否，都执行<code>cmd2</code>，即<code>cmd1</code>和<code>cmd2</code>都执行。</p><p><code>cmd1 && cmd2</code>：先执行<code>cmd1</code>，成功后再执行<code>cmd2</code>，若<code>cmd1</code>执行失败，<code>cmd2</code>也不执行。</p><p><code>cmd1 | cmd2</code>：把<code>cmd1</code>的输出作为<code>cmd2</code>的输入。</p><p><code>cmd1 || cmd2</code>：若<code>cmd1</code>执行失败，再执行<code>cmd2</code>；反之，<code>cmd2</code>不执行。</p><h2 id=等级low>等级low
+<a class=anchor href=#%e7%ad%89%e7%ba%a7low>#</a></h2><h3 id=源码>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_POST[ <span style=color:#e6db74>&#39;Submit&#39;</span> ]  ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get input
+</span></span></span><span style=display:flex><span>	$target <span style=color:#f92672>=</span> $_REQUEST[ <span style=color:#e6db74>&#39;ip&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Determine OS and execute the ping command.
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>stristr</span>( <span style=color:#a6e22e>php_uname</span>( <span style=color:#e6db74>&#39;s&#39;</span> ), <span style=color:#e6db74>&#39;Windows NT&#39;</span> ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Windows
+</span></span></span><span style=display:flex><span>		$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// *nix
+</span></span></span><span style=display:flex><span>		$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  -c 4 &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Feedback for the end user
+</span></span></span><span style=display:flex><span>	$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;</span><span style=color:#e6db74>{</span>$cmd<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h4 id=函数简介>函数简介
+<a class=anchor href=#%e5%87%bd%e6%95%b0%e7%ae%80%e4%bb%8b>#</a></h4><p><code>php_uname()</code>：返回运行PHP的操作系统的描述，当参数为s时表示指定只返回操作系统名称。</p><p><code>stristr(string,search,before_search)</code>：这是PHP中的字符串查找函数，用于查找字符串中第一次出现的位置，不分大小写。</p><p><code>shell_exec()</code>：这是PHP中用于执行系统命令的函数，并返回命令的完整输出。</p><h3 id=漏洞点>漏洞点
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e7%82%b9>#</a></h3><p>在源码中，<code>$target</code>直接拼接到<code>shell_exec</code>之中，这是我们用上面讲的命令连接符即可执行系统命令，获取敏感信息。</p><h2 id=等级medium>等级medium
+<a class=anchor href=#%e7%ad%89%e7%ba%a7medium>#</a></h2><h3 id=源码-1>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81-1>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_POST[ <span style=color:#e6db74>&#39;Submit&#39;</span> ]  ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get input
+</span></span></span><span style=display:flex><span>	$target <span style=color:#f92672>=</span> $_REQUEST[ <span style=color:#e6db74>&#39;ip&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Set blacklist
+</span></span></span><span style=display:flex><span>	$substitutions <span style=color:#f92672>=</span> <span style=color:#66d9ef>array</span>(
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;&amp;&amp;&#39;</span> <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;;&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>	);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Remove any of the charactars in the array (blacklist).
+</span></span></span><span style=display:flex><span>	$target <span style=color:#f92672>=</span> <span style=color:#a6e22e>str_replace</span>( <span style=color:#a6e22e>array_keys</span>( $substitutions ), $substitutions, $target );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Determine OS and execute the ping command.
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>stristr</span>( <span style=color:#a6e22e>php_uname</span>( <span style=color:#e6db74>&#39;s&#39;</span> ), <span style=color:#e6db74>&#39;Windows NT&#39;</span> ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Windows
+</span></span></span><span style=display:flex><span>		$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// *nix
+</span></span></span><span style=display:flex><span>		$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  -c 4 &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Feedback for the end user
+</span></span></span><span style=display:flex><span>	$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;</span><span style=color:#e6db74>{</span>$cmd<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=与low的区别>与low的区别
+<a class=anchor href=#%e4%b8%8elow%e7%9a%84%e5%8c%ba%e5%88%ab>#</a></h3><p>与low相比，medium做了一点简单的防护，这里使用了黑名单：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span>$substitutions <span style=color:#f92672>=</span> <span style=color:#66d9ef>array</span>(
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;&amp;&amp;&#39;</span> <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;;&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>	);
+</span></span></code></pre></div><p>ban掉了&&和“;”，但是上面所讲的命令连接符依然有可以利用的。</p><h2 id=等级high>等级high
+<a class=anchor href=#%e7%ad%89%e7%ba%a7high>#</a></h2><h3 id=源码-2>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81-2>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_POST[ <span style=color:#e6db74>&#39;Submit&#39;</span> ]  ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get input
+</span></span></span><span style=display:flex><span>	$target <span style=color:#f92672>=</span> <span style=color:#a6e22e>trim</span>($_REQUEST[ <span style=color:#e6db74>&#39;ip&#39;</span> ]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Set blacklist
+</span></span></span><span style=display:flex><span>	$substitutions <span style=color:#f92672>=</span> <span style=color:#66d9ef>array</span>(
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;&amp;&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;;&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;| &#39;</span> <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;-&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;$&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;(&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;)&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;`&#39;</span>  <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>		<span style=color:#e6db74>&#39;||&#39;</span> <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&#39;</span>,
+</span></span><span style=display:flex><span>	);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Remove any of the charactars in the array (blacklist).
+</span></span></span><span style=display:flex><span>	$target <span style=color:#f92672>=</span> <span style=color:#a6e22e>str_replace</span>( <span style=color:#a6e22e>array_keys</span>( $substitutions ), $substitutions, $target );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Determine OS and execute the ping command.
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>stristr</span>( <span style=color:#a6e22e>php_uname</span>( <span style=color:#e6db74>&#39;s&#39;</span> ), <span style=color:#e6db74>&#39;Windows NT&#39;</span> ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Windows
+</span></span></span><span style=display:flex><span>		$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// *nix
+</span></span></span><span style=display:flex><span>		$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  -c 4 &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Feedback for the end user
+</span></span></span><span style=display:flex><span>	$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;</span><span style=color:#e6db74>{</span>$cmd<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=防御手法>防御手法
+<a class=anchor href=#%e9%98%b2%e5%be%a1%e6%89%8b%e6%b3%95>#</a></h3><p>这里的防御措施依旧是使用黑名单，这里的黑名单看起来是很全面的，但是这里的<code>'| '</code>是在|后面加上空格的，我们可以用<code>' |'</code>来绕过。当然，我在注入的时候习惯性的会两边加上空格。</p><h2 id=等级impossible>等级impossible
+<a class=anchor href=#%e7%ad%89%e7%ba%a7impossible>#</a></h2><h3 id=源码-3>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81-3>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_POST[ <span style=color:#e6db74>&#39;Submit&#39;</span> ]  ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check Anti-CSRF token
+</span></span></span><span style=display:flex><span>	<span style=color:#a6e22e>checkToken</span>( $_REQUEST[ <span style=color:#e6db74>&#39;user_token&#39;</span> ], $_SESSION[ <span style=color:#e6db74>&#39;session_token&#39;</span> ], <span style=color:#e6db74>&#39;index.php&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get input
+</span></span></span><span style=display:flex><span>	$target <span style=color:#f92672>=</span> $_REQUEST[ <span style=color:#e6db74>&#39;ip&#39;</span> ];
+</span></span><span style=display:flex><span>	$target <span style=color:#f92672>=</span> <span style=color:#a6e22e>stripslashes</span>( $target );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Split the IP into 4 octects
+</span></span></span><span style=display:flex><span>	$octet <span style=color:#f92672>=</span> <span style=color:#a6e22e>explode</span>( <span style=color:#e6db74>&#34;.&#34;</span>, $target );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check IF each octet is an integer
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( ( <span style=color:#a6e22e>is_numeric</span>( $octet[<span style=color:#ae81ff>0</span>] ) ) <span style=color:#f92672>&amp;&amp;</span> ( <span style=color:#a6e22e>is_numeric</span>( $octet[<span style=color:#ae81ff>1</span>] ) ) <span style=color:#f92672>&amp;&amp;</span> ( <span style=color:#a6e22e>is_numeric</span>( $octet[<span style=color:#ae81ff>2</span>] ) ) <span style=color:#f92672>&amp;&amp;</span> ( <span style=color:#a6e22e>is_numeric</span>( $octet[<span style=color:#ae81ff>3</span>] ) ) <span style=color:#f92672>&amp;&amp;</span> ( <span style=color:#a6e22e>sizeof</span>( $octet ) <span style=color:#f92672>==</span> <span style=color:#ae81ff>4</span> ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// If all 4 octets are int&#39;s put the IP back together.
+</span></span></span><span style=display:flex><span>		$target <span style=color:#f92672>=</span> $octet[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;.&#39;</span> <span style=color:#f92672>.</span> $octet[<span style=color:#ae81ff>1</span>] <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;.&#39;</span> <span style=color:#f92672>.</span> $octet[<span style=color:#ae81ff>2</span>] <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;.&#39;</span> <span style=color:#f92672>.</span> $octet[<span style=color:#ae81ff>3</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Determine OS and execute the ping command.
+</span></span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>stristr</span>( <span style=color:#a6e22e>php_uname</span>( <span style=color:#e6db74>&#39;s&#39;</span> ), <span style=color:#e6db74>&#39;Windows NT&#39;</span> ) ) {
+</span></span><span style=display:flex><span>			<span style=color:#75715e>// Windows
+</span></span></span><span style=display:flex><span>			$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>			<span style=color:#75715e>// *nix
+</span></span></span><span style=display:flex><span>			$cmd <span style=color:#f92672>=</span> <span style=color:#a6e22e>shell_exec</span>( <span style=color:#e6db74>&#39;ping  -c 4 &#39;</span> <span style=color:#f92672>.</span> $target );
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Feedback for the end user
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;</span><span style=color:#e6db74>{</span>$cmd<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Ops. Let the user name theres a mistake
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#39;&lt;pre&gt;ERROR: You have entered an invalid IP.&lt;/pre&gt;&#39;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Generate Anti-CSRF token
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>generateSessionToken</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=关键函数解析>关键函数解析
+<a class=anchor href=#%e5%85%b3%e9%94%ae%e5%87%bd%e6%95%b0%e8%a7%a3%e6%9e%90>#</a></h3><h4 id=explode><code>explode()</code>
+<a class=anchor href=#explode>#</a></h4><p>这是PHP中用于将字符串分割成数组的函数。</p><h5 id=基本语法>基本语法
+<a class=anchor href=#%e5%9f%ba%e6%9c%ac%e8%af%ad%e6%b3%95>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#a6e22e>explode</span>(<span style=color:#a6e22e>string</span> $separator, <span style=color:#a6e22e>string</span> $string, <span style=color:#a6e22e>int</span> $limit <span style=color:#f92672>=</span> <span style=color:#a6e22e>PHP_INT_MAX</span>)<span style=color:#f92672>:</span> <span style=color:#66d9ef>array</span>
+</span></span></code></pre></div><p><code>$separator</code>：分隔符，用于指定在哪里分割字符串</p><p><code>$string</code>：要分割的原始字符串</p><p><code>$limit</code>(可选)：限制返回数组的最大元素个数</p><h3 id=防御逻辑>防御逻辑
+<a class=anchor href=#%e9%98%b2%e5%be%a1%e9%80%bb%e8%be%91>#</a></h3><p>使用<code>explode()</code>来把我们传入的参数进行分割，然后用<code>is_numeric</code>判断是否为纯数字，并且判断数组大小是不是4，然后进行ip的重构。当我们使用命令连接符时，在纯数字的验证时会出错，从而阻止执行其他命令的可能。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#原理>原理</a><ul><li><a href=#连接符的使用>连接符的使用</a></li></ul></li><li><a href=#等级low>等级low</a><ul><li><a href=#源码>源码</a></li><li><a href=#漏洞点>漏洞点</a></li></ul></li><li><a href=#等级medium>等级medium</a><ul><li><a href=#源码-1>源码</a></li><li><a href=#与low的区别>与low的区别</a></li></ul></li><li><a href=#等级high>等级high</a><ul><li><a href=#源码-2>源码</a></li><li><a href=#防御手法>防御手法</a></li></ul></li><li><a href=#等级impossible>等级impossible</a><ul><li><a href=#源码-3>源码</a></li><li><a href=#关键函数解析>关键函数解析</a></li><li><a href=#防御逻辑>防御逻辑</a></li></ul></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

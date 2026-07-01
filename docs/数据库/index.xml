@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>数据库 on S0lowalker</title><link>https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/</link><description>Recent content in 数据库 on S0lowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Thu, 07 May 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/index.xml" rel="self" type="application/rss+xml"/><item><title>MySQL数据库盲区补充</title><link>https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/</link><pubDate>Thu, 07 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/</guid><description>&lt;h1 id="mysql数据库盲区补充"&gt;
+ MySQL数据库盲区补充
+ &lt;a class="anchor" href="#mysql%e6%95%b0%e6%8d%ae%e5%ba%93%e7%9b%b2%e5%8c%ba%e8%a1%a5%e5%85%85"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="字符集"&gt;
+ 字符集
+ &lt;a class="anchor" href="#%e5%ad%97%e7%ac%a6%e9%9b%86"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;字符集的作用和字符编码基本可以当作一回事。&lt;/p&gt;
+&lt;p&gt;字符集就是一个字典，规定了“A 编号多少？‘中’字编号多少？”比如在 &lt;code&gt;utf8mb4&lt;/code&gt; 这本字典里，“中”字的编号是&lt;code&gt;0xE4B8AD&lt;/code&gt;。如果甲用 &lt;code&gt;utf8mb4&lt;/code&gt; 编码，乙却拿 &lt;code&gt;gbk&lt;/code&gt; 字典去解码，就会看到乱码。&lt;/p&gt;
+&lt;h3 id="utf8-与-utf8mb4"&gt;
+ utf8 与 utf8mb4
+ &lt;a class="anchor" href="#utf8-%e4%b8%8e-utf8mb4"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;这是 MySQL 历史上最著名的“坑”之一，一定要记住：&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;MySQL 的 &lt;code&gt;utf8&lt;/code&gt; 不是真正的 UTF-8，它最多只支持 3 字节的字符。&lt;/strong&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;真正的 UTF-8 标准字符有 1~4 个字节。所以，MySQL 的 &lt;code&gt;utf8&lt;/code&gt; 根本无法存储 &lt;strong&gt;emoji 表情、部分罕见的汉字、辅助字符&lt;/strong&gt;。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;当你存一个 emoji 表情 😂 时，它会报错或从插入位置被截断，后面的内容一并丢掉。&lt;/li&gt;
+&lt;li&gt;这也是为什么现在数据库里真正要用 UTF-8 的时候，看到的都是 &lt;strong&gt;&lt;code&gt;utf8mb4&lt;/code&gt;&lt;/strong&gt;，它的全称是 UTF-8 Multibyte 4，就是&lt;strong&gt;支持 4 字节的完整 UTF-8 实现&lt;/strong&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="字符集的三个层级"&gt;
+ 字符集的三个层级
+ &lt;a class="anchor" href="#%e5%ad%97%e7%ac%a6%e9%9b%86%e7%9a%84%e4%b8%89%e4%b8%aa%e5%b1%82%e7%ba%a7"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;MySQL 的字符集设置非常灵活，可以在不同层面生效，从上到下依次是：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;服务器层&lt;/strong&gt;
+影响创建新库时的默认字符集。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-sql" data-lang="sql"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;SHOW&lt;/span&gt; VARIABLES &lt;span style="color:#66d9ef"&gt;LIKE&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;character_set_server&amp;#39;&lt;/span&gt;&lt;span style="color:#960050;background-color:#1e0010"&gt;；&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;数据库层&lt;/strong&gt;
+新建库时若不特别指定，就继承服务器设置。建库时可以明确声明：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-sql" data-lang="sql"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;CREATE&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;DATABASE&lt;/span&gt; mydb CHARACTER &lt;span style="color:#66d9ef"&gt;SET&lt;/span&gt; utf8mb4 &lt;span style="color:#66d9ef"&gt;COLLATE&lt;/span&gt; utf8mb4_unicode_ci&lt;span style="color:#960050;background-color:#1e0010"&gt;；&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;表与列层&lt;/strong&gt;
+建表时继承库设置，但你也可以为各列设置不同的字符集，这也是最灵活的一层。&lt;/p&gt;</description></item></channel></rss>

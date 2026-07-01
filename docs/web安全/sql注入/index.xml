@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>SQL注入 on S0lowalker</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/</link><description>Recent content in SQL注入 on S0lowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Sat, 23 May 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/index.xml" rel="self" type="application/rss+xml"/><item><title>SQLite下的SQL注入</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</link><pubDate>Sat, 23 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</guid><description>&lt;h1 id="sqlite下的sql注入"&gt;
+ SQLite下的SQL注入
+ &lt;a class="anchor" href="#sqlite%e4%b8%8b%e7%9a%84sql%e6%b3%a8%e5%85%a5"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;p&gt;在极客大挑战复现的时候遇到了 SQLite 数据库的 SQL 注入，所以现在在此记录一下，也是扩展一下关于数据库的知识。&lt;/p&gt;
+&lt;h2 id="sqlite-基础"&gt;
+ SQLite 基础
+ &lt;a class="anchor" href="#sqlite-%e5%9f%ba%e7%a1%80"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;SQLite 和 MySQL 的区别还是比较大的，由于架构设计、语法和内置函数的不同，所以 MySQL 的注入技巧在 SQLite 上大部分会失效。&lt;/p&gt;
+&lt;p&gt;下面是 MySQL 和 SQLite 的一些区别：&lt;/p&gt;
+&lt;table&gt;
+	&lt;thead&gt;
+			&lt;tr&gt;
+					&lt;th&gt;差异&lt;/th&gt;
+					&lt;th&gt;MySQL&lt;/th&gt;
+					&lt;th&gt;SQLite&lt;/th&gt;
+					&lt;th&gt;注意点&lt;/th&gt;
+			&lt;/tr&gt;
+	&lt;/thead&gt;
+	&lt;tbody&gt;
+			&lt;tr&gt;
+					&lt;td&gt;数据库架构&lt;/td&gt;
+					&lt;td&gt;客户端-服务器模式，有独立的服务进程&lt;/td&gt;
+					&lt;td&gt;嵌入式数据据库，整个数据库是一个独立文件&lt;/td&gt;
+					&lt;td&gt;攻击 SQLite时，可能通过文件读取漏洞直接获取&lt;code&gt;.db&lt;/code&gt;文件，而在 MySQL 中几乎不可能&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;元数据表&lt;/td&gt;
+					&lt;td&gt;通过&lt;code&gt;information_schema&lt;/code&gt;数据库查询所有表、列信息&lt;/td&gt;
+					&lt;td&gt;使用&lt;code&gt;sqlite_master&lt;/code&gt;表存储所有表结构信息&lt;/td&gt;
+					&lt;td&gt;所有基于&lt;code&gt;information_schema&lt;/code&gt;的语句都会失效&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;多语句执行&lt;/td&gt;
+					&lt;td&gt;PHP等连接器默认不支持堆叠注入&lt;/td&gt;
+					&lt;td&gt;支持使用&lt;code&gt;;&lt;/code&gt;执行多条SQL语句&lt;/td&gt;
+					&lt;td&gt;SQLite的注入理论上危害更大，可以直接执行&lt;code&gt;INSERT/UPDATE/DELETE&lt;/code&gt;等语句&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;盲注函数&lt;/td&gt;
+					&lt;td&gt;常用&lt;code&gt;sleep()&lt;/code&gt;或&lt;code&gt;benchmark()&lt;/code&gt;制造时间延迟来判断条件&lt;/td&gt;
+					&lt;td&gt;无&lt;code&gt;sleep()&lt;/code&gt;函数，需要找替代方案&lt;/td&gt;
+					&lt;td&gt;所有基于&lt;code&gt;sleep()&lt;/code&gt;的延时注入脚本和工具都无法直接使用&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;用户与权限&lt;/td&gt;
+					&lt;td&gt;有完整的用户和权限系统，可高权限跨库操作或读写文件&lt;/td&gt;
+					&lt;td&gt;无用户概念，其权限完全基于操作系统对文件的读写权限&lt;/td&gt;
+					&lt;td&gt;无法使用&lt;code&gt;load_file&lt;/code&gt;、&lt;code&gt;into outfile()&lt;/code&gt;这类需要MySQL特定权限的函数&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;文件操作&lt;/td&gt;
+					&lt;td&gt;拥有&lt;code&gt;FILE&lt;/code&gt;权限时可使用&lt;code&gt;load_file()&lt;/code&gt;和&lt;code&gt;into outfile()&lt;/code&gt;读写文件&lt;/td&gt;
+					&lt;td&gt;没有内置的文件读写函数，可通过附加数据库等方式间接操作&lt;/td&gt;
+					&lt;td&gt;直接的读写文件操作无法执行&lt;/td&gt;
+			&lt;/tr&gt;
+	&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id="sqlite简介"&gt;
+ SQLite简介
+ &lt;a class="anchor" href="#sqlite%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;SQLite 是一个轻量级、无服务器、直接读写文件的数据库。它的架构是嵌入式，不是独立进程，而是一个链接到程序中的库，数据库就是一个文件，这点可以理解为C语言中 include 文件，一个程序&lt;code&gt;include&lt;/code&gt;SQLite，就把 SQLite 中所有的函数声明都引入进来了。&lt;/p&gt;
+&lt;p&gt;由于 SQLite 是一个独立文件，所以 SQLite 没有用户验证，读写操作完全依赖于操作系统的权限。&lt;/p&gt;</description></item><item><title>堆叠注入之利用handler语句获取数据</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/</link><pubDate>Tue, 24 Mar 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/</guid><description>&lt;h1 id="buuctf之gyctf2020blacklist"&gt;
+ BUUCTF之[GYCTF2020]Blacklist
+ &lt;a class="anchor" href="#buuctf%e4%b9%8bgyctf2020blacklist"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="handler语句"&gt;
+ handler语句
+ &lt;a class="anchor" href="#handler%e8%af%ad%e5%8f%a5"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;HANDLER 是 MySQL 中用于直接访问表存储引擎接口的语句，类似于文件操作：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-mysql" data-lang="mysql"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;-- 打开表
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name OPEN [&lt;span style="color:#66d9ef"&gt;AS&lt;/span&gt; alias];
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;-- 读取数据
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name &lt;span style="color:#66d9ef"&gt;READ&lt;/span&gt; FIRST; &lt;span style="color:#75715e"&gt;-- 读取第一行
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name &lt;span style="color:#66d9ef"&gt;READ&lt;/span&gt; NEXT; &lt;span style="color:#75715e"&gt;-- 读取下一行
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name &lt;span style="color:#66d9ef"&gt;READ&lt;/span&gt; &lt;span style="color:#960050;background-color:#1e0010"&gt;{索引名}&lt;/span&gt; &lt;span style="color:#960050;background-color:#1e0010"&gt;{操作}&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;-- 关闭表
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name CLOSE;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="与union的对比"&gt;
+ 与union的对比
+ &lt;a class="anchor" href="#%e4%b8%8eunion%e7%9a%84%e5%af%b9%e6%af%94"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;h4 id="handler的优势"&gt;
+ handler的优势
+ &lt;a class="anchor" href="#handler%e7%9a%84%e4%bc%98%e5%8a%bf"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;不需要知道列数，即不需要&lt;code&gt;order by&lt;/code&gt;来查询&lt;/li&gt;
+&lt;li&gt;不受&lt;code&gt;select&lt;/code&gt;限制，如果&lt;code&gt;select&lt;/code&gt;被ban了也能查询到数据&lt;/li&gt;
+&lt;li&gt;访问数据更灵活，可以精确控制读取到哪一行&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id="注入过程"&gt;
+ 注入过程
+ &lt;a class="anchor" href="#%e6%b3%a8%e5%85%a5%e8%bf%87%e7%a8%8b"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-01.png" alt="1" /&gt;&lt;/p&gt;
+&lt;p&gt;首先测试一下是什么类型的注入，输入&lt;code&gt;1'&lt;/code&gt;报错，即为字符型注入。&lt;/p&gt;
+&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-02.png" alt="2" /&gt;&lt;/p&gt;
+&lt;p&gt;然后测试了&lt;code&gt;1' order by 3&lt;/code&gt;，没有这一列，测试&lt;code&gt;order by 2&lt;/code&gt;则通过。&lt;/p&gt;
+&lt;p&gt;尝试经典的联合查询注入，结果回显：&lt;/p&gt;
+&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-03.png" alt="3" /&gt;&lt;/p&gt;
+&lt;p&gt;回显了waf，&lt;code&gt;select&lt;/code&gt;等查询字符被过滤。大概率是堆叠注入。然后测试&lt;code&gt;show&lt;/code&gt;语句，输入&lt;code&gt;1';show databases;#&lt;/code&gt;，回显：&lt;/p&gt;
+&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-04.png" alt="4" /&gt;&lt;/p&gt;
+&lt;p&gt;确认是堆叠注入，也能看到这些数据库名。然后看一下当前数据库的数据表，输入&lt;code&gt;1';show tables;#&lt;/code&gt;，回显：&lt;/p&gt;
+&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-05.png" alt="5" /&gt;&lt;/p&gt;</description></item></channel></rss>

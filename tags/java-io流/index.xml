@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Java-Io流 on S0lowalker</title><link>https://s0lowalker.github.io/tags/java-io%E6%B5%81/</link><description>Recent content in Java-Io流 on S0lowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Wed, 29 Apr 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/tags/java-io%E6%B5%81/index.xml" rel="self" type="application/rss+xml"/><item><title>Java IO流</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/</link><pubDate>Wed, 29 Apr 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/</guid><description>&lt;h1 id="java-io流"&gt;
+ Java IO流
+ &lt;a class="anchor" href="#java-io%e6%b5%81"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="流简介"&gt;
+ 流简介
+ &lt;a class="anchor" href="#%e6%b5%81%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="什么是流"&gt;
+ 什么是流
+ &lt;a class="anchor" href="#%e4%bb%80%e4%b9%88%e6%98%af%e6%b5%81"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;在 java 中，流是对数据传输的抽象。我们可以想象成一个水管，数据是水，从源流向目的地。不管数据来自文件、网络、内存还是键盘，处理方式都是类似的。&lt;/p&gt;
+&lt;p&gt;流的本质是&lt;strong&gt;字节序列&lt;/strong&gt;，java 用统一的视角看待所有 I/O 操作。&lt;/p&gt;
+&lt;p&gt;IO 是指 Input/Output，即输入和输出，以内存为中心。&lt;/p&gt;
+&lt;p&gt;那么为什么要把数据读到内存中才能处理这些数据？因为代码都是在内存中运行的，数据也必须读取到内存中，最终的表示方式一般是 byte 数组，字符串等，都必须存放在内存中。&lt;/p&gt;
+&lt;p&gt;从 java 代码看，输入则是从外部（如硬盘上的某个文件）把内容读取到内存中，并且以 java 提供的某种数据类型表示。例如，&lt;code&gt;byte[]&lt;/code&gt;、&lt;code&gt;String&lt;/code&gt;等，这样后续代码才能处理这些数据。&lt;/p&gt;
+&lt;p&gt;因为内存有“易失性”的特点，即一断电数据就消失了，所以必须把处理之后的数据以某种形式输出，例如写入文件。Output 实际上就是把 java 表示的数据格式（如&lt;code&gt;byte[]&lt;/code&gt;，&lt;code&gt;String&lt;/code&gt;）输出到某个地方。&lt;/p&gt;
+&lt;p&gt;IO 流是一种顺序读写数据的模式，特点是单向流动，数据类似水一样。&lt;/p&gt;
+&lt;h2 id="创建文件的三种方式"&gt;
+ 创建文件的三种方式
+ &lt;a class="anchor" href="#%e5%88%9b%e5%bb%ba%e6%96%87%e4%bb%b6%e7%9a%84%e4%b8%89%e7%a7%8d%e6%96%b9%e5%bc%8f"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h3 id="根据路径创建一个-file-对象"&gt;
+ 根据路径创建一个 File 对象
+ &lt;a class="anchor" href="#%e6%a0%b9%e6%8d%ae%e8%b7%af%e5%be%84%e5%88%9b%e5%bb%ba%e4%b8%80%e4%b8%aa-file-%e5%af%b9%e8%b1%a1"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;使用&lt;code&gt;new File(String pathname)&lt;/code&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;package&lt;/span&gt; IOStream;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.io.File;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.io.IOException;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;class&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;IOStreamTest&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;createFile&lt;/span&gt;() &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; Exception{
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; File file &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; File(&lt;span style="color:#e6db74"&gt;&amp;#34;C:\\Users\\32202\\Desktop\\java测试\\test\\src\\IOStream\\Files\\test.txt&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;try&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; file.&lt;span style="color:#a6e22e"&gt;createNewFile&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; System.&lt;span style="color:#a6e22e"&gt;out&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;println&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;successful&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; } &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (IOException e) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; RuntimeException(e);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;main&lt;/span&gt;(String&lt;span style="color:#f92672"&gt;[]&lt;/span&gt; args) &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; Exception{
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; createFile();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="根据父目录-file-对象在子路径创建一个文件"&gt;
+ 根据父目录 File 对象，在子路径创建一个文件
+ &lt;a class="anchor" href="#%e6%a0%b9%e6%8d%ae%e7%88%b6%e7%9b%ae%e5%bd%95-file-%e5%af%b9%e8%b1%a1%e5%9c%a8%e5%ad%90%e8%b7%af%e5%be%84%e5%88%9b%e5%bb%ba%e4%b8%80%e4%b8%aa%e6%96%87%e4%bb%b6"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;使用&lt;code&gt;new File(File parent,String child)&lt;/code&gt;&lt;/p&gt;</description></item></channel></rss>

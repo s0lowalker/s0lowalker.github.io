@@ -1,0 +1,533 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  java类的动态加载
+  #
+
+
+  类加载器和双亲委派机制
+  #
+
+
+  类加载器的作用
+  #
+
+一句话概括：把类的字节码文件（.class）加载到 JVM 内存中，并转换成可以被虚拟机直接使用的 java 类，即 Class 对象。
+
+加载 Class 文件
+
+Person p = new Person();
+Person这个类本身是抽象的，通过new操作，实例化。类加载做的则是把类这个模板经过编译形成的字节码传入 JVM，生成一个具备这个类的所有数据的 Class 对象。(Class 对象就当成是这个类理解即可)
+ClassLoader 的工作流程：
+首先，一个类编译后形成的 class 文件经过类加载器进入 JVM并产生 Class 对象，然后在 JVM 中进行初始化，我们可以通过这个 Class 对象的 getClassLoader() 方法获取这个类对应的类加载器。我们也可以通过对这个 Class 对象调用其 newInstance() 方法来实例化一个对象，通过这个实例化对象的 getClass() 方法来获取对应的 Class 对象。
+
+  3种类加载器
+  #
+
+
+  启动类加载器 (Bootstrap ClassLoader)
+  #
+
+其底层原生代码属是由 C++ 编写的，属于 JVM 的一部分。
+不继承于java.lang.ClassLoader类，也没有父类加载器，主要负责加载核心 java 库（即 JVM 本身），储存在/jre/lib/rt.jar中。
+
+  扩展类加载器 (ExtensionsClassLoader)
+  #
+
+这个类加载器是由sun.misc.Launcher$ExtClassLoader类实现的，用来加载/jre/lib/ext或java.ext.dirs指定的目录。Java 虚拟机会提供一个扩展库目录，此类加载器在目录中查找并加载 java 类。"><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="java类的动态加载"><meta property="og:description" content="java类的动态加载 # 类加载器和双亲委派机制 # 类加载器的作用 # 一句话概括：把类的字节码文件（.class）加载到 JVM 内存中，并转换成可以被虚拟机直接使用的 java 类，即 Class 对象。
+加载 Class 文件 Person p = new Person(); Person这个类本身是抽象的，通过new操作，实例化。类加载做的则是把类这个模板经过编译形成的字节码传入 JVM，生成一个具备这个类的所有数据的 Class 对象。(Class 对象就当成是这个类理解即可)
+ClassLoader 的工作流程：
+首先，一个类编译后形成的 class 文件经过类加载器进入 JVM并产生 Class 对象，然后在 JVM 中进行初始化，我们可以通过这个 Class 对象的 getClassLoader() 方法获取这个类对应的类加载器。我们也可以通过对这个 Class 对象调用其 newInstance() 方法来实例化一个对象，通过这个实例化对象的 getClass() 方法来获取对应的 Class 对象。
+3种类加载器 # 启动类加载器 (Bootstrap ClassLoader) # 其底层原生代码属是由 C++ 编写的，属于 JVM 的一部分。
+不继承于java.lang.ClassLoader类，也没有父类加载器，主要负责加载核心 java 库（即 JVM 本身），储存在/jre/lib/rt.jar中。
+扩展类加载器 (ExtensionsClassLoader) # 这个类加载器是由sun.misc.Launcher$ExtClassLoader类实现的，用来加载/jre/lib/ext或java.ext.dirs指定的目录。Java 虚拟机会提供一个扩展库目录，此类加载器在目录中查找并加载 java 类。"><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-04-24T00:00:00+00:00"><meta property="article:modified_time" content="2026-04-24T00:00:00+00:00"><meta property="article:tag" content="Java安全"><meta property="article:tag" content="Java类加载"><title>java类的动态加载 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle checked>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/ class=active>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>java类的动态加载</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#类加载器和双亲委派机制>类加载器和双亲委派机制</a><ul><li><a href=#类加载器的作用>类加载器的作用</a></li><li><a href=#3种类加载器>3种类加载器</a></li><li><a href=#双亲委派机制>双亲委派机制</a></li><li><a href=#代码块加载顺序>代码块加载顺序</a></li></ul></li><li><a href=#动态加载字节码>动态加载字节码</a><ul><li><a href=#字节码的概念>字节码的概念</a></li><li><a href=#urlclassloader-加载远程-class-文件>URLClassLoader 加载远程 class 文件</a></li><li><a href=#classloaderdefineclass-直接加载字节码>ClassLoader#defineClass 直接加载字节码</a></li><li><a href=#unsafe-加载字节码>Unsafe 加载字节码</a></li><li><a href=#templatesimpl-加载字节码>TemplatesImpl 加载字节码</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java类的动态加载>java类的动态加载
+<a class=anchor href=#java%e7%b1%bb%e7%9a%84%e5%8a%a8%e6%80%81%e5%8a%a0%e8%bd%bd>#</a></h1><h2 id=类加载器和双亲委派机制>类加载器和双亲委派机制
+<a class=anchor href=#%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8%e5%92%8c%e5%8f%8c%e4%ba%b2%e5%a7%94%e6%b4%be%e6%9c%ba%e5%88%b6>#</a></h2><h3 id=类加载器的作用>类加载器的作用
+<a class=anchor href=#%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8%e7%9a%84%e4%bd%9c%e7%94%a8>#</a></h3><p>一句话概括：把类的字节码文件（.class）加载到 JVM 内存中，并转换成可以被虚拟机直接使用的 java 类，即 Class 对象。</p><ul><li>加载 Class 文件</li></ul><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>Person p <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Person();
+</span></span></code></pre></div><p><code>Person</code>这个类本身是抽象的，通过<code>new</code>操作，实例化。类加载做的则是把类这个模板经过编译形成的字节码传入 JVM，生成一个具备这个类的所有数据的 Class 对象。(Class 对象就当成是这个类理解即可)</p><p>ClassLoader 的工作流程：</p><p>首先，一个类编译后形成的 class 文件经过类加载器进入 JVM并产生 Class 对象，然后在 JVM 中进行初始化，我们可以通过这个 Class 对象的 <code>getClassLoader()</code> 方法获取这个类对应的类加载器。我们也可以通过对这个 Class 对象调用其 <code>newInstance()</code> 方法来实例化一个对象，通过这个实例化对象的 <code>getClass()</code> 方法来获取对应的 Class 对象。</p><h3 id=3种类加载器>3种类加载器
+<a class=anchor href=#3%e7%a7%8d%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8>#</a></h3><h4 id=启动类加载器-bootstrap-classloader>启动类加载器 (Bootstrap ClassLoader)
+<a class=anchor href=#%e5%90%af%e5%8a%a8%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8-bootstrap-classloader>#</a></h4><p>其底层原生代码属是由 C++ 编写的，属于 JVM 的一部分。</p><p>不继承于<code>java.lang.ClassLoader</code>类，也没有父类加载器，主要负责加载核心 java 库（即 JVM 本身），储存在<code>/jre/lib/rt.jar</code>中。</p><h4 id=扩展类加载器-extensionsclassloader>扩展类加载器 (ExtensionsClassLoader)
+<a class=anchor href=#%e6%89%a9%e5%b1%95%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8-extensionsclassloader>#</a></h4><p>这个类加载器是由<code>sun.misc.Launcher$ExtClassLoader</code>类实现的，用来加载<code>/jre/lib/ext</code>或<code>java.ext.dirs</code>指定的目录。Java 虚拟机会提供一个扩展库目录，此类加载器在目录中查找并加载 java 类。</p><p>在 JDK9 以及更高版本，由于引入了模块化系统后，此类加载器被替代为平台类加载器，加载 Java SE 平台模块（如 java.sql，java.xml 等）。</p><h4 id=应用类加载器>应用类加载器
+<a class=anchor href=#%e5%ba%94%e7%94%a8%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8>#</a></h4><p>此加载器由<code>sun.misc.Launcher$AppClassLoader</code>实现，一般通过<code>java.class.path</code>或者<code>Classpath</code>环境变量来加载 java 类，也就是常说的 classpath 路径。一般我们使用这个加载器来加载 java 应用类，可以通过 <code>ClassLoader.getSystemClassLoader()</code>来获取它。</p><h3 id=双亲委派机制>双亲委派机制
+<a class=anchor href=#%e5%8f%8c%e4%ba%b2%e5%a7%94%e6%b4%be%e6%9c%ba%e5%88%b6>#</a></h3><p>一句话概括：一个类加载器收到加载请求时，不是先自己尝试加载，而是把请求委派给父加载器，一层层向上传递，直到启动类加载器。只有当父加载器反馈不加载时，子加载器才会自己尝试加载。</p><h4 id=从错误的方向看双亲委派>从错误的方向看双亲委派
+<a class=anchor href=#%e4%bb%8e%e9%94%99%e8%af%af%e7%9a%84%e6%96%b9%e5%90%91%e7%9c%8b%e5%8f%8c%e4%ba%b2%e5%a7%94%e6%b4%be>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> java.lang;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>String</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>toString</span>(){
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;hello&#34;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        String s <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> String();
+</span></span><span style=display:flex><span>        s.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这样看似乎没有问题，但是报错很神奇：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>错误: 在类 java.lang.String 中找不到 main 方法, 请将 main 方法定义为:
+</span></span><span style=display:flex><span>   public static void main(String[] args)
+</span></span><span style=display:flex><span>否则 JavaFX 应用程序类必须扩展javafx.application.Application
+</span></span></code></pre></div><p>明明以及定义了 main 方法，却报错没有 main 方法。这里则涉及双亲委派机制。</p><p>类加载器在被调用时，也就是在<code>new</code>之前，是以启动类到扩展类到应用类加载器去寻找，而在启动类加载器中是能找到<code>java.lang.String</code>类的，这个<code>String</code>类里是没有 main 方法的。</p><h3 id=代码块加载顺序>代码块加载顺序
+<a class=anchor href=#%e4%bb%a3%e7%a0%81%e5%9d%97%e5%8a%a0%e8%bd%bd%e9%a1%ba%e5%ba%8f>#</a></h3><p>这里所说的代码块主要是四种：</p><ul><li>静态代码块：<code>static{}</code></li><li>构造代码块：<code>{}</code></li><li>无参构造器：<code>classname()</code></li><li>有参构造器：<code>classname(参数)</code></li></ul><h4 id=实例化对象>实例化对象
+<a class=anchor href=#%e5%ae%9e%e4%be%8b%e5%8c%96%e5%af%b9%e8%b1%a1>#</a></h4><p>Person.java：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Person</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String name;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> age;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>int</span> id;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span>{
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;静态代码块&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>staticFunction</span>(){
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;静态方法&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;构造代码块&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Person</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;无参构造方法&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Person</span>(String name, <span style=color:#66d9ef>int</span> age) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> name;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>age</span> <span style=color:#f92672>=</span> age;
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;有参构造方法&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>toString</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;Person{&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;name=&#39;&#34;</span> <span style=color:#f92672>+</span> name <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, age=&#34;</span> <span style=color:#f92672>+</span> age <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#39;}&#39;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Loadclasstest.java：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Person person <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Person();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>运行结果：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>静态代码块
+</span></span><span style=display:flex><span>构造代码块
+</span></span><span style=display:flex><span>无参构造方法
+</span></span></code></pre></div><p>类的实例化其实就是一种初始化，而类加载是在初始化之前触发的，静态代码块和静态方法是和类挂钩的，所以静态代码块先触发。然后不管调用的什么构造方法，都会先调用构造代码块，然后调用对应的构造方法。</p><h4 id=调用静态方法>调用静态方法
+<a class=anchor href=#%e8%b0%83%e7%94%a8%e9%9d%99%e6%80%81%e6%96%b9%e6%b3%95>#</a></h4><p>Loadclasstest.java：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Person.<span style=color:#a6e22e>staticFunction</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>运行结果：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>静态代码块
+</span></span><span style=display:flex><span>静态方法
+</span></span></code></pre></div><p>直接调用静态方法，会先调用静态方法块，然后调用对应的静态方法。</p><h4 id=对静态成员变量赋值>对静态成员变量赋值
+<a class=anchor href=#%e5%af%b9%e9%9d%99%e6%80%81%e6%88%90%e5%91%98%e5%8f%98%e9%87%8f%e8%b5%8b%e5%80%bc>#</a></h4><p>Loadclasstest.java：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Person.<span style=color:#a6e22e>id</span> <span style=color:#f92672>=</span> 1;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>运行结果：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>静态代码块
+</span></span></code></pre></div><p>对静态成员变量赋值涉及到类初始化的过程，所以静态代码块会在静态成员变量赋值时执行。</p><h4 id=class获取类>class获取类
+<a class=anchor href=#class%e8%8e%b7%e5%8f%96%e7%b1%bb>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Class p <span style=color:#f92672>=</span> Person.<span style=color:#a6e22e>class</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>运行结果为空，说明利用<code>class</code>获取类不会记载类。</p><h4 id=forname-获取类>forName 获取类
+<a class=anchor href=#forname-%e8%8e%b7%e5%8f%96%e7%b1%bb>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;LoadClass.Person&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}          <span style=color:#75715e>//执行静态代码块</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;LoadClass.Person&#34;</span>,<span style=color:#66d9ef>true</span>,ClassLoader.<span style=color:#a6e22e>getSystemClassLoader</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}                <span style=color:#75715e>//执行静态代码块</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;LoadClass.Person&#34;</span>,<span style=color:#66d9ef>false</span>,ClassLoader.<span style=color:#a6e22e>getSystemClassLoader</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}                 <span style=color:#75715e>//没有输出</span>
+</span></span></code></pre></div><p>这里的<code>Class.forName()</code>是经过重载的，第二个参数是是否进行初始化，静态代码块是在类初始化时执行的，所以会有不同的结果。</p><h4 id=classloaderloadclass获取类>ClassLoader.loadClass()获取类
+<a class=anchor href=#classloaderloadclass%e8%8e%b7%e5%8f%96%e7%b1%bb>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Loadclasstest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ClassLoader cl <span style=color:#f92672>=</span> ClassLoader.<span style=color:#a6e22e>getSystemClassLoader</span>();
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> c <span style=color:#f92672>=</span> cl.<span style=color:#a6e22e>loadClass</span>(<span style=color:#e6db74>&#34;LoadClass.Person&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}           <span style=color:#75715e>//没有输出</span>
+</span></span></code></pre></div><p><code>ClassLoader.loadClass()</code>不会进行类的初始化，如果用<code>newInstance()</code>实例化则会由输出。</p><h2 id=动态加载字节码>动态加载字节码
+<a class=anchor href=#%e5%8a%a8%e6%80%81%e5%8a%a0%e8%bd%bd%e5%ad%97%e8%8a%82%e7%a0%81>#</a></h2><h3 id=字节码的概念>字节码的概念
+<a class=anchor href=#%e5%ad%97%e8%8a%82%e7%a0%81%e7%9a%84%e6%a6%82%e5%bf%b5>#</a></h3><p>字节码是 java 编译器生成的中间代码，介于源码与机器码之间，是 JVM 能够理解的指令集，被存储在 .class 文件中。</p><p>经过 java 编译器编译出的 class 文件实际是一个二进制文件，但不是机器码，我们通过 idea 打开 class 文件看到的实际上是经过 idea 反编译的代码。</p><h4 id=类加载器的原理>类加载器的原理
+<a class=anchor href=#%e7%b1%bb%e5%8a%a0%e8%bd%bd%e5%99%a8%e7%9a%84%e5%8e%9f%e7%90%86>#</a></h4><p>调用 ClassLoader 的 loadClass() 方法时，会调用到内部的 findClass() 方法，而 ClassLoader 的 findClass 方法其实是没有实现的，所以到底会调用谁的 findClass 呢？由于 findClass() 是一个虚方法，运行时是根据对象的类型决定的，对象是一个自定义的对象，所以就是尝试调用<code>AppClassLoader</code>的 findClass 方法，但这个类没有重写这个方法，所以要去这个类的父类，即<code>URLClassLoader</code>来调用 findClass 方法。在 findClass 内部又调用了自身的 defineClass 方法，在自身的 defineClass 方法中又调用了父类的 defineClass 方法。所以，类加载的最终出口还是 ClassLoader 的 defineClass 方法。</p><p>由于类加载器直接加载字节码，如果我们在反序列化中能够控制类加载器加载远程字节码，就会有更多攻击手段。</p><h3 id=urlclassloader-加载远程-class-文件>URLClassLoader 加载远程 class 文件
+<a class=anchor href=#urlclassloader-%e5%8a%a0%e8%bd%bd%e8%bf%9c%e7%a8%8b-class-%e6%96%87%e4%bb%b6>#</a></h3><p><code>URLClassLoader</code>实际上是我们默认使用的<code>AppClassLoader</code>的父类，在学习<code>URLClassLoader</code>的工作过程其实就是在学习默认类加载器的工作流程。</p><p>一般情况下，java 会根据配置项<code>sun.boot.class.path</code>和<code>java.class.path</code>中列举的基础路径（这些路径是经过处理的<code>java.net.URL</code>类）来寻找 .class 文件加载，这个路径分三种情况：</p><ol><li>URL 没有以 / 结尾，则认为是一个 jar 包，使用<code>JarLoader</code>来寻找类，即在 jar 包中寻找 class 文件</li><li>URL 以 / 结尾，且协议名为 file，则使用<code>FileLoader</code>来寻找类，在本地文件系统寻找 class 文件</li><li>URL 以 / 结尾，协议名不是 file，则使用基本的<code>Loader</code>来寻找类</li></ol><h4 id=file-协议>file 协议
+<a class=anchor href=#file-%e5%8d%8f%e8%ae%ae>#</a></h4><p>在测试目录新建一个 Calc.java：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Calc</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(<span style=color:#e6db74>&#34;calc&#34;</span>);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (IOException e) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> RuntimeException(e);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>在终端中 javac 编译一下，产生 class 文件。</p><p>测试代码样例：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.MalformedURLException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URL;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URLClassLoader;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>URLloadTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> MalformedURLException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+</span></span><span style=display:flex><span>        URLClassLoader ucl <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> URLClassLoader(<span style=color:#66d9ef>new</span> URL<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> URL(<span style=color:#e6db74>&#34;file:///C:\\Users\\32202\\Desktop\\java测试\\out\\production\\test\\&#34;</span>)});
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> calc <span style=color:#f92672>=</span> ucl.<span style=color:#a6e22e>loadClass</span>(<span style=color:#e6db74>&#34;Calc&#34;</span>);
+</span></span><span style=display:flex><span>        calc.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>ucl 是一个指向这个 Calc.class 的类加载器实例，调用 loadClass 方法来加载这个类再实例化就能弹出计算器。</p><h4 id=http-协议>HTTP 协议
+<a class=anchor href=#http-%e5%8d%8f%e8%ae%ae>#</a></h4><p>在 Calc.class 所在目录下执行<code>python -m http.server 4444</code>建立 HTTP 服务，编写恶意类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.MalformedURLException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URL;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URLClassLoader;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>URLloadTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> MalformedURLException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+</span></span><span style=display:flex><span>        URLClassLoader ucl <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> URLClassLoader(<span style=color:#66d9ef>new</span> URL<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> URL(<span style=color:#e6db74>&#34;http://localhost:4444&#34;</span>)});
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> calc <span style=color:#f92672>=</span> ucl.<span style=color:#a6e22e>loadClass</span>(<span style=color:#e6db74>&#34;Calc&#34;</span>);
+</span></span><span style=display:flex><span>        calc.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>也能弹出计算器。</p><h4 id=filejar-协议>file+jar 协议
+<a class=anchor href=#filejar-%e5%8d%8f%e8%ae%ae>#</a></h4><p>先把这个 Calc.class 文件打包成 jar 包：<code>jar -cvf Calc.jar Calc.class</code></p><p>调用恶意类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.MalformedURLException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URL;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URLClassLoader;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>URLloadTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> MalformedURLException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+</span></span><span style=display:flex><span>        URLClassLoader ucl <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> URLClassLoader(<span style=color:#66d9ef>new</span> URL<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> URL(<span style=color:#e6db74>&#34;jar:file:///C:\\Users\\32202\\Desktop\\java测试\\out\\production\\test\\Calc.jar!/&#34;</span>)});
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> calc <span style=color:#f92672>=</span> ucl.<span style=color:#a6e22e>loadClass</span>(<span style=color:#e6db74>&#34;Calc&#34;</span>);
+</span></span><span style=display:flex><span>        calc.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>也能弹出计算器。</p><h4 id=httpjar-协议>HTTP+jar 协议
+<a class=anchor href=#httpjar-%e5%8d%8f%e8%ae%ae>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.MalformedURLException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URL;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URLClassLoader;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>URLloadTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> MalformedURLException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+</span></span><span style=display:flex><span>        URLClassLoader ucl <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> URLClassLoader(<span style=color:#66d9ef>new</span> URL<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> URL(<span style=color:#e6db74>&#34;jar:http://localhost:4444/Calc.jar!/&#34;</span>)});
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;?&gt;</span> calc <span style=color:#f92672>=</span> ucl.<span style=color:#a6e22e>loadClass</span>(<span style=color:#e6db74>&#34;Calc&#34;</span>);
+</span></span><span style=display:flex><span>        calc.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>同样能弹出计算器。</p><p>对比之下其实还是 http 协议最灵活，能干更多的事情。</p><h3 id=classloaderdefineclass-直接加载字节码>ClassLoader#defineClass 直接加载字节码
+<a class=anchor href=#classloaderdefineclass-%e7%9b%b4%e6%8e%a5%e5%8a%a0%e8%bd%bd%e5%ad%97%e8%8a%82%e7%a0%81>#</a></h3><p>在上面分析过，类加载的终点是 ClassLoader 的 defineClass 方法，它将传入的字节码转化成真正的 java 类。我们可以利用这个方法实现攻击。</p><p>ClassLoader#defineClass：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>final</span> Class<span style=color:#f92672>&lt;?&gt;</span> defineClass(String name, <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> b, <span style=color:#66d9ef>int</span> off, <span style=color:#66d9ef>int</span> len)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> ClassFormatError
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> defineClass(name, b, off, len, <span style=color:#66d9ef>null</span>);
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p><code>name</code>是类名，<code>b</code>是字节数组，<code>off</code>是偏移量，即从字节数组的生命位置开始读取，<code>len</code>是字节数组的长度。</p><p>这是一个受保护的方法，利用反射调用该方法实现字节码的加载，实例化后可进行其他攻击手法。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.InvocationTargetException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Method;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>DefineClassTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> NoSuchMethodException, IOException, InvocationTargetException, IllegalAccessException, InstantiationException {
+</span></span><span style=display:flex><span>        ClassLoader scl <span style=color:#f92672>=</span> ClassLoader.<span style=color:#a6e22e>getSystemClassLoader</span>();
+</span></span><span style=display:flex><span>        Method dc <span style=color:#f92672>=</span> ClassLoader.<span style=color:#a6e22e>class</span>.<span style=color:#a6e22e>getDeclaredMethod</span>(<span style=color:#e6db74>&#34;defineClass&#34;</span>,
+</span></span><span style=display:flex><span>                String.<span style=color:#a6e22e>class</span>, <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>, <span style=color:#66d9ef>int</span>.<span style=color:#a6e22e>class</span>, <span style=color:#66d9ef>int</span>.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        dc.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> code <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\java测试\\out\\production\\test\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        Class calc <span style=color:#f92672>=</span>(Class)dc.<span style=color:#a6e22e>invoke</span>(scl, <span style=color:#e6db74>&#34;Calc&#34;</span>, code, 0, code.<span style=color:#a6e22e>length</span>);
+</span></span><span style=display:flex><span>        calc.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=unsafe-加载字节码>Unsafe 加载字节码
+<a class=anchor href=#unsafe-%e5%8a%a0%e8%bd%bd%e5%ad%97%e8%8a%82%e7%a0%81>#</a></h3><p>Unsafe 类中也有 defineClass 方法，也是 defineClass 加载字节码。</p><p>Unsafe 类里面有个属性<code>theUnsafe</code>，值是一个 Unsafe 对象，但是我们实际是无法直接拿到这个属性的。该类里面也有一个<code>getUnsafe</code>方法会返回这个<code>theUnsafe</code>属性，虽然该方法是 public 的，但是由于是采用单例模式设计的，也无法直接调用，所以需要反射进行调用。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> sun.misc.Unsafe;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.InvocationTargetException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Method;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.security.ProtectionDomain;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>UnsafeLoadTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> NoSuchFieldException, IllegalAccessException, NoSuchMethodException, IOException, InvocationTargetException, InstantiationException {
+</span></span><span style=display:flex><span>        ClassLoader cl <span style=color:#f92672>=</span> ClassLoader.<span style=color:#a6e22e>getSystemClassLoader</span>();
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;</span>Unsafe<span style=color:#f92672>&gt;</span> unsafeClass <span style=color:#f92672>=</span> Unsafe.<span style=color:#a6e22e>class</span>;
+</span></span><span style=display:flex><span>        Field theUnsafe <span style=color:#f92672>=</span> unsafeClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;theUnsafe&#34;</span>);
+</span></span><span style=display:flex><span>        theUnsafe.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        Unsafe o <span style=color:#f92672>=</span> (Unsafe) theUnsafe.<span style=color:#a6e22e>get</span>(<span style=color:#66d9ef>null</span>);
+</span></span><span style=display:flex><span>        Method defineClass <span style=color:#f92672>=</span> unsafeClass.<span style=color:#a6e22e>getDeclaredMethod</span>(<span style=color:#e6db74>&#34;defineClass&#34;</span>, String.<span style=color:#a6e22e>class</span>, <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>,
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>int</span>.<span style=color:#a6e22e>class</span>, <span style=color:#66d9ef>int</span>.<span style=color:#a6e22e>class</span>,ClassLoader.<span style=color:#a6e22e>class</span>, ProtectionDomain.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> code <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\java测试\\out\\production\\test\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        Class calc <span style=color:#f92672>=</span> (Class)defineClass.<span style=color:#a6e22e>invoke</span>(o, <span style=color:#e6db74>&#34;Calc&#34;</span>, code, 0, code.<span style=color:#a6e22e>length</span>, cl, <span style=color:#66d9ef>null</span>);
+</span></span><span style=display:flex><span>        calc.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=templatesimpl-加载字节码>TemplatesImpl 加载字节码
+<a class=anchor href=#templatesimpl-%e5%8a%a0%e8%bd%bd%e5%ad%97%e8%8a%82%e7%a0%81>#</a></h3><p>定位到<code>TemplatesImpl</code>类，我们会找到一个内部类<code>TransletClassLoader</code>，该类继承了<code>ClassLoader</code>，并且重写了<code>defineClass</code>方法。</p><p>源码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>static</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>TransletClassLoader</span> <span style=color:#66d9ef>extends</span> ClassLoader {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>final</span> Map<span style=color:#f92672>&lt;</span>String,Class<span style=color:#f92672>&gt;</span> _loadedExternalExtensionFunctions;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>         TransletClassLoader(ClassLoader parent) {
+</span></span><span style=display:flex><span>             <span style=color:#66d9ef>super</span>(parent);
+</span></span><span style=display:flex><span>            _loadedExternalExtensionFunctions <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TransletClassLoader(ClassLoader parent,Map<span style=color:#f92672>&lt;</span>String, Class<span style=color:#f92672>&gt;</span> mapEF) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>super</span>(parent);
+</span></span><span style=display:flex><span>            _loadedExternalExtensionFunctions <span style=color:#f92672>=</span> mapEF;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>public</span> Class<span style=color:#f92672>&lt;?&gt;</span> loadClass(String name) <span style=color:#66d9ef>throws</span> ClassNotFoundException {
+</span></span><span style=display:flex><span>            Class<span style=color:#f92672>&lt;?&gt;</span> ret <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// The _loadedExternalExtensionFunctions will be empty when the</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// SecurityManager is not set and the FSP is turned off</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_loadedExternalExtensionFunctions <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                ret <span style=color:#f92672>=</span> _loadedExternalExtensionFunctions.<span style=color:#a6e22e>get</span>(name);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (ret <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                ret <span style=color:#f92672>=</span> <span style=color:#66d9ef>super</span>.<span style=color:#a6e22e>loadClass</span>(name);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> ret;
+</span></span><span style=display:flex><span>         }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>/**
+</span></span></span><span style=display:flex><span><span style=color:#75715e>         * Access to final protected superclass member from outer class.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>         */</span>
+</span></span><span style=display:flex><span>        Class <span style=color:#a6e22e>defineClass</span>(<span style=color:#66d9ef>final</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> b) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> defineClass(<span style=color:#66d9ef>null</span>, b, 0, b.<span style=color:#a6e22e>length</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>这里我们可以看到，defineClass 方法的访问权限从父类的受保护类型变成了现在的默认类型，这样一来，在同一个包内的<code>TemplatesImpl</code>就能直接调用它来加载字节码。</p><p>从<code>TransletClassLoader#defineClass()</code>追溯调用链：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>TemplatesImpl#getOutputProperties() -&gt; TemplatesImpl#newTransformer() -&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>TemplatesImpl#getTransletInstance() -&gt; TemplatesImpl#defineTransletClasses()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>-&gt; TransletClassLoader#defineClass()
+</span></span></code></pre></div><p>前两个入口的源码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>synchronized</span> Transformer <span style=color:#a6e22e>newTransformer</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> TransformerConfigurationException
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        TransformerImpl transformer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        transformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TransformerImpl(getTransletInstance(), _outputProperties,
+</span></span><span style=display:flex><span>            _indentNumber, _tfactory);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (_uriResolver <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            transformer.<span style=color:#a6e22e>setURIResolver</span>(_uriResolver);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (_tfactory.<span style=color:#a6e22e>getFeature</span>(XMLConstants.<span style=color:#a6e22e>FEATURE_SECURE_PROCESSING</span>)) {
+</span></span><span style=display:flex><span>            transformer.<span style=color:#a6e22e>setSecureProcessing</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> transformer;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>/**
+</span></span></span><span style=display:flex><span><span style=color:#75715e>     * Implements JAXP&#39;s Templates.getOutputProperties(). We need to
+</span></span></span><span style=display:flex><span><span style=color:#75715e>     * instanciate a translet to get the output settings, so
+</span></span></span><span style=display:flex><span><span style=color:#75715e>     * we might as well just instanciate a Transformer and use its
+</span></span></span><span style=display:flex><span><span style=color:#75715e>     * implementation of this method.
+</span></span></span><span style=display:flex><span><span style=color:#75715e>     */</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>synchronized</span> Properties <span style=color:#a6e22e>getOutputProperties</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> newTransformer().<span style=color:#a6e22e>getOutputProperties</span>();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (TransformerConfigurationException e) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>在<code>newTransformer()</code>内部直接调用<code>newTransformer()</code>，在这个方法内，<code>transformer = new TransformerImpl(getTransletInstance(), _outputProperties, _indentNumber, _tfactory);</code>，这里很明显调用了<code>getTransletInstance()</code>方法，这就意味着每次调用<code>newTransformer()</code>来创建<code>TransformerImpl</code>对象时都会去执行<code>getTransletInstance()</code>。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> Translet <span style=color:#a6e22e>getTransletInstance</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> TransformerConfigurationException {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_name <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_class <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) defineTransletClasses();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// The translet needs to keep a reference to all its auxiliary</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// class to prevent the GC from collecting them</span>
+</span></span><span style=display:flex><span>            AbstractTranslet translet <span style=color:#f92672>=</span> (AbstractTranslet) _class<span style=color:#f92672>[</span>_transletIndex<span style=color:#f92672>]</span>.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>postInitialization</span>();
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setTemplates</span>(<span style=color:#66d9ef>this</span>);
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setServicesMechnism</span>(_useServicesMechanism);
+</span></span><span style=display:flex><span>            translet.<span style=color:#a6e22e>setAllowedProtocols</span>(_accessExternalStylesheet);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_auxClasses <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>                translet.<span style=color:#a6e22e>setAuxiliaryClasses</span>(_auxClasses);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> translet;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (InstantiationException e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (IllegalAccessException e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>第一步安检：<code>if (_name == null) return null;</code>，这表明在利用时必须要利用反射给这个属性赋任意值，不然调用链直接断了。</p><p>第二步安检：<code>if (_class == null) defineTransletClasses();</code>，<code>_class</code>为空时才调用<code>defineTransletClasses()</code>把字节码转化为<code>Class</code>对象。</p><p>注：<code>_class</code>是一个<code>Class[]</code>数组，用来存放已经加载过的类，防止重复加载。对于一个全新的<code>TemplatesImpl</code>实例，<code>_class</code>默认是<code>null</code>，所以首次调用一定会调用<code>defineTransletClasses()</code>。</p><p>最终执行：<code>AbstractTranslet translet=(AbstractTranslet)_class[_transletIndex].newInstance();</code></p><ol><li><code>_class[_transletIndex]</code>取出恶意类。<code>_class</code>数组已经在<code>defineTransletClasses()</code>赋值。<code>_transletIndex</code>是在那个方法中确定的，指向是那个父类为 <code>AbstractTranslet</code> 的类在数组中的位置</li><li><code>.newInstance()</code>实例化，这里就是触发点，如果恶意代码写在类的静态代码块或者无参构造方法中则会执行。</li></ol><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>defineTransletClasses</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> TransformerConfigurationException {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (_bytecodes <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>NO_TRANSLET_CLASS_ERR</span>);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TransletClassLoader loader <span style=color:#f92672>=</span> (TransletClassLoader)
+</span></span><span style=display:flex><span>            AccessController.<span style=color:#a6e22e>doPrivileged</span>(<span style=color:#66d9ef>new</span> PrivilegedAction() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>public</span> Object <span style=color:#a6e22e>run</span>() {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> TransletClassLoader(ObjectFactory.<span style=color:#a6e22e>findClassLoader</span>(),_tfactory.<span style=color:#a6e22e>getExternalExtensionsMap</span>());
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>int</span> classCount <span style=color:#f92672>=</span> _bytecodes.<span style=color:#a6e22e>length</span>;
+</span></span><span style=display:flex><span>            _class <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[</span>classCount<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (classCount <span style=color:#f92672>&gt;</span> 1) {
+</span></span><span style=display:flex><span>                _auxClasses <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> 0; i <span style=color:#f92672>&lt;</span> classCount; i<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>                _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span> <span style=color:#f92672>=</span> loader.<span style=color:#a6e22e>defineClass</span>(_bytecodes<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>final</span> Class superClass <span style=color:#f92672>=</span> _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getSuperclass</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Check if this is the main class</span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (superClass.<span style=color:#a6e22e>getName</span>().<span style=color:#a6e22e>equals</span>(ABSTRACT_TRANSLET)) {
+</span></span><span style=display:flex><span>                    _transletIndex <span style=color:#f92672>=</span> i;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    _auxClasses.<span style=color:#a6e22e>put</span>(_class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getName</span>(), _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (_transletIndex <span style=color:#f92672>&lt;</span> 0) {
+</span></span><span style=display:flex><span>                ErrorMsg err<span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>NO_MAIN_TRANSLET_ERR</span>, _name);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (ClassFormatError e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_CLASS_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>catch</span> (LinkageError e) {
+</span></span><span style=display:flex><span>            ErrorMsg err <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ErrorMsg(ErrorMsg.<span style=color:#a6e22e>TRANSLET_OBJECT_ERR</span>, _name);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> TransformerConfigurationException(err.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>这是利用链中最核心的部分，负责把<code>_bytecodes</code>里的字节码变成可执行的<code>Class</code>对象，并筛选出恶意类。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>TransletClassLoader loader <span style=color:#f92672>=</span> (TransletClassLoader)
+</span></span><span style=display:flex><span>    AccessController.<span style=color:#a6e22e>doPrivileged</span>(<span style=color:#66d9ef>new</span> PrivilegedAction() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>public</span> Object <span style=color:#a6e22e>run</span>() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> TransletClassLoader(ObjectFactory.<span style=color:#a6e22e>findClassLoader</span>(),
+</span></span><span style=display:flex><span>                _tfactory.<span style=color:#a6e22e>getExternalExtensionsMap</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    });
+</span></span></code></pre></div><p>这里创建了一个自定义类加载器，这是上面所讲的<code>TransletClassLoader</code>这个内部类，继承于<code>ClassLoader</code>。然后则是遍历并加载所有字节码。</p><p>然后就是最关键的一步：父类检查。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>final</span> Class superClass <span style=color:#f92672>=</span> _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getSuperclass</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Check if this is the main class</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> (superClass.<span style=color:#a6e22e>getName</span>().<span style=color:#a6e22e>equals</span>(ABSTRACT_TRANSLET)) {
+</span></span><span style=display:flex><span>    _transletIndex <span style=color:#f92672>=</span> i;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    _auxClasses.<span style=color:#a6e22e>put</span>(_class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.<span style=color:#a6e22e>getName</span>(), _class<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这里判断了刚刚加载的类是不是<code>ABSTRACT_TRANSLET</code>，即<code>com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet</code>。</p><p>如果是，则把当前索引赋值给<code>_transletIndex</code>，标记这个类是主类。如果不是，则当作是辅助类，存入<code>_auxClasses</code>备用。</p><p>这就说明，我们的恶意类必须继承<code>AbstractTranslet</code>，否则最终无法被实例化。</p><p>到此调用链基本结束。</p><h4 id=利用-templatesimplnewtransformer-构造简单poc>利用 TemplatesImpl#newTransformer() 构造简单POC
+<a class=anchor href=#%e5%88%a9%e7%94%a8-templatesimplnewtransformer-%e6%9e%84%e9%80%a0%e7%ae%80%e5%8d%95poc>#</a></h4><p>根据上面的分析，我们构造的字节码必须继承于<code>AbstractTranslet</code>这个抽象类，所以需要重写一下里面的方法。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>TemplatesBytes</span> <span style=color:#66d9ef>extends</span> AbstractTranslet {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>transform</span>(DOM document, SerializationHandler<span style=color:#f92672>[]</span> handlers) <span style=color:#66d9ef>throws</span> TransletException {}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>transform</span>(DOM document, DTMAxisIterator iterator, SerializationHandler handler) <span style=color:#66d9ef>throws</span> TransletException {}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>TemplatesBytes</span>() <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>super</span>();
+</span></span><span style=display:flex><span>        Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(<span style=color:#e6db74>&#34;Calc&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> LoadClass;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.File;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Path;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>TemplatesImpILoadTest</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setFieldval</span>(Object obj,String fieldName,Object value) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Field f <span style=color:#f92672>=</span> obj.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getDeclaredField</span>(fieldName);
+</span></span><span style=display:flex><span>        f.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        f.<span style=color:#a6e22e>set</span>(obj,value);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> codes <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;C:\\Users\\32202\\Desktop\\java测试\\test\\src\\LoadClass\\TemplatesBytes.class&#34;</span>));
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>        setFieldval(templates,<span style=color:#e6db74>&#34;_name&#34;</span>,<span style=color:#e6db74>&#34;Calc&#34;</span>);
+</span></span><span style=display:flex><span>        setFieldval(templates,<span style=color:#e6db74>&#34;_bytecodes&#34;</span>,<span style=color:#66d9ef>new</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span>{codes});
+</span></span><span style=display:flex><span>        setFieldval(templates,<span style=color:#e6db74>&#34;_tfactory&#34;</span>,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>        <span style=color:#75715e>/*这一步很重要，因为在源码中有
+</span></span></span><span style=display:flex><span><span style=color:#75715e>    return new TransletClassLoader(ObjectFactory.findClassLoader(),_tfactory.getExternalExtensionsMap());，而_tfactory默认是null,
+</span></span></span><span style=display:flex><span><span style=color:#75715e>    需要赋一个值来让程序走下去*/</span>
+</span></span><span style=display:flex><span>        templates.<span style=color:#a6e22e>newTransformer</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这里在运行时会报一个空指针的错，但是没什么影响，依然会弹出计算器。</p><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>类加载这部分内容感觉还是挺重要的，所以专门写了这一篇博客来记录一下我的学习成果，不过主要还是参考了别的大佬的内容，可以说内容几乎是一样的，但是其中也加了一些我自己的理解。</p><p>这一篇博客还只是对类加载的基本认识，中间有些地方还是有一点模糊的，但是相比之前已经有了很大改善了，也是有了不小的收获吧。之后还会有更多关于动态加载字节码的内容，遇到之后会继续更新。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#类加载器和双亲委派机制>类加载器和双亲委派机制</a><ul><li><a href=#类加载器的作用>类加载器的作用</a></li><li><a href=#3种类加载器>3种类加载器</a></li><li><a href=#双亲委派机制>双亲委派机制</a></li><li><a href=#代码块加载顺序>代码块加载顺序</a></li></ul></li><li><a href=#动态加载字节码>动态加载字节码</a><ul><li><a href=#字节码的概念>字节码的概念</a></li><li><a href=#urlclassloader-加载远程-class-文件>URLClassLoader 加载远程 class 文件</a></li><li><a href=#classloaderdefineclass-直接加载字节码>ClassLoader#defineClass 直接加载字节码</a></li><li><a href=#unsafe-加载字节码>Unsafe 加载字节码</a></li><li><a href=#templatesimpl-加载字节码>TemplatesImpl 加载字节码</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

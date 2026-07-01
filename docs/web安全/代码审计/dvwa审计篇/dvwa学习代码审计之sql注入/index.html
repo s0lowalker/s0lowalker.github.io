@@ -1,0 +1,227 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  DVWA代码审计之SQL注入篇
+  #
+
+
+  等级low
+  #
+
+
+  源码功能
+  #
+
+<?php
+
+if( isset( $_REQUEST[ &#39;Submit&#39; ] ) ) {
+	// 获取输入
+	$id = $_REQUEST[ &#39;id&#39; ];
+
+	// 数据库查询
+	$query  = "SELECT first_name, last_name FROM users WHERE user_id = &#39;$id&#39;;";
+	$result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( &#39;<pre>&#39; . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . &#39;</pre>&#39; );
+
+	// 处理查询结果
+	while( $row = mysqli_fetch_assoc( $result ) ) {
+		// 获取对应的值
+		$first = $row["first_name"];
+		$last  = $row["last_name"];
+
+		// 返回给用户
+		$html .= "<pre>ID: {$id}<br />First name: {$first}<br />Surname: {$last}</pre>";
+	}
+
+	mysqli_close($GLOBALS["___mysqli_ston"]);
+}
+
+?>
+
+  安全隐患
+  #
+
+
+源码使用$_REQUEST这个超全局数组接收用户输入，但没有进行任何过滤，这就给了用户操作的空间，通过构造特定的SQL查询语句从而窃取到数据库内的信息。
+$query  = "SELECT first_name, last_name FROM users WHERE user_id = &#39;$id&#39;;";这段代码是我们利用的核心，在这个语句中，$id这个变量直接插入到查询语句中，导致了用户输入被当成SQL语句执行。
+
+
+  漏洞成因
+  #
+
+SQL注入这类漏洞的核心问题，就是没有把数据和代码分离，使得用户输入被当成SQL代码的一部分执行。'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="DVWA代码审计之SQL注入"><meta property="og:description" content='DVWA代码审计之SQL注入篇 # 等级low # 源码功能 # <?php if( isset( $_REQUEST[ &#39;Submit&#39; ] ) ) { // 获取输入 $id = $_REQUEST[ &#39;id&#39; ]; // 数据库查询 $query = "SELECT first_name, last_name FROM users WHERE user_id = &#39;$id&#39;;"; $result = mysqli_query($GLOBALS["___mysqli_ston"], $query ) or die( &#39;<pre>&#39; . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . &#39;</pre>&#39; ); // 处理查询结果 while( $row = mysqli_fetch_assoc( $result ) ) { // 获取对应的值 $first = $row["first_name"]; $last = $row["last_name"]; // 返回给用户 $html .= "<pre>ID: {$id}<br />First name: {$first}<br />Surname: {$last}</pre>"; } mysqli_close($GLOBALS["___mysqli_ston"]); } ?> 安全隐患 # 源码使用$_REQUEST这个超全局数组接收用户输入，但没有进行任何过滤，这就给了用户操作的空间，通过构造特定的SQL查询语句从而窃取到数据库内的信息。 $query = "SELECT first_name, last_name FROM users WHERE user_id = &#39;$id&#39;;";这段代码是我们利用的核心，在这个语句中，$id这个变量直接插入到查询语句中，导致了用户输入被当成SQL语句执行。 漏洞成因 # SQL注入这类漏洞的核心问题，就是没有把数据和代码分离，使得用户输入被当成SQL代码的一部分执行。'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-03-14T00:00:00+00:00"><meta property="article:modified_time" content="2026-03-14T00:00:00+00:00"><meta property="article:tag" content="代码审计"><title>DVWA代码审计之SQL注入 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle checked>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle checked>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle checked>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/ class=active>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>DVWA代码审计之SQL注入</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#等级low>等级low</a><ul><li><a href=#源码功能>源码功能</a></li><li><a href=#安全隐患>安全隐患</a></li><li><a href=#漏洞成因>漏洞成因</a></li></ul></li><li><a href=#等级medium>等级medium</a><ul><li><a href=#源码功能-1>源码功能</a></li><li><a href=#安全隐患-1>安全隐患</a></li><li><a href=#宽字节注入>宽字节注入</a></li></ul></li><li><a href=#等级high>等级high</a><ul><li><a href=#代码功能>代码功能</a></li><li><a href=#安全隐患-2>安全隐患</a></li></ul></li><li><a href=#等级impossible>等级impossible</a><ul><li><a href=#源码>源码</a></li><li><a href=#参数化查询>参数化查询</a></li><li><a href=#phpmysql的防御代码>PHP+MySQL的防御代码</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=dvwa代码审计之sql注入篇>DVWA代码审计之SQL注入篇
+<a class=anchor href=#dvwa%e4%bb%a3%e7%a0%81%e5%ae%a1%e8%ae%a1%e4%b9%8bsql%e6%b3%a8%e5%85%a5%e7%af%87>#</a></h1><h2 id=等级low>等级low
+<a class=anchor href=#%e7%ad%89%e7%ba%a7low>#</a></h2><h3 id=源码功能>源码功能
+<a class=anchor href=#%e6%ba%90%e7%a0%81%e5%8a%9f%e8%83%bd>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_REQUEST[ <span style=color:#e6db74>&#39;Submit&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// 获取输入
+</span></span></span><span style=display:flex><span>	$id <span style=color:#f92672>=</span> $_REQUEST[ <span style=color:#e6db74>&#39;id&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// 数据库查询
+</span></span></span><span style=display:flex><span>	$query  <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT first_name, last_name FROM users WHERE user_id = &#39;</span><span style=color:#e6db74>$id</span><span style=color:#e6db74>&#39;;&#34;</span>;
+</span></span><span style=display:flex><span>	$result <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_query</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $query ) <span style=color:#66d9ef>or</span> <span style=color:#66d9ef>die</span>( <span style=color:#e6db74>&#39;&lt;pre&gt;&#39;</span> <span style=color:#f92672>.</span> ((<span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_error</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>:</span> (($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_connect_error</span>()) <span style=color:#f92672>?</span> $___mysqli_res <span style=color:#f92672>:</span> <span style=color:#66d9ef>false</span>)) <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;&lt;/pre&gt;&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// 处理查询结果
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>while</span>( $row <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_fetch_assoc</span>( $result ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// 获取对应的值
+</span></span></span><span style=display:flex><span>		$first <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;first_name&#34;</span>];
+</span></span><span style=display:flex><span>		$last  <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;last_name&#34;</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// 返回给用户
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;ID: </span><span style=color:#e6db74>{</span>$id<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;First name: </span><span style=color:#e6db74>{</span>$first<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;Surname: </span><span style=color:#e6db74>{</span>$last<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>mysqli_close</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=安全隐患>安全隐患
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e9%9a%90%e6%82%a3>#</a></h3><ol><li>源码使用<code>$_REQUEST</code>这个超全局数组接收用户输入，但没有进行任何过滤，这就给了用户操作的空间，通过构造特定的SQL查询语句从而窃取到数据库内的信息。</li><li><code>$query = "SELECT first_name, last_name FROM users WHERE user_id = '$id';";</code>这段代码是我们利用的核心，在这个语句中，<code>$id</code>这个变量直接插入到查询语句中，导致了<strong>用户输入被当成SQL语句</strong>执行。</li></ol><h3 id=漏洞成因>漏洞成因
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e6%88%90%e5%9b%a0>#</a></h3><p>SQL注入这类漏洞的核心问题，就是没有把数据和代码分离，使得用户输入被当成SQL代码的一部分执行。</p><h2 id=等级medium>等级medium
+<a class=anchor href=#%e7%ad%89%e7%ba%a7medium>#</a></h2><h3 id=源码功能-1>源码功能
+<a class=anchor href=#%e6%ba%90%e7%a0%81%e5%8a%9f%e8%83%bd-1>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_POST[ <span style=color:#e6db74>&#39;Submit&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get input
+</span></span></span><span style=display:flex><span>	$id <span style=color:#f92672>=</span> $_POST[ <span style=color:#e6db74>&#39;id&#39;</span> ];
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// 这里的使用mysqli_real_escape_string来进行特殊字符的转义
+</span></span></span><span style=display:flex><span>	$id <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_real_escape_string</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>], $id);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	$query  <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT first_name, last_name FROM users WHERE user_id = </span><span style=color:#e6db74>$id</span><span style=color:#e6db74>;&#34;</span>;
+</span></span><span style=display:flex><span>	$result <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_query</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>], $query) <span style=color:#66d9ef>or</span> <span style=color:#66d9ef>die</span>( <span style=color:#e6db74>&#39;&lt;pre&gt;&#39;</span> <span style=color:#f92672>.</span> <span style=color:#a6e22e>mysqli_error</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;&lt;/pre&gt;&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get results
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>while</span>( $row <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_fetch_assoc</span>( $result ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Display values
+</span></span></span><span style=display:flex><span>		$first <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;first_name&#34;</span>];
+</span></span><span style=display:flex><span>		$last  <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;last_name&#34;</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Feedback for end user
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;ID: </span><span style=color:#e6db74>{</span>$id<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;First name: </span><span style=color:#e6db74>{</span>$first<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;Surname: </span><span style=color:#e6db74>{</span>$last<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// This is used later on in the index.php page
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Setting it here so we can close the database connection in here like in the rest of the source scripts
+</span></span></span><span style=display:flex><span>$query  <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT COUNT(*) FROM users;&#34;</span>;
+</span></span><span style=display:flex><span>$result <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_query</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $query ) <span style=color:#66d9ef>or</span> <span style=color:#66d9ef>die</span>( <span style=color:#e6db74>&#39;&lt;pre&gt;&#39;</span> <span style=color:#f92672>.</span> ((<span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_error</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>:</span> (($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_connect_error</span>()) <span style=color:#f92672>?</span> $___mysqli_res <span style=color:#f92672>:</span> <span style=color:#66d9ef>false</span>)) <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;&lt;/pre&gt;&#39;</span> );
+</span></span><span style=display:flex><span>$number_of_rows <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_fetch_row</span>( $result )[<span style=color:#ae81ff>0</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mysqli_close</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]);
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=安全隐患-1>安全隐患
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e9%9a%90%e6%82%a3-1>#</a></h3><p>尽管使用了<code>mysqli_real_escape_string</code>进行字符串的转义，但是查询语句进行了改变，变成<code>$query = "SELECT first_name, last_name FROM users WHERE user_id = $id;";</code>在low等级中，查询语句是有单引号包裹的，在注入时需要用单引号闭合。但在这个情况进行转义其实并没有作用，因为查询语句中没有引号需要，直接进行数字型注入即可。</p><h3 id=宽字节注入>宽字节注入
+<a class=anchor href=#%e5%ae%bd%e5%ad%97%e8%8a%82%e6%b3%a8%e5%85%a5>#</a></h3><p>观察源码后，我有个疑问，如果在查询语句<code>$query = "SELECT first_name, last_name FROM users WHERE user_id = $id;";</code>中的<code>$id</code>处加上单引号怎么实现SQL注入。</p><p>这就涉及到一种SQL注入手法：宽字节注入。</p><h4 id=宽字节注入原理>宽字节注入原理
+<a class=anchor href=#%e5%ae%bd%e5%ad%97%e8%8a%82%e6%b3%a8%e5%85%a5%e5%8e%9f%e7%90%86>#</a></h4><p>当数据库使用GBK、BIG5等多字节字符集时，反斜杠会和前面的字符组合成一个合法汉字，导致转义失败。</p><p>当我们输入<code>%df' union</code>时，经过转义后为<code>%df\</code>，这在GBK编码下是一个合法汉字，导致转义失败，从而实现注入。</p><h2 id=等级high>等级high
+<a class=anchor href=#%e7%ad%89%e7%ba%a7high>#</a></h2><h3 id=代码功能>代码功能
+<a class=anchor href=#%e4%bb%a3%e7%a0%81%e5%8a%9f%e8%83%bd>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_SESSION [ <span style=color:#e6db74>&#39;id&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get input
+</span></span></span><span style=display:flex><span>	$id <span style=color:#f92672>=</span> $_SESSION[ <span style=color:#e6db74>&#39;id&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check database
+</span></span></span><span style=display:flex><span>	$query  <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT first_name, last_name FROM users WHERE user_id = &#39;</span><span style=color:#e6db74>$id</span><span style=color:#e6db74>&#39; LIMIT 1;&#34;</span>;
+</span></span><span style=display:flex><span>	$result <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_query</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>], $query ) <span style=color:#66d9ef>or</span> <span style=color:#66d9ef>die</span>( <span style=color:#e6db74>&#39;&lt;pre&gt;Something went wrong.&lt;/pre&gt;&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get results
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>while</span>( $row <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_fetch_assoc</span>( $result ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Get values
+</span></span></span><span style=display:flex><span>		$first <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;first_name&#34;</span>];
+</span></span><span style=display:flex><span>		$last  <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;last_name&#34;</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Feedback for end user
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;ID: </span><span style=color:#e6db74>{</span>$id<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;First name: </span><span style=color:#e6db74>{</span>$first<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;Surname: </span><span style=color:#e6db74>{</span>$last<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	((<span style=color:#a6e22e>is_null</span>($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_close</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]))) <span style=color:#f92672>?</span> <span style=color:#66d9ef>false</span> <span style=color:#f92672>:</span> $___mysqli_res);		
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=安全隐患-2>安全隐患
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e9%9a%90%e6%82%a3-2>#</a></h3><p>相比于前面两个，这个源码的安全度高了很多，因为获取的参数是从session中获取的，而session是从服务器端获取的，攻击者无法直接控制，因此更加安全。</p><p>在DVWA这个SQL注入类漏洞里面有个文件叫做session_input.php，源码为：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>define</span>( <span style=color:#e6db74>&#39;DVWA_WEB_PAGE_TO_ROOT&#39;</span>, <span style=color:#e6db74>&#39;../../&#39;</span> );
+</span></span><span style=display:flex><span><span style=color:#66d9ef>require_once</span> <span style=color:#a6e22e>DVWA_WEB_PAGE_TO_ROOT</span> <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;dvwa/includes/dvwaPage.inc.php&#39;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>dvwaPageStartup</span>( <span style=color:#66d9ef>array</span>( <span style=color:#e6db74>&#39;authenticated&#39;</span>, <span style=color:#e6db74>&#39;phpids&#39;</span> ) );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>$page <span style=color:#f92672>=</span> <span style=color:#a6e22e>dvwaPageNewGrab</span>();
+</span></span><span style=display:flex><span>$page[ <span style=color:#e6db74>&#39;title&#39;</span> ] <span style=color:#f92672>=</span> <span style=color:#e6db74>&#39;SQL Injection Session Input&#39;</span> <span style=color:#f92672>.</span> $page[ <span style=color:#e6db74>&#39;title_separator&#39;</span> ]<span style=color:#f92672>.</span>$page[ <span style=color:#e6db74>&#39;title&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_POST[ <span style=color:#e6db74>&#39;id&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	$_SESSION[ <span style=color:#e6db74>&#39;id&#39;</span> ] <span style=color:#f92672>=</span>  $_POST[ <span style=color:#e6db74>&#39;id&#39;</span> ];
+</span></span><span style=display:flex><span>	<span style=color:#75715e>//$page[ &#39;body&#39; ] .= &#34;Session ID set!&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&#34;;
+</span></span></span><span style=display:flex><span>	$page[ <span style=color:#e6db74>&#39;body&#39;</span> ] <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;Session ID: </span><span style=color:#e6db74>{</span>$_SESSION[ <span style=color:#e6db74>&#39;id&#39;</span> ]<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	$page[ <span style=color:#e6db74>&#39;body&#39;</span> ] <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;script&gt;window.opener.location.reload(true);&lt;/script&gt;&#34;</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>$page[ <span style=color:#e6db74>&#39;body&#39;</span> ] <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>&lt;form action=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>#</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> method=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>POST</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>&gt;
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>	&lt;input type=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>text</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> size=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>15</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> name=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>id</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>&gt;
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>	&lt;input type=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>submit</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> name=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>Submit</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> value=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>Submit</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>&gt;
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>&lt;/form&gt;
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>&lt;hr /&gt;
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>&lt;br /&gt;
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>&lt;button onclick=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>self.close();</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>&gt;Close&lt;/button&gt;&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>dvwaSourceHtmlEcho</span>( $page );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>观察源码发现，有<code>$_SESSION[ 'id' ] = $_POST[ 'id' ];</code>，这样危害就大了，我们是可以直接控制session的内容的，这就给我们注入的机会。</p><h2 id=等级impossible>等级impossible
+<a class=anchor href=#%e7%ad%89%e7%ba%a7impossible>#</a></h2><h3 id=源码>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_GET[ <span style=color:#e6db74>&#39;Submit&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check Anti-CSRF token
+</span></span></span><span style=display:flex><span>	<span style=color:#a6e22e>checkToken</span>( $_REQUEST[ <span style=color:#e6db74>&#39;user_token&#39;</span> ], $_SESSION[ <span style=color:#e6db74>&#39;session_token&#39;</span> ], <span style=color:#e6db74>&#39;index.php&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get input
+</span></span></span><span style=display:flex><span>	$id <span style=color:#f92672>=</span> $_GET[ <span style=color:#e6db74>&#39;id&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Was a number entered?
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>(<span style=color:#a6e22e>is_numeric</span>( $id )) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Check the database
+</span></span></span><span style=display:flex><span>		$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;SELECT first_name, last_name FROM users WHERE user_id = (:id) LIMIT 1;&#39;</span> );
+</span></span><span style=display:flex><span>		$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:id&#39;</span>, $id, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_INT</span> );
+</span></span><span style=display:flex><span>		$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>execute</span>();
+</span></span><span style=display:flex><span>		$row <span style=color:#f92672>=</span> $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>fetch</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Make sure only 1 result is returned
+</span></span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span>( $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>rowCount</span>() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> ) {
+</span></span><span style=display:flex><span>			<span style=color:#75715e>// Get values
+</span></span></span><span style=display:flex><span>			$first <span style=color:#f92672>=</span> $row[ <span style=color:#e6db74>&#39;first_name&#39;</span> ];
+</span></span><span style=display:flex><span>			$last  <span style=color:#f92672>=</span> $row[ <span style=color:#e6db74>&#39;last_name&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>			<span style=color:#75715e>// Feedback for end user
+</span></span></span><span style=display:flex><span>			$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;ID: </span><span style=color:#e6db74>{</span>$id<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;First name: </span><span style=color:#e6db74>{</span>$first<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;br /&gt;Surname: </span><span style=color:#e6db74>{</span>$last<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Generate Anti-CSRF token
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>generateSessionToken</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=参数化查询>参数化查询
+<a class=anchor href=#%e5%8f%82%e6%95%b0%e5%8c%96%e6%9f%a5%e8%af%a2>#</a></h3><p>目前对于SQL注入最常用的防护方法就是参数化查询，也叫预编译。</p><p>普通的SQL语句执行时都会经过七个步骤，即<strong>接收SQL语句、语法解析、语义检查、权限检查、生成执行计划、执行查询、返回结果</strong>，而下一次执行SQL语句时会重复这样一个过程，效率低。</p><p>而预编译执行则是在生成执行计划后保存执行计划，当我们第二次执行时直接使用保存的计划。</p><h4 id=为什么参数化查询能够防御sql注入>为什么参数化查询能够防御SQL注入
+<a class=anchor href=#%e4%b8%ba%e4%bb%80%e4%b9%88%e5%8f%82%e6%95%b0%e5%8c%96%e6%9f%a5%e8%af%a2%e8%83%bd%e5%a4%9f%e9%98%b2%e5%be%a1sql%e6%b3%a8%e5%85%a5>#</a></h4><p>我们在编写源码时已经确定了我们的查询语句，这其实是一个模板，经过预编译后编译好的“骨架”已经被保存下来，正在等待数据。此时对于我们输入的任何数据，在数据库看来都只是数据，因为我们的查询语句的框架已经确定，所以即使我们尝试一般的SQL注入语句也不会被解析成SQL语句并执行。</p><h3 id=phpmysql的防御代码>PHP+MySQL的防御代码
+<a class=anchor href=#phpmysql%e7%9a%84%e9%98%b2%e5%be%a1%e4%bb%a3%e7%a0%81>#</a></h3><p>以这里的DVWA为例：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span>$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;SELECT first_name, last_name FROM users WHERE user_id = (:id) LIMIT 1;&#39;</span> );
+</span></span><span style=display:flex><span>$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:id&#39;</span>, $id, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_INT</span> );
+</span></span><span style=display:flex><span>$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>execute</span>();
+</span></span><span style=display:flex><span>$row <span style=color:#f92672>=</span> $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>fetch</span>();  <span style=color:#75715e>//获取查询结果
+</span></span></span></code></pre></div><p>这是一个典型的参数化查询的代码样例。</p><p>首先用<code>is_numeric</code>这个PHP内置函数检查是否<code>$id</code>这个变量是否为数字，已经是一层防护。</p><p><code>$data = $db->prepare( 'SELECT first_name, last_name FROM users WHERE user_id = (:id) LIMIT 1;' );</code>这段代码则是实现预编译的关键，利用PDO的<code>prepare</code>方法把其中的SQL语句进行预编译，<code>(:id)</code>则是一个占位符。这个方法执行后会返回一个对象。</p><p><code>$data->bindParam( ':id', $id, PDO::PARAM_INT );</code>这段代码则是绑定参数并指定参数类型。这是参数化查询的核心步骤。</p><p><code>$data->execute();</code>这段代码则让我们的查询语句执行起来。</p><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>这是我开始学习代码审计的第一站，在阅读DVWA的SQL注入的核心源码之后我还是收获良多的，以前对于SQL注入只是知道怎么打，对于参数化查询也只是有这么一个概念，并不知道这么实现，现在通过代码审计我也知道怎么防御SQL注入了。</p><p>对于一个安全人员来说，只知道怎么打不知道怎么防是不合格的，之后我还要继续努力，补全我的知识盲区。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#等级low>等级low</a><ul><li><a href=#源码功能>源码功能</a></li><li><a href=#安全隐患>安全隐患</a></li><li><a href=#漏洞成因>漏洞成因</a></li></ul></li><li><a href=#等级medium>等级medium</a><ul><li><a href=#源码功能-1>源码功能</a></li><li><a href=#安全隐患-1>安全隐患</a></li><li><a href=#宽字节注入>宽字节注入</a></li></ul></li><li><a href=#等级high>等级high</a><ul><li><a href=#代码功能>代码功能</a></li><li><a href=#安全隐患-2>安全隐患</a></li></ul></li><li><a href=#等级impossible>等级impossible</a><ul><li><a href=#源码>源码</a></li><li><a href=#参数化查询>参数化查询</a></li><li><a href=#phpmysql的防御代码>PHP+MySQL的防御代码</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

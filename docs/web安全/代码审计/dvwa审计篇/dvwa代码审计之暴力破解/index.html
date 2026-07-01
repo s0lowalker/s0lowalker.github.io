@@ -1,0 +1,310 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  DVWA代码审计之暴力破解
+  #
+
+
+  等级low
+  #
+
+
+  源码
+  #
+
+<?php
+
+if( isset( $_GET[ &#39;Login&#39; ] ) ) {
+	// Get username
+	$user = $_GET[ &#39;username&#39; ];
+
+	// Get password
+	$pass = $_GET[ &#39;password&#39; ];
+	$pass = md5( $pass );
+
+	// Check the database
+	$query  = "SELECT * FROM `users` WHERE user = &#39;$user&#39; AND password = &#39;$pass&#39;;";
+	$result = mysqli_query($GLOBALS["___mysqli_ston"],  $query ) or die( &#39;<pre>&#39; . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . &#39;</pre>&#39; );
+
+	if( $result && mysqli_num_rows( $result ) == 1 ) {
+		// Get users details
+		$row    = mysqli_fetch_assoc( $result );
+		$avatar = $row["avatar"];
+
+		// Login successful
+		$html .= "<p>Welcome to the password protected area {$user}</p>";
+		$html .= "<img src=\"{$avatar}\" />";
+	}
+	else {
+		// Login failed
+		$html .= "<pre><br />Username and/or password incorrect.</pre>";
+	}
+
+	((is_null($___mysqli_res = mysqli_close($GLOBALS["___mysqli_ston"]))) ? false : $___mysqli_res);
+}
+
+?>
+这只是一个很简单的实现登录的代码，对密码进行md5加密防止从密码进行SQL注入（但是我们能利用用户名实现SQL注入），但我们对账号登入的尝试次数没有做限制，攻击者可以无数次进行尝试。'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/"><meta property="og:site_name" content="S0lowalker"><meta property="og:title" content="DVWA代码审计之暴力破解"><meta property="og:description" content='DVWA代码审计之暴力破解 # 等级low # 源码 # <?php if( isset( $_GET[ &#39;Login&#39; ] ) ) { // Get username $user = $_GET[ &#39;username&#39; ]; // Get password $pass = $_GET[ &#39;password&#39; ]; $pass = md5( $pass ); // Check the database $query = "SELECT * FROM `users` WHERE user = &#39;$user&#39; AND password = &#39;$pass&#39;;"; $result = mysqli_query($GLOBALS["___mysqli_ston"], $query ) or die( &#39;<pre>&#39; . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) . &#39;</pre>&#39; ); if( $result && mysqli_num_rows( $result ) == 1 ) { // Get users details $row = mysqli_fetch_assoc( $result ); $avatar = $row["avatar"]; // Login successful $html .= "<p>Welcome to the password protected area {$user}</p>"; $html .= "<img src=\"{$avatar}\" />"; } else { // Login failed $html .= "<pre><br />Username and/or password incorrect.</pre>"; } ((is_null($___mysqli_res = mysqli_close($GLOBALS["___mysqli_ston"]))) ? false : $___mysqli_res); } ?> 这只是一个很简单的实现登录的代码，对密码进行md5加密防止从密码进行SQL注入（但是我们能利用用户名实现SQL注入），但我们对账号登入的尝试次数没有做限制，攻击者可以无数次进行尝试。'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-03-15T00:00:00+00:00"><meta property="article:modified_time" content="2026-03-15T00:00:00+00:00"><meta property="article:tag" content="代码审计"><title>DVWA代码审计之暴力破解 | S0lowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/><link rel=stylesheet href=/book.min.31c453d41ba8febf45a3c125de02ecdbd5a000186bc220da3d8ade8f54ed6ec1.css integrity="sha256-McRT1Buo/r9Fo8El3gLs29WgABhrwiDaPYrej1TtbsE=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f3b8735e92aacb11c612456ae889aa7fadc9da7bad1b75639d6dd000d07b5fc7.js integrity="sha256-87hzXpKqyxHGEkVq6Imqf63J2nutG3VjnW3QANB7X8c=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><a href=https://s0lowalker.github.io/ class=top-header-title>S0lowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><span>S0lowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle checked>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle checked>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle checked>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/ class=active>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>DVWA代码审计之暴力破解</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#等级low>等级low</a><ul><li><a href=#源码>源码</a></li></ul></li><li><a href=#等级medium>等级medium</a><ul><li><a href=#源码-1>源码</a></li></ul></li><li><a href=#等级high>等级high</a><ul><li><a href=#源码-2>源码</a></li></ul></li><li><a href=#等级impossible>等级impossible</a><ul><li><a href=#源码-3>源码</a></li><li><a href=#具体防御手法>具体防御手法</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=dvwa代码审计之暴力破解>DVWA代码审计之暴力破解
+<a class=anchor href=#dvwa%e4%bb%a3%e7%a0%81%e5%ae%a1%e8%ae%a1%e4%b9%8b%e6%9a%b4%e5%8a%9b%e7%a0%b4%e8%a7%a3>#</a></h1><h2 id=等级low>等级low
+<a class=anchor href=#%e7%ad%89%e7%ba%a7low>#</a></h2><h3 id=源码>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_GET[ <span style=color:#e6db74>&#39;Login&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get username
+</span></span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> $_GET[ <span style=color:#e6db74>&#39;username&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Get password
+</span></span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> $_GET[ <span style=color:#e6db74>&#39;password&#39;</span> ];
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> <span style=color:#a6e22e>md5</span>( $pass );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check the database
+</span></span></span><span style=display:flex><span>	$query  <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM `users` WHERE user = &#39;</span><span style=color:#e6db74>$user</span><span style=color:#e6db74>&#39; AND password = &#39;</span><span style=color:#e6db74>$pass</span><span style=color:#e6db74>&#39;;&#34;</span>;
+</span></span><span style=display:flex><span>	$result <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_query</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $query ) <span style=color:#66d9ef>or</span> <span style=color:#66d9ef>die</span>( <span style=color:#e6db74>&#39;&lt;pre&gt;&#39;</span> <span style=color:#f92672>.</span> ((<span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_error</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>:</span> (($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_connect_error</span>()) <span style=color:#f92672>?</span> $___mysqli_res <span style=color:#f92672>:</span> <span style=color:#66d9ef>false</span>)) <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;&lt;/pre&gt;&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( $result <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>mysqli_num_rows</span>( $result ) <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Get users details
+</span></span></span><span style=display:flex><span>		$row    <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_fetch_assoc</span>( $result );
+</span></span><span style=display:flex><span>		$avatar <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;avatar&#34;</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login successful
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;p&gt;Welcome to the password protected area </span><span style=color:#e6db74>{</span>$user<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/p&gt;&#34;</span>;
+</span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;img src=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>{</span>$avatar<span style=color:#e6db74>}</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> /&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login failed
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;&lt;br /&gt;Username and/or password incorrect.&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	((<span style=color:#a6e22e>is_null</span>($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_close</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]))) <span style=color:#f92672>?</span> <span style=color:#66d9ef>false</span> <span style=color:#f92672>:</span> $___mysqli_res);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>这只是一个很简单的实现登录的代码，对密码进行md5加密防止从密码进行SQL注入（但是我们能利用用户名实现SQL注入），但我们对账号登入的尝试次数没有做限制，攻击者可以无数次进行尝试。</p><h2 id=等级medium>等级medium
+<a class=anchor href=#%e7%ad%89%e7%ba%a7medium>#</a></h2><h3 id=源码-1>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81-1>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_GET[ <span style=color:#e6db74>&#39;Login&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Sanitise username input
+</span></span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> $_GET[ <span style=color:#e6db74>&#39;username&#39;</span> ];
+</span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> ((<span style=color:#a6e22e>isset</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_real_escape_string</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $user ) <span style=color:#f92672>:</span> ((<span style=color:#a6e22e>trigger_error</span>(<span style=color:#e6db74>&#34;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&#34;</span>, <span style=color:#a6e22e>E_USER_ERROR</span>)) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;&#34;</span> <span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Sanitise password input
+</span></span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> $_GET[ <span style=color:#e6db74>&#39;password&#39;</span> ];
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> ((<span style=color:#a6e22e>isset</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_real_escape_string</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $pass ) <span style=color:#f92672>:</span> ((<span style=color:#a6e22e>trigger_error</span>(<span style=color:#e6db74>&#34;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&#34;</span>, <span style=color:#a6e22e>E_USER_ERROR</span>)) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;&#34;</span> <span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;&#34;</span>));
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> <span style=color:#a6e22e>md5</span>( $pass );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check the database
+</span></span></span><span style=display:flex><span>	$query  <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM `users` WHERE user = &#39;</span><span style=color:#e6db74>$user</span><span style=color:#e6db74>&#39; AND password = &#39;</span><span style=color:#e6db74>$pass</span><span style=color:#e6db74>&#39;;&#34;</span>;
+</span></span><span style=display:flex><span>	$result <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_query</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $query ) <span style=color:#66d9ef>or</span> <span style=color:#66d9ef>die</span>( <span style=color:#e6db74>&#39;&lt;pre&gt;&#39;</span> <span style=color:#f92672>.</span> ((<span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_error</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>:</span> (($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_connect_error</span>()) <span style=color:#f92672>?</span> $___mysqli_res <span style=color:#f92672>:</span> <span style=color:#66d9ef>false</span>)) <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;&lt;/pre&gt;&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( $result <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>mysqli_num_rows</span>( $result ) <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Get users details
+</span></span></span><span style=display:flex><span>		$row    <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_fetch_assoc</span>( $result );
+</span></span><span style=display:flex><span>		$avatar <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;avatar&#34;</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login successful
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;p&gt;Welcome to the password protected area </span><span style=color:#e6db74>{</span>$user<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/p&gt;&#34;</span>;
+</span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;img src=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>{</span>$avatar<span style=color:#e6db74>}</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> /&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login failed
+</span></span></span><span style=display:flex><span>		<span style=color:#a6e22e>sleep</span>( <span style=color:#ae81ff>2</span> );
+</span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;&lt;br /&gt;Username and/or password incorrect.&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	((<span style=color:#a6e22e>is_null</span>($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_close</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]))) <span style=color:#f92672>?</span> <span style=color:#66d9ef>false</span> <span style=color:#f92672>:</span> $___mysqli_res);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>这段代码用于防御暴力破解漏洞的就是<code>sleep( 2 );</code>，增加了时延，也增加了攻击者的时间成本。我之前看到一个视频，说漏洞的防御本质是让攻击者的攻击成本大于收益，现在看看感觉这里的防御方法有点像这种防御思维。</p><p>实际攻击的时候只需要在爆破时增加时停就行。</p><h2 id=等级high>等级high
+<a class=anchor href=#%e7%ad%89%e7%ba%a7high>#</a></h2><h3 id=源码-2>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81-2>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_GET[ <span style=color:#e6db74>&#39;Login&#39;</span> ] ) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check Anti-CSRF token
+</span></span></span><span style=display:flex><span>	<span style=color:#a6e22e>checkToken</span>( $_REQUEST[ <span style=color:#e6db74>&#39;user_token&#39;</span> ], $_SESSION[ <span style=color:#e6db74>&#39;session_token&#39;</span> ], <span style=color:#e6db74>&#39;index.php&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Sanitise username input
+</span></span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> $_GET[ <span style=color:#e6db74>&#39;username&#39;</span> ];
+</span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> <span style=color:#a6e22e>stripslashes</span>( $user );
+</span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> ((<span style=color:#a6e22e>isset</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_real_escape_string</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $user ) <span style=color:#f92672>:</span> ((<span style=color:#a6e22e>trigger_error</span>(<span style=color:#e6db74>&#34;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&#34;</span>, <span style=color:#a6e22e>E_USER_ERROR</span>)) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;&#34;</span> <span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Sanitise password input
+</span></span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> $_GET[ <span style=color:#e6db74>&#39;password&#39;</span> ];
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> <span style=color:#a6e22e>stripslashes</span>( $pass );
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> ((<span style=color:#a6e22e>isset</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_real_escape_string</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $pass ) <span style=color:#f92672>:</span> ((<span style=color:#a6e22e>trigger_error</span>(<span style=color:#e6db74>&#34;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&#34;</span>, <span style=color:#a6e22e>E_USER_ERROR</span>)) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;&#34;</span> <span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;&#34;</span>));
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> <span style=color:#a6e22e>md5</span>( $pass );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check database
+</span></span></span><span style=display:flex><span>	$query  <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM `users` WHERE user = &#39;</span><span style=color:#e6db74>$user</span><span style=color:#e6db74>&#39; AND password = &#39;</span><span style=color:#e6db74>$pass</span><span style=color:#e6db74>&#39;;&#34;</span>;
+</span></span><span style=display:flex><span>	$result <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_query</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $query ) <span style=color:#66d9ef>or</span> <span style=color:#66d9ef>die</span>( <span style=color:#e6db74>&#39;&lt;pre&gt;&#39;</span> <span style=color:#f92672>.</span> ((<span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_error</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>:</span> (($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_connect_error</span>()) <span style=color:#f92672>?</span> $___mysqli_res <span style=color:#f92672>:</span> <span style=color:#66d9ef>false</span>)) <span style=color:#f92672>.</span> <span style=color:#e6db74>&#39;&lt;/pre&gt;&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( $result <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>mysqli_num_rows</span>( $result ) <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Get users details
+</span></span></span><span style=display:flex><span>		$row    <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_fetch_assoc</span>( $result );
+</span></span><span style=display:flex><span>		$avatar <span style=color:#f92672>=</span> $row[<span style=color:#e6db74>&#34;avatar&#34;</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login successful
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;p&gt;Welcome to the password protected area </span><span style=color:#e6db74>{</span>$user<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/p&gt;&#34;</span>;
+</span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;img src=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>{</span>$avatar<span style=color:#e6db74>}</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> /&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login failed
+</span></span></span><span style=display:flex><span>		<span style=color:#a6e22e>sleep</span>( <span style=color:#a6e22e>rand</span>( <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>3</span> ) );
+</span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;&lt;br /&gt;Username and/or password incorrect.&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	((<span style=color:#a6e22e>is_null</span>($___mysqli_res <span style=color:#f92672>=</span> <span style=color:#a6e22e>mysqli_close</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]))) <span style=color:#f92672>?</span> <span style=color:#66d9ef>false</span> <span style=color:#f92672>:</span> $___mysqli_res);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Generate Anti-CSRF token
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>generateSessionToken</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>这里使用了token，增加了爆破的难度。每次用户登录时服务器返回的登陆页面都会包含一个随机token，登录时会把user_token一起提交，收到请求后会做token检查。</p><p>同时也用<code>stripslashes</code>和<code>mysqli_real_escape_string</code>这两个函数分别去除反斜杠和转义，防御SQL注入。</p><p>在爆破的时候记得把token也设置在其中进行爆破。</p><h2 id=等级impossible>等级impossible
+<a class=anchor href=#%e7%ad%89%e7%ba%a7impossible>#</a></h2><h3 id=源码-3>源码
+<a class=anchor href=#%e6%ba%90%e7%a0%81-3>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#f92672>&lt;?</span><span style=color:#a6e22e>php</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( <span style=color:#a6e22e>isset</span>( $_POST[ <span style=color:#e6db74>&#39;Login&#39;</span> ] ) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>isset</span> ($_POST[<span style=color:#e6db74>&#39;username&#39;</span>]) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>isset</span> ($_POST[<span style=color:#e6db74>&#39;password&#39;</span>]) ) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check Anti-CSRF token
+</span></span></span><span style=display:flex><span>	<span style=color:#a6e22e>checkToken</span>( $_REQUEST[ <span style=color:#e6db74>&#39;user_token&#39;</span> ], $_SESSION[ <span style=color:#e6db74>&#39;session_token&#39;</span> ], <span style=color:#e6db74>&#39;index.php&#39;</span> );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Sanitise username input
+</span></span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> $_POST[ <span style=color:#e6db74>&#39;username&#39;</span> ];
+</span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> <span style=color:#a6e22e>stripslashes</span>( $user );
+</span></span><span style=display:flex><span>	$user <span style=color:#f92672>=</span> ((<span style=color:#a6e22e>isset</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_real_escape_string</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $user ) <span style=color:#f92672>:</span> ((<span style=color:#a6e22e>trigger_error</span>(<span style=color:#e6db74>&#34;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&#34;</span>, <span style=color:#a6e22e>E_USER_ERROR</span>)) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;&#34;</span> <span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Sanitise password input
+</span></span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> $_POST[ <span style=color:#e6db74>&#39;password&#39;</span> ];
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> <span style=color:#a6e22e>stripslashes</span>( $pass );
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> ((<span style=color:#a6e22e>isset</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>]) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>is_object</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>])) <span style=color:#f92672>?</span> <span style=color:#a6e22e>mysqli_real_escape_string</span>($GLOBALS[<span style=color:#e6db74>&#34;___mysqli_ston&#34;</span>],  $pass ) <span style=color:#f92672>:</span> ((<span style=color:#a6e22e>trigger_error</span>(<span style=color:#e6db74>&#34;[MySQLConverterToo] Fix the mysql_escape_string() call! This code does not work.&#34;</span>, <span style=color:#a6e22e>E_USER_ERROR</span>)) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;&#34;</span> <span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;&#34;</span>));
+</span></span><span style=display:flex><span>	$pass <span style=color:#f92672>=</span> <span style=color:#a6e22e>md5</span>( $pass );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Default values
+</span></span></span><span style=display:flex><span>	$total_failed_login <span style=color:#f92672>=</span> <span style=color:#ae81ff>3</span>;
+</span></span><span style=display:flex><span>	$lockout_time       <span style=color:#f92672>=</span> <span style=color:#ae81ff>15</span>;
+</span></span><span style=display:flex><span>	$account_locked     <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check the database (Check user information)
+</span></span></span><span style=display:flex><span>	$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;SELECT failed_login, last_login FROM users WHERE user = (:user) LIMIT 1;&#39;</span> );
+</span></span><span style=display:flex><span>	$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:user&#39;</span>, $user, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_STR</span> );
+</span></span><span style=display:flex><span>	$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>execute</span>();
+</span></span><span style=display:flex><span>	$row <span style=color:#f92672>=</span> $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>fetch</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check to see if the user has been locked out.
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( ( $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>rowCount</span>() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> ) <span style=color:#f92672>&amp;&amp;</span> ( $row[ <span style=color:#e6db74>&#39;failed_login&#39;</span> ] <span style=color:#f92672>&gt;=</span> $total_failed_login ) )  {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// User locked out.  Note, using this method would allow for user enumeration!
+</span></span></span><span style=display:flex><span>		<span style=color:#75715e>//$html .= &#34;&lt;pre&gt;&lt;br /&gt;This account has been locked due to too many incorrect logins.&lt;/pre&gt;&#34;;
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Calculate when the user would be allowed to login again
+</span></span></span><span style=display:flex><span>		$last_login <span style=color:#f92672>=</span> <span style=color:#a6e22e>strtotime</span>( $row[ <span style=color:#e6db74>&#39;last_login&#39;</span> ] );
+</span></span><span style=display:flex><span>		$timeout    <span style=color:#f92672>=</span> $last_login <span style=color:#f92672>+</span> ($lockout_time <span style=color:#f92672>*</span> <span style=color:#ae81ff>60</span>);
+</span></span><span style=display:flex><span>		$timenow    <span style=color:#f92672>=</span> <span style=color:#a6e22e>time</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>/*
+</span></span></span><span style=display:flex><span><span style=color:#75715e>		print &#34;The last login was: &#34; . date (&#34;h:i:s&#34;, $last_login) . &#34;&lt;br /&gt;&#34;;
+</span></span></span><span style=display:flex><span><span style=color:#75715e>		print &#34;The timenow is: &#34; . date (&#34;h:i:s&#34;, $timenow) . &#34;&lt;br /&gt;&#34;;
+</span></span></span><span style=display:flex><span><span style=color:#75715e>		print &#34;The timeout is: &#34; . date (&#34;h:i:s&#34;, $timeout) . &#34;&lt;br /&gt;&#34;;
+</span></span></span><span style=display:flex><span><span style=color:#75715e>		*/</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Check to see if enough time has passed, if it hasn&#39;t locked the account
+</span></span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span>( $timenow <span style=color:#f92672>&lt;</span> $timeout ) {
+</span></span><span style=display:flex><span>			$account_locked <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>			<span style=color:#75715e>// print &#34;The account is locked&lt;br /&gt;&#34;;
+</span></span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Check the database (if username matches the password)
+</span></span></span><span style=display:flex><span>	$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;SELECT * FROM users WHERE user = (:user) AND password = (:password) LIMIT 1;&#39;</span> );
+</span></span><span style=display:flex><span>	$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:user&#39;</span>, $user, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_STR</span>);
+</span></span><span style=display:flex><span>	$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:password&#39;</span>, $pass, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_STR</span> );
+</span></span><span style=display:flex><span>	$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>execute</span>();
+</span></span><span style=display:flex><span>	$row <span style=color:#f92672>=</span> $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>fetch</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// If its a valid login...
+</span></span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span>( ( $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>rowCount</span>() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> ) <span style=color:#f92672>&amp;&amp;</span> ( $account_locked <span style=color:#f92672>==</span> <span style=color:#66d9ef>false</span> ) ) {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Get users details
+</span></span></span><span style=display:flex><span>		$avatar       <span style=color:#f92672>=</span> $row[ <span style=color:#e6db74>&#39;avatar&#39;</span> ];
+</span></span><span style=display:flex><span>		$failed_login <span style=color:#f92672>=</span> $row[ <span style=color:#e6db74>&#39;failed_login&#39;</span> ];
+</span></span><span style=display:flex><span>		$last_login   <span style=color:#f92672>=</span> $row[ <span style=color:#e6db74>&#39;last_login&#39;</span> ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login successful
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;p&gt;Welcome to the password protected area &lt;em&gt;</span><span style=color:#e6db74>{</span>$user<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/em&gt;&lt;/p&gt;&#34;</span>;
+</span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;img src=</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74>{</span>$avatar<span style=color:#e6db74>}</span><span style=color:#ae81ff>\&#34;</span><span style=color:#e6db74> /&gt;&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Had the account been locked out since last login?
+</span></span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span>( $failed_login <span style=color:#f92672>&gt;=</span> $total_failed_login ) {
+</span></span><span style=display:flex><span>			$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;p&gt;&lt;em&gt;Warning&lt;/em&gt;: Someone might of been brute forcing your account.&lt;/p&gt;&#34;</span>;
+</span></span><span style=display:flex><span>			$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;p&gt;Number of login attempts: &lt;em&gt;</span><span style=color:#e6db74>{</span>$failed_login<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/em&gt;.&lt;br /&gt;Last login attempt was at: &lt;em&gt;</span><span style=color:#e6db74>${</span>last_login<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/em&gt;.&lt;/p&gt;&#34;</span>;
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Reset bad login count
+</span></span></span><span style=display:flex><span>		$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;UPDATE users SET failed_login = &#34;0&#34; WHERE user = (:user) LIMIT 1;&#39;</span> );
+</span></span><span style=display:flex><span>		$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:user&#39;</span>, $user, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_STR</span> );
+</span></span><span style=display:flex><span>		$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>execute</span>();
+</span></span><span style=display:flex><span>	} <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Login failed
+</span></span></span><span style=display:flex><span>		<span style=color:#a6e22e>sleep</span>( <span style=color:#a6e22e>rand</span>( <span style=color:#ae81ff>2</span>, <span style=color:#ae81ff>4</span> ) );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Give the user some feedback
+</span></span></span><span style=display:flex><span>		$html <span style=color:#f92672>.=</span> <span style=color:#e6db74>&#34;&lt;pre&gt;&lt;br /&gt;Username and/or password incorrect.&lt;br /&gt;&lt;br/&gt;Alternative, the account has been locked because of too many failed logins.&lt;br /&gt;If this is the case, &lt;em&gt;please try again in </span><span style=color:#e6db74>{</span>$lockout_time<span style=color:#e6db74>}</span><span style=color:#e6db74> minutes&lt;/em&gt;.&lt;/pre&gt;&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>// Update bad login count
+</span></span></span><span style=display:flex><span>		$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;UPDATE users SET failed_login = (failed_login + 1) WHERE user = (:user) LIMIT 1;&#39;</span> );
+</span></span><span style=display:flex><span>		$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:user&#39;</span>, $user, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_STR</span> );
+</span></span><span style=display:flex><span>		$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>execute</span>();
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Set the last login time
+</span></span></span><span style=display:flex><span>	$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;UPDATE users SET last_login = now() WHERE user = (:user) LIMIT 1;&#39;</span> );
+</span></span><span style=display:flex><span>	$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>bindParam</span>( <span style=color:#e6db74>&#39;:user&#39;</span>, $user, <span style=color:#a6e22e>PDO</span><span style=color:#f92672>::</span><span style=color:#a6e22e>PARAM_STR</span> );
+</span></span><span style=display:flex><span>	$data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>execute</span>();
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Generate Anti-CSRF token
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>generateSessionToken</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>?&gt;</span><span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><h3 id=具体防御手法>具体防御手法
+<a class=anchor href=#%e5%85%b7%e4%bd%93%e9%98%b2%e5%be%a1%e6%89%8b%e6%b3%95>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#75715e>// 1. 定义锁定阈值
+</span></span></span><span style=display:flex><span>$total_failed_login <span style=color:#f92672>=</span> <span style=color:#ae81ff>3</span>;  <span style=color:#75715e>// 最多失败3次
+</span></span></span><span style=display:flex><span>$lockout_time       <span style=color:#f92672>=</span> <span style=color:#ae81ff>15</span>; <span style=color:#75715e>// 锁定15分钟
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// 2. 查询当前失败次数
+</span></span></span><span style=display:flex><span>$row <span style=color:#f92672>=</span> $data<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>fetch</span>();  <span style=color:#75715e>// 从数据库获取 failed_login 字段
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// 3. 判断是否已锁定
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>( $row[ <span style=color:#e6db74>&#39;failed_login&#39;</span> ] <span style=color:#f92672>&gt;=</span> $total_failed_login ) {
+</span></span><span style=display:flex><span>    $last_login <span style=color:#f92672>=</span> <span style=color:#a6e22e>strtotime</span>( $row[ <span style=color:#e6db74>&#39;last_login&#39;</span> ] );
+</span></span><span style=display:flex><span>    $timeout    <span style=color:#f92672>=</span> $last_login <span style=color:#f92672>+</span> ($lockout_time <span style=color:#f92672>*</span> <span style=color:#ae81ff>60</span>);
+</span></span><span style=display:flex><span>    $timenow    <span style=color:#f92672>=</span> <span style=color:#a6e22e>time</span>();
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span>( $timenow <span style=color:#f92672>&lt;</span> $timeout ) {
+</span></span><span style=display:flex><span>        $account_locked <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;  <span style=color:#75715e>// 账户锁定！
+</span></span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// 4. 登录成功后重置失败计数
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>(<span style=color:#a6e22e>登录成功</span>) {
+</span></span><span style=display:flex><span>    $data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;UPDATE users SET failed_login = &#34;0&#34; ...&#39;</span> );
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// 5. 登录失败后增加失败计数
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>if</span>(<span style=color:#a6e22e>登录失败</span>) {
+</span></span><span style=display:flex><span>    $data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;UPDATE users SET failed_login = (failed_login + 1) ...&#39;</span> );
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>应对爆破，最好的防御手法就是限制失败次数，虽然这种方法理论上依然无法阻拦爆破，但就像我前面说的，防御的本质是让攻击者的攻击成本小于收益，从而实现修补漏洞的效果。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-php data-lang=php><span style=display:flex><span><span style=color:#75715e>// 每次登录（无论成功失败）都记录最后尝试时间
+</span></span></span><span style=display:flex><span>$data <span style=color:#f92672>=</span> $db<span style=color:#f92672>-&gt;</span><span style=color:#a6e22e>prepare</span>( <span style=color:#e6db74>&#39;UPDATE users SET last_login = now() WHERE user = (:user) LIMIT 1;&#39;</span> );
+</span></span></code></pre></div><p>这里也提供了审计日志，便于追溯攻击时间。</p><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>暴力破解这个漏洞通过限制尝试次数来修补，虽然这样理论上仍然可以实现利用，但漏洞防御的本质就是让成本大于收益，实际在工作过程中漏洞的防御也是这么做的，因为漏洞是补不完的，再这么修补依然有绕过的可能，所以核心还是让成本变高。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#等级low>等级low</a><ul><li><a href=#源码>源码</a></li></ul></li><li><a href=#等级medium>等级medium</a><ul><li><a href=#源码-1>源码</a></li></ul></li><li><a href=#等级high>等级high</a><ul><li><a href=#源码-2>源码</a></li></ul></li><li><a href=#等级impossible>等级impossible</a><ul><li><a href=#源码-3>源码</a></li><li><a href=#具体防御手法>具体防御手法</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
