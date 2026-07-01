@@ -439,39 +439,7 @@
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; }
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
-&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里的逻辑还是很简单的，我们创建一个&lt;code&gt;TiedMapEntry&lt;/code&gt;对象，然后把我们构造的&lt;code&gt;LazyMap&lt;/code&gt;传进去并直接调用&lt;code&gt;setValue&lt;/code&gt;方法，就会调用到&lt;code&gt;map.get(key)&lt;/code&gt;。&lt;/p&gt;</description></item><item><title>java反序列化之CC1</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/</link><pubDate>Sat, 09 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/</guid><description>&lt;h1 id="java反序列化之cc1"&gt;
- Java反序列化之CC1
- &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc1"&gt;#&lt;/a&gt;
-&lt;/h1&gt;
-&lt;h2 id="transformmap版cc1攻击链分析"&gt;
- TransformMap版CC1攻击链分析
- &lt;a class="anchor" href="#transformmap%e7%89%88cc1%e6%94%bb%e5%87%bb%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
-&lt;/h2&gt;
-&lt;p&gt;首先明确反序列化的思路：&lt;/p&gt;
-&lt;p&gt;在入口类，我们需要一个&lt;code&gt;readObject&lt;/code&gt;方法，在结尾需要一个能够命令执行的方法，中间我们通过链子引导。所以我们一般从尾部出发找入口。&lt;/p&gt;
-&lt;h3 id="尾部的-exec-方法"&gt;
- 尾部的 exec 方法
- &lt;a class="anchor" href="#%e5%b0%be%e9%83%a8%e7%9a%84-exec-%e6%96%b9%e6%b3%95"&gt;#&lt;/a&gt;
-&lt;/h3&gt;
-&lt;p&gt;先查看一下&lt;code&gt;Transformer&lt;/code&gt;这个接口，有一个&lt;code&gt;transform&lt;/code&gt;方法。我们看一下这个接口有哪些实现类。最终我们在&lt;code&gt;InvokerTransformer&lt;/code&gt;这个类里面发现它的&lt;code&gt;transform&lt;/code&gt;方法存在反射调用任意类。&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; Object &lt;span style="color:#a6e22e"&gt;transform&lt;/span&gt;(Object input) {
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (input &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;) {
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;;
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;try&lt;/span&gt; {
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		Class cls &lt;span style="color:#f92672"&gt;=&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;();
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		Method method &lt;span style="color:#f92672"&gt;=&lt;/span&gt; cls.&lt;span style="color:#a6e22e"&gt;getMethod&lt;/span&gt;(iMethodName, iParamTypes);
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; method.&lt;span style="color:#a6e22e"&gt;invoke&lt;/span&gt;(input, iArgs);
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (NoSuchMethodException ex) {
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; does not exist&amp;#34;&lt;/span&gt;);
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (IllegalAccessException ex) {
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; cannot be accessed&amp;#34;&lt;/span&gt;);
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (InvocationTargetException ex) {
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; threw an exception&amp;#34;&lt;/span&gt;, ex);
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
-&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;我们可以利用这个类实现弹计算器。&lt;/p&gt;</description></item><item><title>MySQL数据库盲区补充</title><link>https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/</link><pubDate>Thu, 07 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/</guid><description>&lt;h1 id="mysql数据库盲区补充"&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这里的逻辑还是很简单的，我们创建一个&lt;code&gt;TiedMapEntry&lt;/code&gt;对象，然后把我们构造的&lt;code&gt;LazyMap&lt;/code&gt;传进去并直接调用&lt;code&gt;setValue&lt;/code&gt;方法，就会调用到&lt;code&gt;map.get(key)&lt;/code&gt;。&lt;/p&gt;</description></item><item><title>MySQL数据库盲区补充</title><link>https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/</link><pubDate>Thu, 07 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/</guid><description>&lt;h1 id="mysql数据库盲区补充"&gt;
  MySQL数据库盲区补充
  &lt;a class="anchor" href="#mysql%e6%95%b0%e6%8d%ae%e5%ba%93%e7%9b%b2%e5%8c%ba%e8%a1%a5%e5%85%85"&gt;#&lt;/a&gt;
 &lt;/h1&gt;
@@ -1507,7 +1475,39 @@
  为什么要这么写
  &lt;a class="anchor" href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e8%bf%99%e4%b9%88%e5%86%99"&gt;#&lt;/a&gt;
 &lt;/h3&gt;
-&lt;p&gt;在 XFA（XML Forms Architecture）规范中，Adobe 规定：&lt;strong&gt;所有 XDP（XML Data Package）文档的根元素必须是命名空间 &lt;a href="http://ns.adobe.com/xdp/"&gt;http://ns.adobe.com/xdp/&lt;/a&gt; 下的 xdp标签&lt;/strong&gt;&lt;/p&gt;</description></item><item><title>友链</title><link>https://s0lowalker.github.io/friends/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/friends/</guid><description>&lt;blockquote&gt;
+&lt;p&gt;在 XFA（XML Forms Architecture）规范中，Adobe 规定：&lt;strong&gt;所有 XDP（XML Data Package）文档的根元素必须是命名空间 &lt;a href="http://ns.adobe.com/xdp/"&gt;http://ns.adobe.com/xdp/&lt;/a&gt; 下的 xdp标签&lt;/strong&gt;&lt;/p&gt;</description></item><item><title/><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/</guid><description>&lt;h1 id="java反序列化之cc1"&gt;
+ Java反序列化之CC1
+ &lt;a class="anchor" href="#java%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e4%b9%8bcc1"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="transformmap版cc1攻击链分析"&gt;
+ TransformMap版CC1攻击链分析
+ &lt;a class="anchor" href="#transformmap%e7%89%88cc1%e6%94%bb%e5%87%bb%e9%93%be%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;首先明确反序列化的思路：&lt;/p&gt;
+&lt;p&gt;在入口类，我们需要一个&lt;code&gt;readObject&lt;/code&gt;方法，在结尾需要一个能够命令执行的方法，中间我们通过链子引导。所以我们一般从尾部出发找入口。&lt;/p&gt;
+&lt;h3 id="尾部的-exec-方法"&gt;
+ 尾部的 exec 方法
+ &lt;a class="anchor" href="#%e5%b0%be%e9%83%a8%e7%9a%84-exec-%e6%96%b9%e6%b3%95"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;先查看一下&lt;code&gt;Transformer&lt;/code&gt;这个接口，有一个&lt;code&gt;transform&lt;/code&gt;方法。我们看一下这个接口有哪些实现类。最终我们在&lt;code&gt;InvokerTransformer&lt;/code&gt;这个类里面发现它的&lt;code&gt;transform&lt;/code&gt;方法存在反射调用任意类。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;public&lt;/span&gt; Object &lt;span style="color:#a6e22e"&gt;transform&lt;/span&gt;(Object input) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (input &lt;span style="color:#f92672"&gt;==&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;null&lt;/span&gt;;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;try&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		Class cls &lt;span style="color:#f92672"&gt;=&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;();
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		Method method &lt;span style="color:#f92672"&gt;=&lt;/span&gt; cls.&lt;span style="color:#a6e22e"&gt;getMethod&lt;/span&gt;(iMethodName, iParamTypes);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; method.&lt;span style="color:#a6e22e"&gt;invoke&lt;/span&gt;(input, iArgs);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (NoSuchMethodException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; does not exist&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (IllegalAccessException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; cannot be accessed&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	} &lt;span style="color:#66d9ef"&gt;catch&lt;/span&gt; (InvocationTargetException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; FunctorException(&lt;span style="color:#e6db74"&gt;&amp;#34;InvokerTransformer: The method &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; iMethodName &lt;span style="color:#f92672"&gt;+&lt;/span&gt; 		&lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; on &amp;#39;&amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; input.&lt;span style="color:#a6e22e"&gt;getClass&lt;/span&gt;() &lt;span style="color:#f92672"&gt;+&lt;/span&gt; &lt;span style="color:#e6db74"&gt;&amp;#34;&amp;#39; threw an exception&amp;#34;&lt;/span&gt;, ex);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;我们可以利用这个类实现弹计算器。&lt;/p&gt;</description></item><item><title>友链</title><link>https://s0lowalker.github.io/friends/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/friends/</guid><description>&lt;blockquote&gt;
 &lt;p&gt;欢迎交换友链，联系我：3220285106@qq.com&lt;/p&gt;
 &lt;/blockquote&gt;
 &lt;hr&gt;</description></item></channel></rss>
