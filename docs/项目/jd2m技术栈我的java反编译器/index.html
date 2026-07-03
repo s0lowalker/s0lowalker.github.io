@@ -1,0 +1,277 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  JD2M技术栈——我的 Java 反编译器
+  #
+
+
+  前置知识：Java 从源码到运行
+  #
+
+.java 源码
+    │
+    ▼ javac 编译
+.class 字节码文件（平台无关的二进制格式）
+    │
+    ▼ java 命令启动 JVM
+JVM 加载 → 验证 → 解释执行 / JIT 编译 → 机器码
+反编译就是把流程反过来：
+.class 字节码
+    │
+    ▼ 反编译器（如 CFR）
+.java 源码（近似还原，不可能 100% 还原）
+
+  为什么反编译不能百分百还原
+  #
+
+编译器在编译过程中会丢失一些信息：
+
+	
+			
+					丢失的信息
+					举例
+			
+	
+	
+			
+					局部变量名
+					int a ← 字节码中无变量名，只有类型和栈位置
+			
+			
+					泛型参数
+					List<String> → List（泛型擦除）
+			
+			
+					注释
+					所有注释在编译时被丢弃
+			
+			
+					格式/缩进
+					完全不存在
+			
+			
+					for/while 区别
+					都变成相同条件的 goto 跳转
+			
+			
+					switch 字符串
+					编译为 hashCode() 比较 + 跳转表
+			
+			
+					try-with-resources
+					编译为 try-catch-finally 模式
+			
+	
+
+
+  class 文件格式
+  #
+
+每一个.class文件都严格按照一下结构排列："><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="JD2M技术栈——我的Java反编译器"><meta property="og:description" content="JD2M技术栈——我的 Java 反编译器 # 前置知识：Java 从源码到运行 # .java 源码 │ ▼ javac 编译 .class 字节码文件（平台无关的二进制格式） │ ▼ java 命令启动 JVM JVM 加载 → 验证 → 解释执行 / JIT 编译 → 机器码 反编译就是把流程反过来：
+.class 字节码 │ ▼ 反编译器（如 CFR） .java 源码（近似还原，不可能 100% 还原） 为什么反编译不能百分百还原 # 编译器在编译过程中会丢失一些信息：
+丢失的信息 举例 局部变量名 int a ← 字节码中无变量名，只有类型和栈位置 泛型参数 List<String> → List（泛型擦除） 注释 所有注释在编译时被丢弃 格式/缩进 完全不存在 for/while 区别 都变成相同条件的 goto 跳转 switch 字符串 编译为 hashCode() 比较 + 跳转表 try-with-resources 编译为 try-catch-finally 模式 class 文件格式 # 每一个.class文件都严格按照一下结构排列："><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-07-03T00:00:00+00:00"><meta property="article:modified_time" content="2026-07-03T00:00:00+00:00"><title>JD2M技术栈——我的Java反编译器 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/><link rel=stylesheet href=/book.min.01cf2ecc34d0385d73c8cd76aa597f03773cd1f15eddc9a9558b305b53c93dec.css integrity="sha256-Ac8uzDTQOF1zyM12qll/A3c80fFe3cmpVYswW1PJPew=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.aa558277cddf130d1bb4ada3f4cc288d2c5b432706b364664cb3558ffc9d30ea.js integrity="sha256-qlWCd83fEw0btK2j9MwojSxbQycGs2RmTLNVj/ydMOo=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-4b8c89e1539cb7bd5cf76bb189686b16 class=toggle checked>
+<label for=section-4b8c89e1539cb7bd5cf76bb189686b16 class="flex justify-between"><a role=button>项目</a></label><ul><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/ class=active>JD2M技术栈——我的Java反编译器</a></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之 Cc1</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>JD2M技术栈——我的Java反编译器</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#前置知识java-从源码到运行>前置知识：Java 从源码到运行</a><ul><li><a href=#为什么反编译不能百分百还原>为什么反编译不能百分百还原</a></li></ul></li><li><a href=#class-文件格式>class 文件格式</a><ul><li><a href=#常量池>常量池</a></li><li><a href=#描述符>描述符</a></li></ul></li><li><a href=#jvm-字节码指令集>JVM 字节码指令集</a><ul><li><a href=#加载存储指令>加载/存储指令</a></li><li><a href=#算术指令>算术指令</a></li><li><a href=#类型转换>类型转换</a></li><li><a href=#对象操作>对象操作</a></li><li><a href=#方法调用>方法调用</a></li><li><a href=#控制流>控制流</a></li><li><a href=#返回指令>返回指令</a></li><li><a href=#异常>异常</a></li><li><a href=#同步>同步</a></li></ul></li><li><a href=#cfr-反编译器原理>CFR 反编译器原理</a><ul><li><a href=#阶段1字节码读取>阶段1：字节码读取</a></li><li><a href=#阶段2控制流程cfg重建>阶段2：控制流程（CFG）重建</a></li><li><a href=#阶段-3结构化还原>阶段 3：结构化还原</a></li><li><a href=#阶段-4表达式重建>阶段 4：表达式重建</a></li><li><a href=#阶段-5lambda-和内建方法还原>阶段 5：Lambda 和内建方法还原</a></li><li><a href=#阶段6代码美化输出>阶段6：代码美化输出</a></li></ul></li><li><a href=#asm-字节码框架>ASM 字节码框架</a><ul><li><a href=#核心架构>核心架构</a></li><li><a href=#为什么用-asm-而不是其他字节码框架>为什么用 ASM 而不是其他字节码框架</a></li></ul></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=jd2m技术栈我的-java-反编译器>JD2M技术栈——我的 Java 反编译器
+<a class=anchor href=#jd2m%e6%8a%80%e6%9c%af%e6%a0%88%e6%88%91%e7%9a%84-java-%e5%8f%8d%e7%bc%96%e8%af%91%e5%99%a8>#</a></h1><h2 id=前置知识java-从源码到运行>前置知识：Java 从源码到运行
+<a class=anchor href=#%e5%89%8d%e7%bd%ae%e7%9f%a5%e8%af%86java-%e4%bb%8e%e6%ba%90%e7%a0%81%e5%88%b0%e8%bf%90%e8%a1%8c>#</a></h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>.java 源码
+</span></span><span style=display:flex><span>    │
+</span></span><span style=display:flex><span>    ▼ javac 编译
+</span></span><span style=display:flex><span>.class 字节码文件（平台无关的二进制格式）
+</span></span><span style=display:flex><span>    │
+</span></span><span style=display:flex><span>    ▼ java 命令启动 JVM
+</span></span><span style=display:flex><span>JVM 加载 → 验证 → 解释执行 / JIT 编译 → 机器码
+</span></span></code></pre></div><p><strong>反编译就是把流程反过来：</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>.class 字节码
+</span></span><span style=display:flex><span>    │
+</span></span><span style=display:flex><span>    ▼ 反编译器（如 CFR）
+</span></span><span style=display:flex><span>.java 源码（近似还原，不可能 100% 还原）
+</span></span></code></pre></div><h3 id=为什么反编译不能百分百还原>为什么反编译不能百分百还原
+<a class=anchor href=#%e4%b8%ba%e4%bb%80%e4%b9%88%e5%8f%8d%e7%bc%96%e8%af%91%e4%b8%8d%e8%83%bd%e7%99%be%e5%88%86%e7%99%be%e8%bf%98%e5%8e%9f>#</a></h3><p>编译器在编译过程中会丢失一些信息：</p><table><thead><tr><th>丢失的信息</th><th>举例</th></tr></thead><tbody><tr><td>局部变量名</td><td><code>int a</code> ← 字节码中无变量名，只有类型和栈位置</td></tr><tr><td>泛型参数</td><td><code>List&lt;String></code> → <code>List</code>（泛型擦除）</td></tr><tr><td>注释</td><td>所有注释在编译时被丢弃</td></tr><tr><td>格式/缩进</td><td>完全不存在</td></tr><tr><td>for/while 区别</td><td>都变成相同条件的 goto 跳转</td></tr><tr><td>switch 字符串</td><td>编译为 <code>hashCode()</code> 比较 + 跳转表</td></tr><tr><td>try-with-resources</td><td>编译为 try-catch-finally 模式</td></tr></tbody></table><h2 id=class-文件格式>class 文件格式
+<a class=anchor href=#class-%e6%96%87%e4%bb%b6%e6%a0%bc%e5%bc%8f>#</a></h2><p>每一个<code>.class</code>文件都严格按照一下结构排列：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>ClassFile {
+</span></span><span style=display:flex><span>    u4             magic;              // 0xCAFEBABE（魔数，标识这是一个 class 文件）
+</span></span><span style=display:flex><span>    u2             minor_version;      // 次版本号
+</span></span><span style=display:flex><span>    u2             major_version;      // 主版本号（52 = Java 8, 55 = Java 11）
+</span></span><span style=display:flex><span>    u2             constant_pool_count;
+</span></span><span style=display:flex><span>    cp_info        constant_pool[constant_pool_count-1];  // 常量池
+</span></span><span style=display:flex><span>    u2             access_flags;       // public/abstract/final 等修饰符
+</span></span><span style=display:flex><span>    u2             this_class;         // 指向常量池，本类名
+</span></span><span style=display:flex><span>    u2             super_class;        // 指向常量池，父类名
+</span></span><span style=display:flex><span>    u2             interfaces_count;
+</span></span><span style=display:flex><span>    u2             interfaces[interfaces_count];  // 实现的接口
+</span></span><span style=display:flex><span>    u2             fields_count;
+</span></span><span style=display:flex><span>    field_info     fields[fields_count];          // 字段表
+</span></span><span style=display:flex><span>    u2             methods_count;
+</span></span><span style=display:flex><span>    method_info    methods[methods_count];        // 方法表
+</span></span><span style=display:flex><span>    u2             attributes_count;
+</span></span><span style=display:flex><span>    attribute_info attributes[attributes_count];  // 属性表（包括 Code 属性）
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>在 JVM 规范中，<code>u4</code>、<code>u2</code>、<code>u1</code> 是描述 Class 文件格式时使用的<strong>基本数据类型</strong>，用来定义每个字段占用的字节数。而 cp_info、field_info、method_info、attribute_info 这四个都是 Class 文件中定义复杂结构的<strong>伪结构（或叫数据类型）</strong>。</p><p>它们不像 <code>u2</code> 那样只代表一个数值，而是<strong>一个由多个基本类型组合成的复合结构</strong>，用于承载常量、字段、方法和代码等核心信息。</p><ul><li><p><code>cp_info</code> (常量项)
+常量池中的每一项。它是个“标签联合体”，结构取决于第一个字节的 <code>tag</code>。比如 <code>tag</code> 为 1 代表文本字符串，后面存长度和内容；<code>tag</code> 为 7 代表类符号引用，后面存指向全限定名的索引。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>cp_info {
+</span></span><span style=display:flex><span>    u1 tag;   // &lt;-- 就是这个
+</span></span><span style=display:flex><span>    u1 info[]; // 后面是具体内容，长度和结构由 tag 决定
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>简单说，**<code>tag</code> 就是常量池每一项的第一个字节，是一个用于“区分类型”的标志数字。**它本身就是一个 <code>u1</code> 类型（1 字节无符号整数），用不同的数值代表不同的常量类型。JVM 规范定义了这些数字对应的类型：</p><table><thead><tr><th style=text-align:left>tag 值</th><th style=text-align:left>常量类型</th><th style=text-align:left>说明</th></tr></thead><tbody><tr><td style=text-align:left><strong>1</strong></td><td style=text-align:left><code>CONSTANT_Utf8</code></td><td style=text-align:left>UTF-8 编码的字符串</td></tr><tr><td style=text-align:left><strong>3</strong></td><td style=text-align:left><code>CONSTANT_Integer</code></td><td style=text-align:left>4 字节整型常量</td></tr><tr><td style=text-align:left><strong>4</strong></td><td style=text-align:left><code>CONSTANT_Float</code></td><td style=text-align:left>4 字节浮点常量</td></tr><tr><td style=text-align:left><strong>5</strong></td><td style=text-align:left><code>CONSTANT_Long</code></td><td style=text-align:left>8 字节长整型常量</td></tr><tr><td style=text-align:left><strong>6</strong></td><td style=text-align:left><code>CONSTANT_Double</code></td><td style=text-align:left>8 字节双精度浮点常量</td></tr><tr><td style=text-align:left><strong>7</strong></td><td style=text-align:left><code>CONSTANT_Class</code></td><td style=text-align:left>类或接口的符号引用</td></tr><tr><td style=text-align:left><strong>8</strong></td><td style=text-align:left><code>CONSTANT_String</code></td><td style=text-align:left>字符串类型字面量</td></tr><tr><td style=text-align:left><strong>9</strong></td><td style=text-align:left><code>CONSTANT_Fieldref</code></td><td style=text-align:left>字段的符号引用</td></tr><tr><td style=text-align:left><strong>10</strong></td><td style=text-align:left><code>CONSTANT_Methodref</code></td><td style=text-align:left>方法的符号引用</td></tr><tr><td style=text-align:left><strong>11</strong></td><td style=text-align:left><code>CONSTANT_InterfaceMethodref</code></td><td style=text-align:left>接口方法的符号引用</td></tr><tr><td style=text-align:left><strong>12</strong></td><td style=text-align:left><code>CONSTANT_NameAndType</code></td><td style=text-align:left>名称和类型描述符</td></tr><tr><td style=text-align:left><strong>15</strong></td><td style=text-align:left><code>CONSTANT_MethodHandle</code></td><td style=text-align:left>方法句柄</td></tr><tr><td style=text-align:left><strong>16</strong></td><td style=text-align:left><code>CONSTANT_MethodType</code></td><td style=text-align:left>方法类型</td></tr><tr><td style=text-align:left><strong>17</strong></td><td style=text-align:left><code>CONSTANT_Dynamic</code></td><td style=text-align:left>动态计算常量</td></tr><tr><td style=text-align:left><strong>18</strong></td><td style=text-align:left><code>CONSTANT_InvokeDynamic</code></td><td style=text-align:left>动态调用点</td></tr><tr><td style=text-align:left><strong>19</strong></td><td style=text-align:left><code>CONSTANT_Module</code></td><td style=text-align:left>模块信息</td></tr><tr><td style=text-align:left><strong>20</strong></td><td style=text-align:left><code>CONSTANT_Package</code></td><td style=text-align:left>包信息</td></tr></tbody></table></li><li><p><code>field_info</code> (字段表)
+字段表，就是 <code>field_info</code> 结构组成的数组，用来描述<strong>类或接口中声明的所有字段</strong>，包括静态变量、实例变量、以及接口中的常量。
+一个字段表的结构如下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>field_info {
+</span></span><span style=display:flex><span>    u2             access_flags;       // 访问标志
+</span></span><span style=display:flex><span>    u2             name_index;         // 字段简单名称，指向常量池
+</span></span><span style=display:flex><span>    u2             descriptor_index;   // 字段描述符，指向常量池
+</span></span><span style=display:flex><span>    u2             attributes_count;   // 属性数量
+</span></span><span style=display:flex><span>    attribute_info attributes[attributes_count]; // 属性表
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div></li><li><p><code>method_info</code> (方法表)
+描述类或接口中声明的<strong>方法</strong>。结构和 <code>field_info</code> 很像，包括访问标志、方法名索引、描述符索引（如 <code>()V</code> 代表无参无返回）。它最重要的属性是 <strong><code>Code</code> 属性</strong>，里面就存放着方法体编译后的字节码指令。</p></li><li><p><code>attribute_info</code> (属性表)
+一种可扩展的通用结构，附属在上面几种结构里，用于存放额外信息。比如方法里的字节码存在 <code>Code</code> 属性，方法签名异常声明在 <code>Exceptions</code> 属性，源码行号调试信息在 <code>LineNumberTable</code> 属性等。它也是由名字索引、长度和具体内容组成的。</p></li></ul><h3 id=常量池>常量池
+<a class=anchor href=#%e5%b8%b8%e9%87%8f%e6%b1%a0>#</a></h3><p>常量池是 class 文件的最核心部分，其中存放了两大类信息：</p><p><strong>字面量：</strong></p><ul><li>字符串常量</li><li>数值常量</li><li><code>null</code></li></ul><p>字面量其实是字段的值，比如<code>int a=5</code>，这里的<code>5</code>就是字面量</p><p><strong>符号引用：</strong></p><ul><li>类和接口的全限定名，比如<code>com/example/demo</code></li><li>字段名称和描述符<code>name:I</code>（字段 name，类型 int）</li><li>方法名称和描述符<code>toString:()Ljava/lang/String;</code></li><li>方法句柄、方法类型</li></ul><p>方法描述符的格式是 <code>(参数字段描述符)返回值字段描述符</code>，也就是参数和返回值都用你之前学过的字段描述符来表示：</p><ul><li><strong><code>()</code></strong>：括号里的内容是参数列表。这里为空，表示这个方法没有参数。</li><li><strong><code>Ljava/lang/String;</code></strong>：紧跟在括号后面的，是返回值类型。这里表示返回一个 <code>String</code> 对象。</li></ul><p>举个有参数的方法：<code>int indexOf(String str, int fromIndex)</code>。</p><p>它的简写就是 <code>indexOf:(Ljava/lang/String;I)I</code></p><p>方法类型描述一个方法长什么样，有什么参数，返回什么类型；方法句柄则可以直接指向并调用一个具体的方法。</p><p><strong>常量池条目类型（部分）：</strong></p><table><thead><tr><th>标签</th><th>类型</th><th>存储内容</th></tr></thead><tbody><tr><td>1</td><td>CONSTANT_Utf8</td><td>UTF-8 编码的字符串</td></tr><tr><td>3</td><td>CONSTANT_Integer</td><td>4 字节整数</td></tr><tr><td>7</td><td>CONSTANT_Class</td><td>类的全限定名（指向 Utf8）</td></tr><tr><td>9</td><td>CONSTANT_Fieldref</td><td>字段引用（指向 Class + NameAndType）</td></tr><tr><td>10</td><td>CONSTANT_Methodref</td><td>方法引用</td></tr><tr><td>12</td><td>CONSTANT_NameAndType</td><td>方法/字段名 + 描述符</td></tr></tbody></table><h3 id=描述符>描述符
+<a class=anchor href=#%e6%8f%8f%e8%bf%b0%e7%ac%a6>#</a></h3><p>JVM 使用紧凑的字符串表示类型：</p><table><thead><tr><th>Java 类型</th><th>描述符</th></tr></thead><tbody><tr><td><code>int</code></td><td><code>I</code></td></tr><tr><td><code>long</code></td><td><code>J</code></td></tr><tr><td><code>float</code></td><td><code>F</code></td></tr><tr><td><code>double</code></td><td><code>D</code></td></tr><tr><td><code>boolean</code></td><td><code>Z</code></td></tr><tr><td><code>char</code></td><td><code>C</code></td></tr><tr><td><code>void</code></td><td><code>V</code></td></tr><tr><td><code>Object</code></td><td><code>Ljava/lang/Object;</code></td></tr><tr><td><code>String[]</code></td><td><code>[Ljava/lang/String;</code></td></tr><tr><td><code>int[][]</code></td><td><code>[[I</code></td></tr></tbody></table><p>方法描述符：<code>(参数描述符)返回值描述符</code></p><pre tabindex=0><code>int add(int a, long b)   →  (IJ)I
+void main(String[] args) →  ([Ljava/lang/String;)V
+</code></pre><h2 id=jvm-字节码指令集>JVM 字节码指令集
+<a class=anchor href=#jvm-%e5%ad%97%e8%8a%82%e7%a0%81%e6%8c%87%e4%bb%a4%e9%9b%86>#</a></h2><p>JVM 是基于栈的虚拟机，所有操作在操作数栈上进行。这里的栈都是指操作数栈。JVM 执行指令时，并不是直接操作 CPU 寄存器或内存，而是通过一个叫“操作数栈”的中间区域来传递数据和进行计算。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>Java 源码:          int c = a + b;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>编译为字节码:
+</span></span><span style=display:flex><span>    iload_1         // 将局部变量 1 (a) 压入操作数栈顶
+</span></span><span style=display:flex><span>    iload_2         // 将局部变量 2 (b) 压入操作数栈顶
+</span></span><span style=display:flex><span>    iadd            // 弹出栈顶两个 int，相加，结果压回栈
+</span></span><span style=display:flex><span>    istore_3        // 将栈顶结果存入局部变量 3 (c)
+</span></span></code></pre></div><p>上面的例子就是一个简单的 JVM 指令。</p><p><strong>指令分类：</strong></p><h3 id=加载存储指令>加载/存储指令
+<a class=anchor href=#%e5%8a%a0%e8%bd%bd%e5%ad%98%e5%82%a8%e6%8c%87%e4%bb%a4>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>aload       从局部变量加载引用到栈
+</span></span><span style=display:flex><span>iload       加载 int
+</span></span><span style=display:flex><span>lload       加载 long
+</span></span><span style=display:flex><span>fload       加载 float
+</span></span><span style=display:flex><span>dload       加载 double
+</span></span><span style=display:flex><span>astore      将栈顶引用存到局部变量
+</span></span><span style=display:flex><span>bipush      将 byte 扩展为 int 压栈
+</span></span><span style=display:flex><span>iconst_0    将常量 0 压栈（-1 到 5 都有独立指令）
+</span></span><span style=display:flex><span>ldc         从常量池加载常量（int/float/String/Class）
+</span></span></code></pre></div><h3 id=算术指令>算术指令
+<a class=anchor href=#%e7%ae%97%e6%9c%af%e6%8c%87%e4%bb%a4>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>iadd        两个 int 相加
+</span></span><span style=display:flex><span>isub        相减
+</span></span><span style=display:flex><span>imul        相乘
+</span></span><span style=display:flex><span>idiv        相除
+</span></span><span style=display:flex><span>irem        取余
+</span></span><span style=display:flex><span>iinc        局部变量自增 (i++)
+</span></span></code></pre></div><h3 id=类型转换>类型转换
+<a class=anchor href=#%e7%b1%bb%e5%9e%8b%e8%bd%ac%e6%8d%a2>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>i2l         int → long
+</span></span><span style=display:flex><span>i2f         int → float
+</span></span><span style=display:flex><span>l2i         long → int
+</span></span><span style=display:flex><span>d2i         double → int
+</span></span><span style=display:flex><span>checkcast   类型检查转换
+</span></span></code></pre></div><h3 id=对象操作>对象操作
+<a class=anchor href=#%e5%af%b9%e8%b1%a1%e6%93%8d%e4%bd%9c>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>new         创建对象（分配内存，不调用构造器）
+</span></span><span style=display:flex><span>newarray    创建基本类型数组
+</span></span><span style=display:flex><span>anewarray   创建引用类型数组
+</span></span><span style=display:flex><span>getfield    获取实例字段
+</span></span><span style=display:flex><span>putfield    设置实例字段
+</span></span><span style=display:flex><span>getstatic   获取静态字段
+</span></span><span style=display:flex><span>putstatic   设置静态字段
+</span></span></code></pre></div><h3 id=方法调用>方法调用
+<a class=anchor href=#%e6%96%b9%e6%b3%95%e8%b0%83%e7%94%a8>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>invokevirtual    调用实例方法（虚方法分发）
+</span></span><span style=display:flex><span>invokespecial    调用构造器/私有方法/父类方法
+</span></span><span style=display:flex><span>invokestatic     调用静态方法
+</span></span><span style=display:flex><span>invokeinterface  调用接口方法
+</span></span><span style=display:flex><span>invokedynamic    动态方法调用（lambda、字符串拼接）
+</span></span></code></pre></div><h3 id=控制流>控制流
+<a class=anchor href=#%e6%8e%a7%e5%88%b6%e6%b5%81>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>goto            无条件跳转
+</span></span><span style=display:flex><span>ifeq            等于 0 时跳转
+</span></span><span style=display:flex><span>ifne            不等于 0 时跳转
+</span></span><span style=display:flex><span>if_icmpeq       两个 int 比较，相等跳转
+</span></span><span style=display:flex><span>if_icmpne       不相等跳转
+</span></span><span style=display:flex><span>tableswitch     表跳转（连续 case 值）
+</span></span><span style=display:flex><span>lookupswitch    查找跳转（稀疏 case 值）
+</span></span></code></pre></div><h3 id=返回指令>返回指令
+<a class=anchor href=#%e8%bf%94%e5%9b%9e%e6%8c%87%e4%bb%a4>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>return          返回 void
+</span></span><span style=display:flex><span>ireturn         返回 int
+</span></span><span style=display:flex><span>areturn         返回引用
+</span></span></code></pre></div><h3 id=异常>异常
+<a class=anchor href=#%e5%bc%82%e5%b8%b8>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>athrow          抛出异常
+</span></span></code></pre></div><h3 id=同步>同步
+<a class=anchor href=#%e5%90%8c%e6%ad%a5>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>monitorenter    进入 synchronized 块
+</span></span><span style=display:flex><span>monitorexit     退出 synchronized 块
+</span></span></code></pre></div><p><strong>完整字节码示例：</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// 源码</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> String <span style=color:#a6e22e>checkFlag</span>(String input) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (input.<span style=color:#a6e22e>equals</span>(<span style=color:#e6db74>&#34;FLAG{secret}&#34;</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;Correct!&#34;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;Wrong!&#34;</span>;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>// 对应的字节码（javap -c 输出）
+</span></span><span style=display:flex><span>public static java.lang.String checkFlag(java.lang.String);
+</span></span><span style=display:flex><span>  Code:
+</span></span><span style=display:flex><span>     0: aload_0                     // 加载参数 input
+</span></span><span style=display:flex><span>     1: ldc #2                      // 从常量池加载 &#34;FLAG{secret}&#34;
+</span></span><span style=display:flex><span>     3: invokevirtual #3            // 调用 String.equals()
+</span></span><span style=display:flex><span>     6: ifeq 14                     // 结果为 false 跳转到 14
+</span></span><span style=display:flex><span>     9: ldc #4                      // 加载 &#34;Correct!&#34;
+</span></span><span style=display:flex><span>    11: areturn                     // 返回 &#34;Correct!&#34;
+</span></span><span style=display:flex><span>    14: ldc #5                      // 加载 &#34;Wrong!&#34;
+</span></span><span style=display:flex><span>    16: areturn                     // 返回 &#34;Wrong!&#34;
+</span></span></code></pre></div><h2 id=cfr-反编译器原理>CFR 反编译器原理
+<a class=anchor href=#cfr-%e5%8f%8d%e7%bc%96%e8%af%91%e5%99%a8%e5%8e%9f%e7%90%86>#</a></h2><p>CFR 是目前公认的最准确的 Java 反编译器之一。核心思想：</p><h3 id=阶段1字节码读取>阶段1：字节码读取
+<a class=anchor href=#%e9%98%b6%e6%ae%b51%e5%ad%97%e8%8a%82%e7%a0%81%e8%af%bb%e5%8f%96>#</a></h3><p>将 class 文件的字节码转换为内部数据结构。CFR 读取完字节码之后转化成 CFR 能够处理的一个个类和对象。</p><h3 id=阶段2控制流程cfg重建>阶段2：控制流程（CFG）重建
+<a class=anchor href=#%e9%98%b6%e6%ae%b52%e6%8e%a7%e5%88%b6%e6%b5%81%e7%a8%8bcfg%e9%87%8d%e5%bb%ba>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>字节码是扁平的指令序列（带跳转标签）
+</span></span><span style=display:flex><span>       │
+</span></span><span style=display:flex><span>       ▼
+</span></span><span style=display:flex><span>CFR 分析跳转指令（goto/ifeq/tableswitch 等）
+</span></span><span style=display:flex><span>       │
+</span></span><span style=display:flex><span>       ▼
+</span></span><span style=display:flex><span>构建基本块（连续执行的一段指令）
+</span></span><span style=display:flex><span>       │
+</span></span><span style=display:flex><span>       ▼
+</span></span><span style=display:flex><span>连接基本块形成控制流图（CFG）
+</span></span></code></pre></div><p><strong>示例：if-else 的 CFG</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>    [Block 0: 条件判断]
+</span></span><span style=display:flex><span>           │
+</span></span><span style=display:flex><span>      ┌────┴────┐
+</span></span><span style=display:flex><span>      ▼         ▼
+</span></span><span style=display:flex><span>[Block 1: if-true]   [Block 2: if-false]
+</span></span><span style=display:flex><span>      │               │
+</span></span><span style=display:flex><span>      └──────┬────────┘
+</span></span><span style=display:flex><span>             ▼
+</span></span><span style=display:flex><span>    [Block 3: 汇合点]
+</span></span></code></pre></div><h3 id=阶段-3结构化还原>阶段 3：结构化还原
+<a class=anchor href=#%e9%98%b6%e6%ae%b5-3%e7%bb%93%e6%9e%84%e5%8c%96%e8%bf%98%e5%8e%9f>#</a></h3><p>这是 CFR 最核心的技术。字节码中只有 goto 跳转，CFR 通过模式识别还原高级结构：</p><table><thead><tr><th>字节码模式</th><th>还原的 Java 结构</th></tr></thead><tbody><tr><td>条件跳转 + 循环回到顶部</td><td><code>while(condition)</code></td></tr><tr><td>条件跳转 + 循环到底部</td><td><code>do-while</code></td></tr><tr><td>初始化 + 条件 + 递增 + 循环</td><td><code>for</code></td></tr><tr><td>条件链跳转</td><td><code>if-else if-else</code></td></tr><tr><td>tableswitch/lookupswitch</td><td><code>switch-case</code></td></tr><tr><td>try 块 + 异常表</td><td><code>try-catch-finally</code></td></tr></tbody></table><h3 id=阶段-4表达式重建>阶段 4：表达式重建
+<a class=anchor href=#%e9%98%b6%e6%ae%b5-4%e8%a1%a8%e8%be%be%e5%bc%8f%e9%87%8d%e5%bb%ba>#</a></h3><p>JVM 的栈式操作需要还原为表达式树：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>字节码:
+</span></span><span style=display:flex><span>    iload_1     // a
+</span></span><span style=display:flex><span>    iload_2     // b
+</span></span><span style=display:flex><span>    iadd        // a + b
+</span></span><span style=display:flex><span>    iload_3     // c
+</span></span><span style=display:flex><span>    imul        // (a + b) * c
+</span></span><span style=display:flex><span>    iconst_1    // 1
+</span></span><span style=display:flex><span>    iadd        // (a + b) * c + 1
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>还原为:
+</span></span><span style=display:flex><span>    (a + b) * c + 1
+</span></span></code></pre></div><p>CFR 通过模拟操作数栈，将一连串的压栈/弹栈操作合并为表达式。</p><h3 id=阶段-5lambda-和内建方法还原>阶段 5：Lambda 和内建方法还原
+<a class=anchor href=#%e9%98%b6%e6%ae%b5-5lambda-%e5%92%8c%e5%86%85%e5%bb%ba%e6%96%b9%e6%b3%95%e8%bf%98%e5%8e%9f>#</a></h3><p>Java 8 引入的 lambda 编译后会生成 <code>invokedynamic</code> 指令和合成方法。CFR 识别这些模式并还原为原始 lambda 表达式。</p><h3 id=阶段6代码美化输出>阶段6：代码美化输出
+<a class=anchor href=#%e9%98%b6%e6%ae%b56%e4%bb%a3%e7%a0%81%e7%be%8e%e5%8c%96%e8%be%93%e5%87%ba>#</a></h3><p>将内部数据结构格式化为可读的 Java 源文件。</p><h2 id=asm-字节码框架>ASM 字节码框架
+<a class=anchor href=#asm-%e5%ad%97%e8%8a%82%e7%a0%81%e6%a1%86%e6%9e%b6>#</a></h2><p>ASM 是一个 JVM 字节码操作和分析框架，采用 <strong>访问者模式（Visitor Pattern）</strong> 来解析和生成 class 文件。</p><h3 id=核心架构>核心架构
+<a class=anchor href=#%e6%a0%b8%e5%bf%83%e6%9e%b6%e6%9e%84>#</a></h3><pre tabindex=0><code>ClassReader（读取字节码）
+    │
+    ▼ accept()
+ClassVisitor（访问类结构）
+    │
+    ├── visit()             类头部信息
+    ├── visitField()       字段 → FieldVisitor
+    ├── visitMethod()      方法 → MethodVisitor
+    │       │
+    │       ├── visitCode()              方法开始
+    │       ├── visitLdcInsn()           LDC 指令（加载常量）
+    │       ├── visitMethodInsn()        方法调用指令
+    │       ├── visitJumpInsn()          跳转指令
+    │       ├── visitVarInsn()           局部变量操作
+    │       ├── visitMaxs()              栈和局部变量最大数量
+    │       └── visitEnd()              方法结束
+    └── visitEnd()          类结束
+</code></pre><p>ASM 逐个字节解析 class 文件，每遇到一个结构就调用 visitor 的对应方法。这种<strong>事件驱动</strong>的方式非常高效——不需要把整个 class 文件加载成对象树，解析完就调用回调，内存开销极低。</p><h3 id=为什么用-asm-而不是其他字节码框架>为什么用 ASM 而不是其他字节码框架
+<a class=anchor href=#%e4%b8%ba%e4%bb%80%e4%b9%88%e7%94%a8-asm-%e8%80%8c%e4%b8%8d%e6%98%af%e5%85%b6%e4%bb%96%e5%ad%97%e8%8a%82%e7%a0%81%e6%a1%86%e6%9e%b6>#</a></h3><table><thead><tr><th>框架</th><th>特点</th><th>适用场景</th></tr></thead><tbody><tr><td><strong>ASM</strong></td><td>轻量（~120KB）、高性能、事件驱动</td><td>需要速度的分析/生成工具</td></tr><tr><td>BCEL</td><td>完整对象模型、重</td><td>需要修改字节码的工具</td></tr><tr><td>Javassist</td><td>源码级 API、简单</td><td>运行时代码生成</td></tr><tr><td>Byte Buddy</td><td>高级 DSL、功能全面</td><td>现代字节码生成和代理</td></tr></tbody></table><p>JD2M 选择 ASM 的原因：对 class 文件做只读分析（不需要修改、生成），ASM 的 visitor 模式零额外开销，并且只引入了 120KB 的依赖体积。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#前置知识java-从源码到运行>前置知识：Java 从源码到运行</a><ul><li><a href=#为什么反编译不能百分百还原>为什么反编译不能百分百还原</a></li></ul></li><li><a href=#class-文件格式>class 文件格式</a><ul><li><a href=#常量池>常量池</a></li><li><a href=#描述符>描述符</a></li></ul></li><li><a href=#jvm-字节码指令集>JVM 字节码指令集</a><ul><li><a href=#加载存储指令>加载/存储指令</a></li><li><a href=#算术指令>算术指令</a></li><li><a href=#类型转换>类型转换</a></li><li><a href=#对象操作>对象操作</a></li><li><a href=#方法调用>方法调用</a></li><li><a href=#控制流>控制流</a></li><li><a href=#返回指令>返回指令</a></li><li><a href=#异常>异常</a></li><li><a href=#同步>同步</a></li></ul></li><li><a href=#cfr-反编译器原理>CFR 反编译器原理</a><ul><li><a href=#阶段1字节码读取>阶段1：字节码读取</a></li><li><a href=#阶段2控制流程cfg重建>阶段2：控制流程（CFG）重建</a></li><li><a href=#阶段-3结构化还原>阶段 3：结构化还原</a></li><li><a href=#阶段-4表达式重建>阶段 4：表达式重建</a></li><li><a href=#阶段-5lambda-和内建方法还原>阶段 5：Lambda 和内建方法还原</a></li><li><a href=#阶段6代码美化输出>阶段6：代码美化输出</a></li></ul></li><li><a href=#asm-字节码框架>ASM 字节码框架</a><ul><li><a href=#核心架构>核心架构</a></li><li><a href=#为什么用-asm-而不是其他字节码框架>为什么用 ASM 而不是其他字节码框架</a></li></ul></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
