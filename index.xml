@@ -1,4 +1,35 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Solowalker</title><link>https://s0lowalker.github.io/</link><description>Recent content on Solowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Fri, 03 Jul 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>JD2M技术栈——我的Java反编译器</title><link>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/</link><pubDate>Fri, 03 Jul 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/</guid><description>&lt;h1 id="jd2m技术栈我的-java-反编译器"&gt;
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Solowalker</title><link>https://s0lowalker.github.io/</link><description>Recent content on Solowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Tue, 07 Jul 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/index.xml" rel="self" type="application/rss+xml"/><item><title>JD2M源码分析</title><link>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/</link><pubDate>Tue, 07 Jul 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/</guid><description>&lt;h1 id="jd2m源码分析"&gt;
+ JD2M源码分析
+ &lt;a class="anchor" href="#jd2m%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="unicode2cnjava"&gt;
+ Unicode2CN.java
+ &lt;a class="anchor" href="#unicode2cnjava"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;这个文件的核心功能是把 Java 源码里的 \uXXXX Unicode 转义序列还原成可读的中文字符&lt;/p&gt;
+&lt;p&gt;CFR 反编译字节码时，遇到中文字符串会输出成 \u4e2d\u6587 这种形态。JD2M 用这个类做后处理，把反编译结果还原成人类可读的 中文。&lt;/p&gt;
+&lt;h3 id="方法功能"&gt;
+ 方法功能
+ &lt;a class="anchor" href="#%e6%96%b9%e6%b3%95%e5%8a%9f%e8%83%bd"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;h4 id="1-ascii2charstring-str--最底层单个-uxxxx-转-char"&gt;
+ 1. ascii2Char(String str) — 最底层：单个 \uXXXX 转 char
+ &lt;a class="anchor" href="#1-ascii2charstring-str--%e6%9c%80%e5%ba%95%e5%b1%82%e5%8d%95%e4%b8%aa-uxxxx-%e8%bd%ac-char"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;char&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;ascii2Char&lt;/span&gt;(String str) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (str.&lt;span style="color:#a6e22e"&gt;length&lt;/span&gt;() &lt;span style="color:#f92672"&gt;!=&lt;/span&gt; 6) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; IllegalArgumentException(&lt;span style="color:#e6db74"&gt;&amp;#34;Length must be 6, got: &amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; str.&lt;span style="color:#a6e22e"&gt;length&lt;/span&gt;()); &lt;span style="color:#75715e"&gt;//\uXXXX必须是6个字符&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#f92672"&gt;!&lt;/span&gt;&lt;span style="color:#e6db74"&gt;&amp;#34;\\u&amp;#34;&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;equals&lt;/span&gt;(str.&lt;span style="color:#a6e22e"&gt;substring&lt;/span&gt;(0, 2))) { &lt;span style="color:#75715e"&gt;//前缀检查&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; IllegalArgumentException(&lt;span style="color:#e6db74"&gt;&amp;#34;Must start with \\u&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	String tmp &lt;span style="color:#f92672"&gt;=&lt;/span&gt; str.&lt;span style="color:#a6e22e"&gt;substring&lt;/span&gt;(2, 4);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; code &lt;span style="color:#f92672"&gt;=&lt;/span&gt; Integer.&lt;span style="color:#a6e22e"&gt;parseInt&lt;/span&gt;(tmp, 16) &lt;span style="color:#f92672"&gt;&amp;lt;&amp;lt;&lt;/span&gt; 8;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	tmp &lt;span style="color:#f92672"&gt;=&lt;/span&gt; str.&lt;span style="color:#a6e22e"&gt;substring&lt;/span&gt;(4, 6);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	code &lt;span style="color:#f92672"&gt;+=&lt;/span&gt; Integer.&lt;span style="color:#a6e22e"&gt;parseInt&lt;/span&gt;(tmp, 16);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;char&lt;/span&gt;) code;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;由于 Java 字符串里 &lt;code&gt;\u&lt;/code&gt; 要写成 &lt;code&gt;\\u&lt;/code&gt;，因为 &lt;code&gt;\&lt;/code&gt; 本身需要转义。所以传进来的参数长这样：&lt;code&gt;\\u4e16&lt;/code&gt;（6 个字符：&lt;code&gt;\ u 4 e 1 6&lt;/code&gt;）。&lt;/p&gt;</description></item><item><title>JD2M技术栈——我的Java反编译器</title><link>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/</link><pubDate>Fri, 03 Jul 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/</guid><description>&lt;h1 id="jd2m技术栈我的-java-反编译器"&gt;
  JD2M技术栈——我的 Java 反编译器
  &lt;a class="anchor" href="#jd2m%e6%8a%80%e6%9c%af%e6%a0%88%e6%88%91%e7%9a%84-java-%e5%8f%8d%e7%bc%96%e8%af%91%e5%99%a8"&gt;#&lt;/a&gt;
 &lt;/h1&gt;

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>JD2M on Solowalker</title><link>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/</link><description>Recent content in JD2M on Solowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Tue, 07 Jul 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/index.xml" rel="self" type="application/rss+xml"/><item><title>JD2M源码分析</title><link>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/</link><pubDate>Tue, 07 Jul 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/</guid><description>&lt;h1 id="jd2m源码分析"&gt;
+ JD2M源码分析
+ &lt;a class="anchor" href="#jd2m%e6%ba%90%e7%a0%81%e5%88%86%e6%9e%90"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="unicode2cnjava"&gt;
+ Unicode2CN.java
+ &lt;a class="anchor" href="#unicode2cnjava"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;这个文件的核心功能是把 Java 源码里的 \uXXXX Unicode 转义序列还原成可读的中文字符&lt;/p&gt;
+&lt;p&gt;CFR 反编译字节码时，遇到中文字符串会输出成 \u4e2d\u6587 这种形态。JD2M 用这个类做后处理，把反编译结果还原成人类可读的 中文。&lt;/p&gt;
+&lt;h3 id="方法功能"&gt;
+ 方法功能
+ &lt;a class="anchor" href="#%e6%96%b9%e6%b3%95%e5%8a%9f%e8%83%bd"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;h4 id="1-ascii2charstring-str--最底层单个-uxxxx-转-char"&gt;
+ 1. ascii2Char(String str) — 最底层：单个 \uXXXX 转 char
+ &lt;a class="anchor" href="#1-ascii2charstring-str--%e6%9c%80%e5%ba%95%e5%b1%82%e5%8d%95%e4%b8%aa-uxxxx-%e8%bd%ac-char"&gt;#&lt;/a&gt;
+&lt;/h4&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-java" data-lang="java"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#66d9ef"&gt;private&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;static&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;char&lt;/span&gt; &lt;span style="color:#a6e22e"&gt;ascii2Char&lt;/span&gt;(String str) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (str.&lt;span style="color:#a6e22e"&gt;length&lt;/span&gt;() &lt;span style="color:#f92672"&gt;!=&lt;/span&gt; 6) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; IllegalArgumentException(&lt;span style="color:#e6db74"&gt;&amp;#34;Length must be 6, got: &amp;#34;&lt;/span&gt; &lt;span style="color:#f92672"&gt;+&lt;/span&gt; str.&lt;span style="color:#a6e22e"&gt;length&lt;/span&gt;()); &lt;span style="color:#75715e"&gt;//\uXXXX必须是6个字符&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;if&lt;/span&gt; (&lt;span style="color:#f92672"&gt;!&lt;/span&gt;&lt;span style="color:#e6db74"&gt;&amp;#34;\\u&amp;#34;&lt;/span&gt;.&lt;span style="color:#a6e22e"&gt;equals&lt;/span&gt;(str.&lt;span style="color:#a6e22e"&gt;substring&lt;/span&gt;(0, 2))) { &lt;span style="color:#75715e"&gt;//前缀检查&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#66d9ef"&gt;throw&lt;/span&gt; &lt;span style="color:#66d9ef"&gt;new&lt;/span&gt; IllegalArgumentException(&lt;span style="color:#e6db74"&gt;&amp;#34;Must start with \\u&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	}
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	String tmp &lt;span style="color:#f92672"&gt;=&lt;/span&gt; str.&lt;span style="color:#a6e22e"&gt;substring&lt;/span&gt;(2, 4);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;int&lt;/span&gt; code &lt;span style="color:#f92672"&gt;=&lt;/span&gt; Integer.&lt;span style="color:#a6e22e"&gt;parseInt&lt;/span&gt;(tmp, 16) &lt;span style="color:#f92672"&gt;&amp;lt;&amp;lt;&lt;/span&gt; 8;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	tmp &lt;span style="color:#f92672"&gt;=&lt;/span&gt; str.&lt;span style="color:#a6e22e"&gt;substring&lt;/span&gt;(4, 6);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	code &lt;span style="color:#f92672"&gt;+=&lt;/span&gt; Integer.&lt;span style="color:#a6e22e"&gt;parseInt&lt;/span&gt;(tmp, 16);
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	&lt;span style="color:#66d9ef"&gt;return&lt;/span&gt; (&lt;span style="color:#66d9ef"&gt;char&lt;/span&gt;) code;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;由于 Java 字符串里 &lt;code&gt;\u&lt;/code&gt; 要写成 &lt;code&gt;\\u&lt;/code&gt;，因为 &lt;code&gt;\&lt;/code&gt; 本身需要转义。所以传进来的参数长这样：&lt;code&gt;\\u4e16&lt;/code&gt;（6 个字符：&lt;code&gt;\ u 4 e 1 6&lt;/code&gt;）。&lt;/p&gt;</description></item><item><title>JD2M技术栈——我的Java反编译器</title><link>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/</link><pubDate>Fri, 03 Jul 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/</guid><description>&lt;h1 id="jd2m技术栈我的-java-反编译器"&gt;
+ JD2M技术栈——我的 Java 反编译器
+ &lt;a class="anchor" href="#jd2m%e6%8a%80%e6%9c%af%e6%a0%88%e6%88%91%e7%9a%84-java-%e5%8f%8d%e7%bc%96%e8%af%91%e5%99%a8"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="前置知识java-从源码到运行"&gt;
+ 前置知识：Java 从源码到运行
+ &lt;a class="anchor" href="#%e5%89%8d%e7%bd%ae%e7%9f%a5%e8%af%86java-%e4%bb%8e%e6%ba%90%e7%a0%81%e5%88%b0%e8%bf%90%e8%a1%8c"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-text" data-lang="text"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;.java 源码
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; │
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ▼ javac 编译
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;.class 字节码文件（平台无关的二进制格式）
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; │
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ▼ java 命令启动 JVM
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;JVM 加载 → 验证 → 解释执行 / JIT 编译 → 机器码
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;反编译就是把流程反过来：&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-text" data-lang="text"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;.class 字节码
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; │
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; ▼ 反编译器（如 CFR）
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;.java 源码（近似还原，不可能 100% 还原）
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="为什么反编译不能百分百还原"&gt;
+ 为什么反编译不能百分百还原
+ &lt;a class="anchor" href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e5%8f%8d%e7%bc%96%e8%af%91%e4%b8%8d%e8%83%bd%e7%99%be%e5%88%86%e7%99%be%e8%bf%98%e5%8e%9f"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;编译器在编译过程中会丢失一些信息：&lt;/p&gt;
+&lt;table&gt;
+	&lt;thead&gt;
+			&lt;tr&gt;
+					&lt;th&gt;丢失的信息&lt;/th&gt;
+					&lt;th&gt;举例&lt;/th&gt;
+			&lt;/tr&gt;
+	&lt;/thead&gt;
+	&lt;tbody&gt;
+			&lt;tr&gt;
+					&lt;td&gt;局部变量名&lt;/td&gt;
+					&lt;td&gt;&lt;code&gt;int a&lt;/code&gt; ← 字节码中无变量名，只有类型和栈位置&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;泛型参数&lt;/td&gt;
+					&lt;td&gt;&lt;code&gt;List&amp;lt;String&amp;gt;&lt;/code&gt; → &lt;code&gt;List&lt;/code&gt;（泛型擦除）&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;注释&lt;/td&gt;
+					&lt;td&gt;所有注释在编译时被丢弃&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;格式/缩进&lt;/td&gt;
+					&lt;td&gt;完全不存在&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;for/while 区别&lt;/td&gt;
+					&lt;td&gt;都变成相同条件的 goto 跳转&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;switch 字符串&lt;/td&gt;
+					&lt;td&gt;编译为 &lt;code&gt;hashCode()&lt;/code&gt; 比较 + 跳转表&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;try-with-resources&lt;/td&gt;
+					&lt;td&gt;编译为 try-catch-finally 模式&lt;/td&gt;
+			&lt;/tr&gt;
+	&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2 id="class-文件格式"&gt;
+ class 文件格式
+ &lt;a class="anchor" href="#class-%e6%96%87%e4%bb%b6%e6%a0%bc%e5%bc%8f"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;每一个&lt;code&gt;.class&lt;/code&gt;文件都严格按照一下结构排列：&lt;/p&gt;</description></item></channel></rss>
