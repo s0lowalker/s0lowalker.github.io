@@ -53,4 +53,53 @@
 &lt;/ol&gt;
 &lt;p&gt;ASP，ASPX，PHP，Java，Python，Go，javascript等。&lt;/p&gt;
 &lt;p&gt;ASP属于第一代动态网页技术，是一个服务端脚本环境，可以在 HTML 页面中嵌入脚本语言，主要是 VBScript、JScript，在服务器执行后生成动态网页后再返回给浏览器。&lt;/p&gt;
-&lt;p&gt;ASPX 是 ASP.NET 的文件后缀，ASP.NET 是一个成熟的&lt;strong&gt;面向对象 Web 开发框架&lt;/strong&gt;，而 ASPX 页面只是其中用于构建 UI 的一种具体文件。ASP.NET 全部&lt;strong&gt;预编译为 IL 中间语言&lt;/strong&gt;，再由 JIT 编译成本地代码。ASP.NET支持强类型语言，目前最主要的是 C# 和 VB.NET。&lt;/p&gt;</description></item></channel></rss>
+&lt;p&gt;ASPX 是 ASP.NET 的文件后缀，ASP.NET 是一个成熟的&lt;strong&gt;面向对象 Web 开发框架&lt;/strong&gt;，而 ASPX 页面只是其中用于构建 UI 的一种具体文件。ASP.NET 全部&lt;strong&gt;预编译为 IL 中间语言&lt;/strong&gt;，再由 JIT 编译成本地代码。ASP.NET支持强类型语言，目前最主要的是 C# 和 VB.NET。&lt;/p&gt;</description></item><item><title/><link>https://s0lowalker.github.io/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/js%E5%BA%94%E7%94%A8/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/js%E5%BA%94%E7%94%A8/</guid><description>&lt;h1 id="js-应用"&gt;
+ JS 应用
+ &lt;a class="anchor" href="#js-%e5%ba%94%e7%94%a8"&gt;#&lt;/a&gt;
+&lt;/h1&gt;
+&lt;h2 id="ajax-技术"&gt;
+ Ajax 技术
+ &lt;a class="anchor" href="#ajax-%e6%8a%80%e6%9c%af"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;h2 id="bom-浏览器对象"&gt;
+ BOM 浏览器对象
+ &lt;a class="anchor" href="#bom-%e6%b5%8f%e8%a7%88%e5%99%a8%e5%af%b9%e8%b1%a1"&gt;#&lt;/a&gt;
+&lt;/h2&gt;
+&lt;p&gt;DOM 其实属于 BOM 的一种。&lt;/p&gt;
+&lt;h3 id="window-对象"&gt;
+ Window 对象
+ &lt;a class="anchor" href="#window-%e5%af%b9%e8%b1%a1"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;所有浏览器都支持 &lt;strong&gt;window&lt;/strong&gt; 对象。它代表浏览器的窗口或者标签页。&lt;/p&gt;
+&lt;p&gt;所有全局 JavaScript 对象，函数和变量自动成为 window 对象的成员。&lt;/p&gt;
+&lt;p&gt;全局变量是 window 对象的属性。&lt;/p&gt;
+&lt;p&gt;全局函数是 window 对象的方法。&lt;/p&gt;
+&lt;p&gt;甚至（HTML DOM 的）document 对象也是 window 对象属性：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-js" data-lang="js"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;window.document.&lt;span style="color:#a6e22e"&gt;getElementById&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;header&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;等同于：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-js" data-lang="js"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;document.&lt;span style="color:#a6e22e"&gt;getElementById&lt;/span&gt;(&lt;span style="color:#e6db74"&gt;&amp;#34;header&amp;#34;&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="screen-对象"&gt;
+ Screen 对象
+ &lt;a class="anchor" href="#screen-%e5%af%b9%e8%b1%a1"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;这个对象存储的是用户显示器的硬件和系统配置信息&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;window.screen&lt;/strong&gt; 对象不带 window 前缀也可以写：&lt;/p&gt;
+&lt;h3 id="属性"&gt;
+ 属性：
+ &lt;a class="anchor" href="#%e5%b1%9e%e6%80%a7"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;screen.width&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;screen.height&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;screen.availWidth&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;screen.availHeight&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;screen.colorDepth&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;screen.pixelDepth&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;有些页面为了适配各种设备，会用这个对象进行对应的调整。&lt;/p&gt;
+&lt;h3 id="location-对象"&gt;
+ Location 对象
+ &lt;a class="anchor" href="#location-%e5%af%b9%e8%b1%a1"&gt;#&lt;/a&gt;
+&lt;/h3&gt;
+&lt;p&gt;这个对象存储的是当前网页地址的所有信息。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;window.location&lt;/strong&gt; 对象可不带 window 前缀书写。&lt;/p&gt;</description></item></channel></rss>

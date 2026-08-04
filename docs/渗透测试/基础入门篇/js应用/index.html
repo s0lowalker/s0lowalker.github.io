@@ -1,0 +1,260 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  JS 应用
+  #
+
+
+  Ajax 技术
+  #
+
+
+  BOM 浏览器对象
+  #
+
+DOM 其实属于 BOM 的一种。
+
+  Window 对象
+  #
+
+所有浏览器都支持 window 对象。它代表浏览器的窗口或者标签页。
+所有全局 JavaScript 对象，函数和变量自动成为 window 对象的成员。
+全局变量是 window 对象的属性。
+全局函数是 window 对象的方法。
+甚至（HTML DOM 的）document 对象也是 window 对象属性：
+window.document.getElementById("header");
+等同于：
+document.getElementById("header");
+
+  Screen 对象
+  #
+
+这个对象存储的是用户显示器的硬件和系统配置信息
+window.screen 对象不带 window 前缀也可以写：
+
+  属性：
+  #
+
+
+screen.width
+screen.height
+screen.availWidth
+screen.availHeight
+screen.colorDepth
+screen.pixelDepth
+
+有些页面为了适配各种设备，会用这个对象进行对应的调整。
+
+  Location 对象
+  #
+
+这个对象存储的是当前网页地址的所有信息。
+window.location 对象可不带 window 前缀书写。'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/js%E5%BA%94%E7%94%A8/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Solowalker"><meta property="og:description" content='JS 应用 # Ajax 技术 # BOM 浏览器对象 # DOM 其实属于 BOM 的一种。
+Window 对象 # 所有浏览器都支持 window 对象。它代表浏览器的窗口或者标签页。
+所有全局 JavaScript 对象，函数和变量自动成为 window 对象的成员。
+全局变量是 window 对象的属性。
+全局函数是 window 对象的方法。
+甚至（HTML DOM 的）document 对象也是 window 对象属性：
+window.document.getElementById("header"); 等同于：
+document.getElementById("header"); Screen 对象 # 这个对象存储的是用户显示器的硬件和系统配置信息
+window.screen 对象不带 window 前缀也可以写：
+属性： # screen.width screen.height screen.availWidth screen.availHeight screen.colorDepth screen.pixelDepth 有些页面为了适配各种设备，会用这个对象进行对应的调整。
+Location 对象 # 这个对象存储的是当前网页地址的所有信息。
+window.location 对象可不带 window 前缀书写。'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><title>Js应用 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/js%E5%BA%94%E7%94%A8/><link rel=stylesheet href=/book.min.01cf2ecc34d0385d73c8cd76aa597f03773cd1f15eddc9a9558b305b53c93dec.css integrity="sha256-Ac8uzDTQOF1zyM12qll/A3c80fFe3cmpVYswW1PJPew=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f9a3bcd601b8c5696748f0773244ce7e16e9ebba9cdab679f77b1cfa9ca23e40.js integrity="sha256-+aO81gG4xWlnSPB3MkTOfhbp67qc2rZ593sc+pyiPkA=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-4b8c89e1539cb7bd5cf76bb189686b16 class=toggle>
+<label for=section-4b8c89e1539cb7bd5cf76bb189686b16 class="flex justify-between"><a role=button>项目</a></label><ul><li><input type=checkbox id=section-9d12b352c320cbba4697bac07fbf83f9 class=toggle>
+<label for=section-9d12b352c320cbba4697bac07fbf83f9 class="flex justify-between"><a role=button>JD2M</a></label><ul><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/>JD2M源码分析</a></li><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/>JD2M技术栈——我的Java反编译器</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle checked>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle checked>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/js%E5%BA%94%E7%94%A8/ class=active>Js应用</a></li></ul></li></ul></li><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li><li><input type=checkbox id=section-c47aa3d5834730def37f0c0296806937 class=toggle>
+<label for=section-c47aa3d5834730def37f0c0296806937 class="flex justify-between"><a role=button>Java反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之 Cc1</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Js应用</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#ajax-技术>Ajax 技术</a></li><li><a href=#bom-浏览器对象>BOM 浏览器对象</a><ul><li><a href=#window-对象>Window 对象</a></li><li><a href=#screen-对象>Screen 对象</a></li><li><a href=#属性>属性：</a></li><li><a href=#location-对象>Location 对象</a></li><li><a href=#navigator-对象>Navigator 对象</a></li><li><a href=#history-对象>History 对象</a></li><li><a href=#一些方法>一些方法：</a></li></ul></li><li><a href=#dom-文档树>DOM 文档树</a></li><li><a href=#前端加密>前端加密</a><ul><li><a href=#数据加密>数据加密</a></li><li><a href=#代码混淆>代码混淆</a></li></ul></li><li><a href=#nodejs>Node.js</a></li><li><a href=#webpack>Webpack</a><ul><li><a href=#源码泄露>源码泄露</a></li></ul></li><li><a href=#vue>Vue</a></li><li><a href=#小程序>小程序</a><ul><li><a href=#小程序架构>小程序架构</a></li><li><a href=#安全问题>安全问题</a></li></ul></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=js-应用>JS 应用
+<a class=anchor href=#js-%e5%ba%94%e7%94%a8>#</a></h1><h2 id=ajax-技术>Ajax 技术
+<a class=anchor href=#ajax-%e6%8a%80%e6%9c%af>#</a></h2><h2 id=bom-浏览器对象>BOM 浏览器对象
+<a class=anchor href=#bom-%e6%b5%8f%e8%a7%88%e5%99%a8%e5%af%b9%e8%b1%a1>#</a></h2><p>DOM 其实属于 BOM 的一种。</p><h3 id=window-对象>Window 对象
+<a class=anchor href=#window-%e5%af%b9%e8%b1%a1>#</a></h3><p>所有浏览器都支持 <strong>window</strong> 对象。它代表浏览器的窗口或者标签页。</p><p>所有全局 JavaScript 对象，函数和变量自动成为 window 对象的成员。</p><p>全局变量是 window 对象的属性。</p><p>全局函数是 window 对象的方法。</p><p>甚至（HTML DOM 的）document 对象也是 window 对象属性：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-js data-lang=js><span style=display:flex><span>window.document.<span style=color:#a6e22e>getElementById</span>(<span style=color:#e6db74>&#34;header&#34;</span>);
+</span></span></code></pre></div><p>等同于：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-js data-lang=js><span style=display:flex><span>document.<span style=color:#a6e22e>getElementById</span>(<span style=color:#e6db74>&#34;header&#34;</span>);
+</span></span></code></pre></div><h3 id=screen-对象>Screen 对象
+<a class=anchor href=#screen-%e5%af%b9%e8%b1%a1>#</a></h3><p>这个对象存储的是用户显示器的硬件和系统配置信息</p><p><strong>window.screen</strong> 对象不带 window 前缀也可以写：</p><h3 id=属性>属性：
+<a class=anchor href=#%e5%b1%9e%e6%80%a7>#</a></h3><ul><li><code>screen.width</code></li><li><code>screen.height</code></li><li><code>screen.availWidth</code></li><li><code>screen.availHeight</code></li><li><code>screen.colorDepth</code></li><li><code>screen.pixelDepth</code></li></ul><p>有些页面为了适配各种设备，会用这个对象进行对应的调整。</p><h3 id=location-对象>Location 对象
+<a class=anchor href=#location-%e5%af%b9%e8%b1%a1>#</a></h3><p>这个对象存储的是当前网页地址的所有信息。</p><p><strong>window.location</strong> 对象可不带 window 前缀书写。</p><p>一些例子：</p><ul><li><code>window.location.href</code> 返回当前页面的 href (URL)</li><li><code>window.location.hostname</code> 返回 web 主机的域名</li><li><code>window.location.pathname</code> 返回当前页面的路径或文件名</li><li><code>window.location.protocol</code> 返回使用的 web 协议（http: 或 https:）</li><li><code>window.location.assign</code> 加载新文档</li></ul><h3 id=navigator-对象>Navigator 对象
+<a class=anchor href=#navigator-%e5%af%b9%e8%b1%a1>#</a></h3><p>这个对象存储浏览器本身的软硬件环境信息。</p><p><strong>window.navigator</strong> 对象可以不带 window 前缀来写。</p><p>一些例子：</p><ul><li><code>navigator.appName</code></li><li><code>navigator.appCodeName</code></li><li><code>navigator.platform</code></li><li><code>navigator.userAgent</code></li></ul><h3 id=history-对象>History 对象
+<a class=anchor href=#history-%e5%af%b9%e8%b1%a1>#</a></h3><p>这个对象存储的是浏览器的历史信息。</p><p><strong>window.history</strong> 对象可不带 window 书写。</p><p>为了保护用户的隐私，JavaScript 访问此对象存在限制。</p><h3 id=一些方法>一些方法：
+<a class=anchor href=#%e4%b8%80%e4%ba%9b%e6%96%b9%e6%b3%95>#</a></h3><ul><li><code>history.back()</code> - 等同于在浏览器点击后退按钮</li><li><code>history.forward()</code> - 等同于在浏览器中点击前进按钮</li></ul><h2 id=dom-文档树>DOM 文档树
+<a class=anchor href=#dom-%e6%96%87%e6%a1%a3%e6%a0%91>#</a></h2><p>当网页被加载时，浏览器会创建页面的文档对象模型。</p><p>HTML DOM 模型会被结构化为对象树：</p><p><img src=https://www.w3school.com.cn/i/ct_htmltree.gif alt="对象的HTML DOM树"></p><p>通过这个对象模型，js 能够创建动态 HTML：</p><ul><li>JavaScript 能改变页面中的所有 HTML 元素</li><li>JavaScript 能改变页面中的所有 HTML 属性</li><li>JavaScript 能改变页面中的所有 CSS 样式</li><li>JavaScript 能删除已有的 HTML 元素和属性</li><li>JavaScript 能添加新的 HTML 元素和属性</li><li>JavaScript 能对页面中所有已有的 HTML 事件作出反应</li><li>JavaScript 能在页面中创建新的 HTML 事件</li></ul><p>样例代码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-html data-lang=html><span style=display:flex><span><span style=color:#75715e>&lt;!DOCTYPE html&gt;</span>
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>html</span> <span style=color:#a6e22e>lang</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;en&#34;</span>&gt;
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>head</span>&gt;
+</span></span><span style=display:flex><span>    &lt;<span style=color:#f92672>meta</span> <span style=color:#a6e22e>charset</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;UTF-8&#34;</span>&gt;
+</span></span><span style=display:flex><span>    &lt;<span style=color:#f92672>title</span>&gt;Title&lt;/<span style=color:#f92672>title</span>&gt;
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>head</span>&gt;
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>body</span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>a</span> <span style=color:#a6e22e>id</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;a&#34;</span> <span style=color:#a6e22e>href</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;http://www.baidu.com&#34;</span>&gt;点击&lt;/<span style=color:#f92672>a</span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>script</span> &gt;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>a</span> <span style=color:#f92672>=</span> document.<span style=color:#a6e22e>getElementById</span>(<span style=color:#e6db74>&#39;a&#39;</span>).<span style=color:#a6e22e>href</span>;
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>a</span>.<span style=color:#a6e22e>href</span> <span style=color:#f92672>=</span> <span style=color:#e6db74>&#39;http://www.youku.com&#39;</span>;
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>script</span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!--&lt;button onclick=&#34;func()&#34;&gt;点击&lt;/button&gt;--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!--&lt;script&gt;--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!--    function func() {--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!--        alert(&#39;1&#39;);--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!--    }--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!--&lt;/script&gt;--&gt;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>button</span> <span style=color:#a6e22e>id</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;bn&#34;</span>&gt;点击&lt;/<span style=color:#f92672>button</span>&gt;
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>script</span>&gt;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>bn</span> <span style=color:#f92672>=</span> document.<span style=color:#a6e22e>getElementById</span>(<span style=color:#e6db74>&#39;bn&#39;</span>);
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>bn</span>.<span style=color:#a6e22e>onclick</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>function</span> () {<span style=color:#a6e22e>alert</span>(<span style=color:#e6db74>&#39;xss&#39;</span>);}
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>script</span>&gt;
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>body</span>&gt;
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>html</span>&gt;
+</span></span></code></pre></div><p>比如我们点击搜索框出现之前的搜索记录就和 DOM 相关。</p><h2 id=前端加密>前端加密
+<a class=anchor href=#%e5%89%8d%e7%ab%af%e5%8a%a0%e5%af%86>#</a></h2><h3 id=数据加密>数据加密
+<a class=anchor href=#%e6%95%b0%e6%8d%ae%e5%8a%a0%e5%af%86>#</a></h3><h4 id=crypto-js库>crypto-js库
+<a class=anchor href=#crypto-js%e5%ba%93>#</a></h4><p>样例代码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-html data-lang=html><span style=display:flex><span><span style=color:#75715e>&lt;!DOCTYPE html&gt;</span>
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>html</span> <span style=color:#a6e22e>lang</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;en&#34;</span>&gt;
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>head</span>&gt;
+</span></span><span style=display:flex><span>    &lt;<span style=color:#f92672>meta</span> <span style=color:#a6e22e>charset</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;UTF-8&#34;</span>&gt;
+</span></span><span style=display:flex><span>    &lt;<span style=color:#f92672>title</span>&gt;Title&lt;/<span style=color:#f92672>title</span>&gt;
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>head</span>&gt;
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>body</span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>script</span> <span style=color:#a6e22e>src</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;crypto-js.js&#34;</span>&gt;&lt;/<span style=color:#f92672>script</span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&lt;<span style=color:#f92672>script</span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>str</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#39;solowalker&#39;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//base64编码
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>base64str</span><span style=color:#f92672>=</span>window.<span style=color:#a6e22e>btoa</span>(<span style=color:#a6e22e>str</span>);
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>base64str</span>);
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//md5加密
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>md5str</span><span style=color:#f92672>=</span><span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>MD5</span>(<span style=color:#a6e22e>str</span>).<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>md5str</span>);
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//SHA1加密
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>sha1str</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>SHA1</span>(<span style=color:#a6e22e>str</span>).<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>sha1str</span>);
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//HMAC加密
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>key</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#39;key&#39;</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>hash</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>HmacSHA256</span>(<span style=color:#a6e22e>str</span>,<span style=color:#a6e22e>key</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>HMACstr</span><span style=color:#f92672>=</span><span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>enc</span>.<span style=color:#a6e22e>Hex</span>.<span style=color:#a6e22e>stringify</span>(<span style=color:#a6e22e>hash</span>);
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>HMACstr</span>);
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//AES加密
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>aeskey</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#39;aeskey&#39;</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>aesstr</span><span style=color:#f92672>=</span><span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>AES</span>.<span style=color:#a6e22e>encrypt</span>(<span style=color:#a6e22e>str</span>,<span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>enc</span>.<span style=color:#a6e22e>Utf8</span>.<span style=color:#a6e22e>parse</span>(<span style=color:#a6e22e>aeskey</span>),
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span><span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>mode</span>.<span style=color:#a6e22e>ECB</span>,
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>padding</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>pad</span>.<span style=color:#a6e22e>Pkcs7</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    ).<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>aesstr</span>);
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//DES加密
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>deskey</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#39;deskey&#39;</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>desstr</span><span style=color:#f92672>=</span><span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>DES</span>.<span style=color:#a6e22e>encrypt</span>(<span style=color:#a6e22e>str</span>,<span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>enc</span>.<span style=color:#a6e22e>Utf8</span>.<span style=color:#a6e22e>parse</span>(<span style=color:#a6e22e>deskey</span>),
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span><span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>mode</span>.<span style=color:#a6e22e>ECB</span>,
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>padding</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>CryptoJS</span>.<span style=color:#a6e22e>pad</span>.<span style=color:#a6e22e>Pkcs7</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    ).<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>desstr</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>script</span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>body</span>&gt;
+</span></span><span style=display:flex><span>&lt;/<span style=color:#f92672>html</span>&gt;
+</span></span></code></pre></div><p>这个库并不支持非对称加密，所以进行非对称加密时需要使用另一个库——JSEncrypt。</p><h4 id=jsencrypt-库>JSEncrypt 库
+<a class=anchor href=#jsencrypt-%e5%ba%93>#</a></h4><p>样例代码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-js data-lang=js><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>PUBLIC_KEY</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#39;-----BEGIN PUBLIC KEY-----\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx4RhaeXjBM+2CrWPNPXc\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;1NKN1+kKHHdBL5rMDzH6RAAx3KClHSjavq/vvWRDbyIOGWIaQdyiq5KBXlvJ/B7J\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;vnvrduGY7wCjUb6J5RNLiUxAvyX2wm6QHaRjy5jJjCEr2ZL4F9tzdFX5Bfl+vxHs\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;3cBlvf0d39ZpQNA+SEoP5UK51hUWtnM3m/lkzSvW4zZ8fV4GrbNOnP7fYeK4SltX\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;KQQjYCbgxX5erwn4NeQRfr6VIk3tT66Jr1qM/uQwDzPhDmBI3UlebMJsCtXHvIVs\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;mObJInFTwlT9MoEDyoGAhD6AiPhUjVQMG2rI/DlZ7q18WQIIGO3Hmo28b8PTeO5v\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;MQIDAQAB\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;-----END PUBLIC KEY-----\n&#39;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>PRIVATE_KEY</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#39;-----BEGIN PRIVATE KEY-----\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDHhGFp5eMEz7YK\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;tY809dzU0o3X6Qocd0EvmswPMfpEADHcoKUdKNq+r++9ZENvIg4ZYhpB3KKrkoFe\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;W8n8Hsm+e+t24ZjvAKNRvonlE0uJTEC/JfbCbpAdpGPLmMmMISvZkvgX23N0VfkF\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;+X6/EezdwGW9/R3f1mlA0D5ISg/lQrnWFRa2czeb+WTNK9bjNnx9Xgats06c/t9h\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;4rhKW1cpBCNgJuDFfl6vCfg15BF+vpUiTe1PromvWoz+5DAPM+EOYEjdSV5swmwK\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;1ce8hWyY5skicVPCVP0ygQPKgYCEPoCI+FSNVAwbasj8OVnurXxZAggY7ceajbxv\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;w9N47m8xAgMBAAECggEBAJLKyUk6xE6T7CHw9w5GHlXPHGFQqgnLjABUafJ8GN/T\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;LNxgrVrI5jgKBd9YV2z6p1jxntP6WwzU263q5q9Cj7hAQDvVO8oMtBy+jYInMhow\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;Kir46Zaf9hR5EJuJLDCXb0XDJhmXcliTsIY+zIwTyixVFAY2prY7cHEpRcm2A//u\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;TWOr2Q9NuPyKhuoSTkVN2uJqKIWTOFt7rYVicHzWr9X2ImdHdUoxXpsrwJHulrGO\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;p3J3Nr46VyTjsgk15KQWqfeo6skWfPps9uiG7dHG+Jt35yfHkEBvEkSIBw1MXuRc\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;oh9l1v7Y8mj1uK2B64CfDnifig+VPcg70qpjQr3ATGECgYEA5goH+vPzIzDdy4pS\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;UTE2eWcdfH+0VRinh9MxI/mREichTr4FWiSfPhwecay/i2ccadNIiiokfBWIwfyU\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;42ZNV5QUP83ZJcAXSUgQ1haJ1yRgHEN7kb2Q1y0H34m5/rCSVGUzLB3AQ5ptNtU6\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;JdyvAX2Bqm6aBuICNBjlo23QRr0CgYEA3giMa283OZ+++hZnsNRZnAXcwNhGUgHf\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;SNsX89JZoCRainzkj/l35rCeLqNPnDBC15OJ0GcaNmE4AE8Ms410n0EiHIYdKeDO\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;K2gsc17AAybnDjj1RO7y60WLFsglco27PMdWOZorC/7D53GZUGh1Af1KDIYcgijp\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;V3uWPeJu24UCgYBVJ3l0yEFE0Z4I7pcyPwlvP2CG6a8ToSDDAsa6DnRJR/robycE\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;C3J3R2ltowj0zaKS+gdsPdVrqX0KcjmbRA91T/d+9vBfLRBxrB+vYIB+B5UcYU6o\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;0IeBX8X+VbloMmy4mQ2sUwcM/2lWVvBDe8G8x3zsXizeR2ORbXX0XX4v8QKBgFn/\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;FQum9LeCrKIp2rWuHPRE3Am+oCI1aA/b3oWRyYpDsf9YSDyjXZpAFJ3KzEX+udkv\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;kDjM0a8hENXvNLLCr3atq+nr4n5LBMZLX1kUGrgsWJNHOwNJ52S9t3bwgV1BXZdx\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;JN4MQ06FYVq6jO4uqN65j/4rjfqkIpC3I1rKIS0RAoGAJeeonwQmcXFPvIjMtpJl\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;yHcRKWvCyIR2IAg/8pBEsAa2pknFMrR5psJId57F15ND5jf1MAtHUBdmTQ2A04y6\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;yvMHacFgBpsLH1rE5meCRUGOUN00z6cwbZsRulinDd9YuNTkalJ6dxZfsvEx5sJ+\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;akHZ6hneq3bbvlFqcC8gB4g=\n&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#39;-----END PRIVATE KEY-----\n&#39;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//公钥加密
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>encrypt</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> <span style=color:#a6e22e>JSEncrypt</span>();<span style=color:#75715e>//实例化加密对象
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>encrypt</span>.<span style=color:#a6e22e>setPublicKey</span>(<span style=color:#a6e22e>PUBLIC_KEY</span>);<span style=color:#75715e>//设置公钥
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>encrypted</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>encrypt</span>.<span style=color:#a6e22e>encrypt</span>(<span style=color:#a6e22e>str</span>);<span style=color:#75715e>//对指定数据进行加密
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>encrypted</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//私钥解密
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>decrypt</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> <span style=color:#a6e22e>JSEncrypt</span>(); <span style=color:#75715e>// 创建解密对象
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>decrypt</span>.<span style=color:#a6e22e>setPrivateKey</span>(<span style=color:#a6e22e>PRIVATE_KEY</span>); <span style=color:#75715e>//设置私钥
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>uncrypted</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>decrypt</span>.<span style=color:#a6e22e>decrypt</span>(<span style=color:#a6e22e>encrypted</span>); <span style=color:#75715e>//解密
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>uncrypted</span>);
+</span></span></code></pre></div><h3 id=代码混淆>代码混淆
+<a class=anchor href=#%e4%bb%a3%e7%a0%81%e6%b7%b7%e6%b7%86>#</a></h3><p>混淆代码的主要目的是保护源代码，防止未经授权的复制、篡改或逆向工程。通过对变量名、字符串和控制流的修改，混淆代码看似毫无逻辑，但本质功能没变。混淆技术常用于商业软件和恶意软件中。</p><p>网上也有很多在线 js 混淆的网站，更多技术会在后续 js 逆向学习到。</p><h2 id=nodejs>Node.js
+<a class=anchor href=#nodejs>#</a></h2><p>Node.js 是让 javascript 运行在服务端的运行环境。</p><p>样例代码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-js data-lang=js><span style=display:flex><span><span style=color:#66d9ef>const</span> <span style=color:#a6e22e>fs</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>require</span>(<span style=color:#e6db74>&#39;fs&#39;</span>);
+</span></span><span style=display:flex><span><span style=color:#66d9ef>const</span> <span style=color:#a6e22e>express</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>require</span>(<span style=color:#e6db74>&#39;express&#39;</span>);
+</span></span><span style=display:flex><span><span style=color:#66d9ef>const</span> <span style=color:#a6e22e>app</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>express</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>app</span>.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#39;/&#39;</span>, (<span style=color:#a6e22e>req</span>, <span style=color:#a6e22e>res</span>) =&gt; {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>req</span>.<span style=color:#a6e22e>query</span>.<span style=color:#a6e22e>name</span>;
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>res</span>.<span style=color:#a6e22e>send</span>(<span style=color:#a6e22e>name</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>fs</span>.<span style=color:#a6e22e>readFile</span>(<span style=color:#e6db74>&#39;1.txt&#39;</span>, <span style=color:#e6db74>&#39;utf8&#39;</span>, ( <span style=color:#a6e22e>err</span>, <span style=color:#a6e22e>data</span>) =&gt; {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>err</span>) {<span style=color:#66d9ef>throw</span> <span style=color:#a6e22e>err</span>;}
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//res.send(data);
+</span></span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>})
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>server</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>app</span>.<span style=color:#a6e22e>listen</span>(<span style=color:#ae81ff>8081</span>, <span style=color:#e6db74>&#39;0.0.0.0&#39;</span>,<span style=color:#66d9ef>function</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>port</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>server</span>.<span style=color:#a6e22e>address</span>().<span style=color:#a6e22e>port</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>host</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>server</span>.<span style=color:#a6e22e>address</span>().<span style=color:#a6e22e>address</span>;
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>host</span>);
+</span></span><span style=display:flex><span>});
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-js data-lang=js><span style=display:flex><span><span style=color:#66d9ef>const</span> <span style=color:#a6e22e>child_Process</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>require</span>(<span style=color:#e6db74>&#39;child_process&#39;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//child_Process.exec(&#39;calc&#39;);
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>child_Process</span>.<span style=color:#a6e22e>spawnSync</span>(<span style=color:#e6db74>&#39;calc&#39;</span>);
+</span></span></code></pre></div><p>Node.js 的相关漏洞以原型链污染等为特色。</p><h2 id=webpack>Webpack
+<a class=anchor href=#webpack>#</a></h2><p>Webpack 是一个强大的模块打包工具，主要用于将 Javascript 代码和其他资源（如 CSS、图片、字体等）打包成浏览器能够高效加载的文件。</p><p>Webpack支持模块化开发，可以将代码分割成多个文件（模块），然后将这些文件按需打包成一个或多个最终的输出文件。这对于管理复杂应用程序的代码非常重要，特别是现代 JavaScript 应用程序中，大多数代码和资源都已是模块化的。例如，你可以将前端代码分为多个模块（如组件、工具函数等），然后让 Webpack 负责打包这些模块，并管理它们之间的依赖关系。</p><p>Webpack 不仅仅是处理 JavaScript 文件，还能处理多种类型的资源：</p><ul><li><p>CSS：你可以使用 Webpack 将 CSS 文件打包到最终的输出中。</p></li><li><p>Sass / Less：Webpack 配合相应的加载器（如 sass-loader、less-loader）可以处理 Sass 或 Less 文件。</p></li><li><p>图片和字体：通过 file-loader 或 url-loader，Webpack 可以处理图片、字体文件等静态资源。</p></li><li><p>HTML 文件：可以使用 html-webpack-plugin 插件自动生成 HTML 文件并插入打包后的资源。</p></li></ul><p>Webpack 支持 代码分割，它可以将大型的 JavaScript 应用程序拆分成多个小的文件（chunks），并按需加载这些文件。这样，初次加载时，浏览器只会加载最小的必需代码，而不是所有的代码，从而提高页面加载速度。例如，你可以按页面或功能进行代码分割，只加载用户需要的部分，而不是一次性加载整个应用程序。</p><h3 id=源码泄露>源码泄露
+<a class=anchor href=#%e6%ba%90%e7%a0%81%e6%b3%84%e9%9c%b2>#</a></h3><p>其中一种是由打包模式引起的源码泄露。</p><p>如果打包模式是开发模式，我们就可以在开发者工具中看到源码。还原：浏览器 Webpack。</p><p>第一种就是 devtool 配置不当，将会在部署代码文件中生成对应匹配的 sourcemap 文件（源码映射），如果将参数 devtool 配置为“source-map”、“cheap-source-map”、“hidden-source-map”、“nosources-source-map”、“cheap-module-source-map”等值是，打包会生成单独的 map 文件。</p><h2 id=vue>Vue
+<a class=anchor href=#vue>#</a></h2><p><strong>Vue.js</strong>（简称 <strong>Vue</strong>）是一个用于构建用户界面的<strong>渐进式 JavaScript 框架</strong>。它由尤雨溪（Evan You）于 2014 年创建，目前是全球最流行的前端框架之一。</p><p>Vue 项目可以由 Vite 进行构建，有开发模式和生产模式。</p><table><thead><tr><th style=text-align:left>维度</th><th style=text-align:left>开发模式 (Development)</th><th style=text-align:left>生产模式 (Production)</th></tr></thead><tbody><tr><td style=text-align:left><strong>启动方式</strong></td><td style=text-align:left><code>npm run dev</code></td><td style=text-align:left><code>npm run build</code></td></tr><tr><td style=text-align:left><strong>目的</strong></td><td style=text-align:left>方便你写代码、调试</td><td style=text-align:left>给用户访问的最终版本</td></tr><tr><td style=text-align:left><strong>代码体积</strong></td><td style=text-align:left>大（包含注释、空格、完整变量名）</td><td style=text-align:left>小（压缩、混淆、tree-shaking）</td></tr><tr><td style=text-align:left><strong>警告/错误提示</strong></td><td style=text-align:left>✅ 详细（有完整堆栈和友好提示）</td><td style=text-align:left>❌ 精简（只显示必要错误）</td></tr><tr><td style=text-align:left><strong>性能</strong></td><td style=text-align:left>较慢（按需编译、实时转译）</td><td style=text-align:left>极快（预先优化、缓存）</td></tr><tr><td style=text-align:left><strong>热更新 (HMR)</strong></td><td style=text-align:left>✅ 支持（改代码立即看到效果）</td><td style=text-align:left>❌ 不支持（是静态文件）</td></tr><tr><td style=text-align:left><strong>调试工具</strong></td><td style=text-align:left>✅ 支持 Vue Devtools 完整功能</td><td style=text-align:left>⚠️ 部分功能受限</td></tr><tr><td style=text-align:left><strong>Source Map</strong></td><td style=text-align:left>✅ 有（方便定位错误行号）</td><td style=text-align:left>⚠️ 可选（默认关闭以保护源码）</td></tr><tr><td style=text-align:left><strong>构建产物</strong></td><td style=text-align:left>不生成文件（直接在内存中运行）</td><td style=text-align:left>生成 <code>dist/</code> 文件夹（HTML/CSS/JS）</td></tr><tr><td style=text-align:left><strong>部署方式</strong></td><td style=text-align:left>本地服务器（只给自己看）</td><td style=text-align:left>部署到线上服务器（给所有用户看）</td></tr></tbody></table><p>Vue 这个前端框架非常安全，很少会出现漏洞。</p><p>如果出现 v-html 这个属性会导致 XSS 漏洞，目前 Vue 推荐使用 <code>{{}}</code>来处理变量，避免了 XSS 漏洞。</p><p>Vue 加上 Webpack 一样可能会导致类似的源码泄露问题。</p><h2 id=小程序>小程序
+<a class=anchor href=#%e5%b0%8f%e7%a8%8b%e5%ba%8f>#</a></h2><p>这里小程序以微信小程序为主。</p><h3 id=小程序架构>小程序架构
+<a class=anchor href=#%e5%b0%8f%e7%a8%8b%e5%ba%8f%e6%9e%b6%e6%9e%84>#</a></h3><ol><li>主体结构</li></ol><p>小程序包含一个描述整体结构 app 和多个描述各自页面的 page。一个小程序主体部分（即 app）由三个文件组成，必须放在项目的根目录：</p><table><thead><tr><th>文件</th><th>必需</th><th>作用</th></tr></thead><tbody><tr><td>app.js</td><td>是</td><td>小程序逻辑</td></tr><tr><td>app.json</td><td>是</td><td>小程序公共配置</td></tr><tr><td>app.wxss</td><td>否</td><td>小程序公共样式表</td></tr></tbody></table><ol start=2><li>一个小程序页面由四个文件组成：</li></ol><table><thead><tr><th>xxx.js</th><th>页面逻辑</th></tr></thead><tbody><tr><td>xxx.json</td><td>页面配置</td></tr><tr><td>xxx.wxml</td><td>页面结构</td></tr><tr><td>xx.wxss</td><td>页面样式</td></tr></tbody></table><ol start=3><li>页面整体目录结构</li></ol><table><thead><tr><th>pages</th><th>页面文件夹</th></tr></thead><tbody><tr><td>index</td><td>首页</td></tr><tr><td>logs</td><td>日志</td></tr><tr><td>utils</td><td>存放工具类文件夹</td></tr><tr><td>app.js</td><td>入口 js</td></tr><tr><td>app.json</td><td>全局配置文件</td></tr><tr><td>app.wxss</td><td>全局样式文件</td></tr><tr><td>project.config.json</td><td>配置</td></tr><tr><td>sitemap.json</td><td>配置小程序及其页面是否允许被微信索引</td></tr></tbody></table><h3 id=安全问题>安全问题
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e9%97%ae%e9%a2%98>#</a></h3><ol><li>逆向反编译</li><li>敏感信息泄露（AK/SK，APIKEY等）</li><li>资产信息提取（IP、web资产）</li><li>代码逻辑安全（算法、提交接口等）</li></ol></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#ajax-技术>Ajax 技术</a></li><li><a href=#bom-浏览器对象>BOM 浏览器对象</a><ul><li><a href=#window-对象>Window 对象</a></li><li><a href=#screen-对象>Screen 对象</a></li><li><a href=#属性>属性：</a></li><li><a href=#location-对象>Location 对象</a></li><li><a href=#navigator-对象>Navigator 对象</a></li><li><a href=#history-对象>History 对象</a></li><li><a href=#一些方法>一些方法：</a></li></ul></li><li><a href=#dom-文档树>DOM 文档树</a></li><li><a href=#前端加密>前端加密</a><ul><li><a href=#数据加密>数据加密</a></li><li><a href=#代码混淆>代码混淆</a></li></ul></li><li><a href=#nodejs>Node.js</a></li><li><a href=#webpack>Webpack</a><ul><li><a href=#源码泄露>源码泄露</a></li></ul></li><li><a href=#vue>Vue</a></li><li><a href=#小程序>小程序</a><ul><li><a href=#小程序架构>小程序架构</a></li><li><a href=#安全问题>安全问题</a></li></ul></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
