@@ -1,0 +1,741 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  Java 常规漏洞
+  #
+
+
+  SQL注入
+  #
+
+
+  JDBC
+  #
+
+
+  漏洞场景
+  #
+
+原生 SQL 语句拼接
+// 原生sql语句动态拼接 参数未进行任何处理
+public R vul1(String type,String id,String username,String password) {
+    //注册数据库驱动类
+    Class.forName("com.mysql.cj.jdbc.Driver");
+
+    //调用DriverManager.getConnection()方法创建Connection连接到数据库
+    Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
+
+    //调用Connection的createStatement()或prepareStatement()方法 创建Statement对象
+    Statement stmt = conn.createStatement();
+    switch (type) {
+        case "add":
+            //这里没有标识id id自增长
+            sql = "INSERT INTO sqli (username, password) VALUES (&#39;" + username + "&#39;, &#39;" + password + "&#39;)";
+            //通过Statement对象执行SQL语句，得到ResultSet对象-查询结果集
+            // 这里注意一下 insert、update、delete 语句应使用executeUpdate()
+            rowsAffected = stmt.executeUpdate(sql);
+            //关闭ResultSet结果集 Statement对象 以及数据库Connection对象 释放资源
+            stmt.close();
+            conn.close();
+            return R.ok(message);
+        case "delete":
+            sql = "DELETE FROM sqli WHERE id = &#39;" + id + "&#39;";
+            rowsAffected = stmt.executeUpdate(sql);
+            ...
+        case "update":
+            sql = "UPDATE sqli SET password = &#39;" + password + "&#39;, username = &#39;" + username + "&#39; WHERE id = &#39;" + id + "&#39;";
+            rowsAffected = stmt.executeUpdate(sql);
+            ...
+        case "select":
+            sql = "SELECT * FROM sqli WHERE id  = " + id;
+            ResultSet rs = stmt.executeQuery(sql);
+            ...
+        }
+}
+JDBC 伪预编译'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Java常规漏洞"><meta property="og:description" content='Java 常规漏洞 # SQL注入 # JDBC # 漏洞场景 # 原生 SQL 语句拼接
+// 原生sql语句动态拼接 参数未进行任何处理 public R vul1(String type,String id,String username,String password) { //注册数据库驱动类 Class.forName("com.mysql.cj.jdbc.Driver"); //调用DriverManager.getConnection()方法创建Connection连接到数据库 Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass); //调用Connection的createStatement()或prepareStatement()方法 创建Statement对象 Statement stmt = conn.createStatement(); switch (type) { case "add": //这里没有标识id id自增长 sql = "INSERT INTO sqli (username, password) VALUES (&#39;" + username + "&#39;, &#39;" + password + "&#39;)"; //通过Statement对象执行SQL语句，得到ResultSet对象-查询结果集 // 这里注意一下 insert、update、delete 语句应使用executeUpdate() rowsAffected = stmt.executeUpdate(sql); //关闭ResultSet结果集 Statement对象 以及数据库Connection对象 释放资源 stmt.close(); conn.close(); return R.ok(message); case "delete": sql = "DELETE FROM sqli WHERE id = &#39;" + id + "&#39;"; rowsAffected = stmt.executeUpdate(sql); ... case "update": sql = "UPDATE sqli SET password = &#39;" + password + "&#39;, username = &#39;" + username + "&#39; WHERE id = &#39;" + id + "&#39;"; rowsAffected = stmt.executeUpdate(sql); ... case "select": sql = "SELECT * FROM sqli WHERE id = " + id; ResultSet rs = stmt.executeQuery(sql); ... } } JDBC 伪预编译'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-08-19T00:00:00+00:00"><meta property="article:modified_time" content="2026-08-19T00:00:00+00:00"><title>Java常规漏洞 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/><link rel=stylesheet href=/book.min.486a8282693a4a89ef6d1ebdc674ee9b43f9f237acb69d384c1b5a6a223d858d.css integrity="sha256-SGqCgmk6SonvbR69xnTum0P58jestp04TBtaaiI9hY0=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.3679a6bf34641cbccd68f11cfd71c94abe925df27d1acc40d5aa5fe3fe94c3a0.js integrity="sha256-NnmmvzRkHLzNaPEc/XHJSr6SXfJ9GsxA1apf4/6Uw6A=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之 Cc1</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/ class=active>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-4b8c89e1539cb7bd5cf76bb189686b16 class=toggle>
+<label for=section-4b8c89e1539cb7bd5cf76bb189686b16 class="flex justify-between"><a role=button>项目</a></label><ul><li><input type=checkbox id=section-9d12b352c320cbba4697bac07fbf83f9 class=toggle>
+<label for=section-9d12b352c320cbba4697bac07fbf83f9 class="flex justify-between"><a role=button>JD2M</a></label><ul><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/>JD2M源码分析</a></li><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/>JD2M技术栈——我的Java反编译器</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Java常规漏洞</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#sql注入>SQL注入</a><ul><li><a href=#jdbc>JDBC</a></li><li><a href=#mybatis>MyBatis</a></li><li><a href=#hibernate>Hibernate</a></li><li><a href=#jpa>JPA</a></li></ul></li><li><a href=#xxe>XXE</a><ul><li><a href=#漏洞场景-3>漏洞场景</a></li><li><a href=#安全场景-4>安全场景</a></li></ul></li><li><a href=#rce>RCE</a><ul><li><a href=#命令注入>命令注入</a></li><li><a href=#代码注入>代码注入</a></li></ul></li><li><a href=#ssrf>SSRF</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java-常规漏洞>Java 常规漏洞
+<a class=anchor href=#java-%e5%b8%b8%e8%a7%84%e6%bc%8f%e6%b4%9e>#</a></h1><h2 id=sql注入>SQL注入
+<a class=anchor href=#sql%e6%b3%a8%e5%85%a5>#</a></h2><h3 id=jdbc>JDBC
+<a class=anchor href=#jdbc>#</a></h3><h4 id=漏洞场景>漏洞场景
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%9c%ba%e6%99%af>#</a></h4><p><strong>原生 SQL 语句拼接</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// 原生sql语句动态拼接 参数未进行任何处理</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul1</span>(String type,String id,String username,String password) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//注册数据库驱动类</span>
+</span></span><span style=display:flex><span>    Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;com.mysql.cj.jdbc.Driver&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//调用DriverManager.getConnection()方法创建Connection连接到数据库</span>
+</span></span><span style=display:flex><span>    Connection conn <span style=color:#f92672>=</span> DriverManager.<span style=color:#a6e22e>getConnection</span>(dbUrl, dbUser, dbPass);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//调用Connection的createStatement()或prepareStatement()方法 创建Statement对象</span>
+</span></span><span style=display:flex><span>    Statement stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>createStatement</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;add&#34;</span>:
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//这里没有标识id id自增长</span>
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;INSERT INTO sqli (username, password) VALUES (&#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;, &#39;&#34;</span> <span style=color:#f92672>+</span> password <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;)&#34;</span>;
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//通过Statement对象执行SQL语句，得到ResultSet对象-查询结果集</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 这里注意一下 insert、update、delete 语句应使用executeUpdate()</span>
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>(sql);
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//关闭ResultSet结果集 Statement对象 以及数据库Connection对象 释放资源</span>
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>close</span>();
+</span></span><span style=display:flex><span>            conn.<span style=color:#a6e22e>close</span>();
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;delete&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;DELETE FROM sqli WHERE id = &#39;&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;update&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;UPDATE sqli SET password = &#39;&#34;</span> <span style=color:#f92672>+</span> password <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;, username = &#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39; WHERE id = &#39;&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;select&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM sqli WHERE id  = &#34;</span> <span style=color:#f92672>+</span> id;
+</span></span><span style=display:flex><span>            ResultSet rs <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeQuery</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>JDBC 伪预编译</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// 虽然使用了conn.prepareStatement(sql)创建了一个PreparedStatement对象，但在执行 stmt.executeUpdate(sql)时，却是传递了完整的SQL语句作为参数，而不是使用了预编译的功能</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul2</span>(String type,String id,String username,String password) {
+</span></span><span style=display:flex><span>    Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;com.mysql.cj.jdbc.Driver&#34;</span>);
+</span></span><span style=display:flex><span>    Connection conn <span style=color:#f92672>=</span> DriverManager.<span style=color:#a6e22e>getConnection</span>(dbUrl, dbUser, dbPass);
+</span></span><span style=display:flex><span>    PreparedStatement stmt;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;add&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;INSERT INTO sqli (username, password) VALUES (&#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;, &#39;&#34;</span> <span style=color:#f92672>+</span> password <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;)&#34;</span>;
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;delete&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;DELETE FROM sqli WHERE id = &#39;&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;update&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;UPDATE sqli SET username = &#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;, password = &#39;&#34;</span> <span style=color:#f92672>+</span> password <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39; WHERE id = &#39;&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;select&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM sqli WHERE id  = &#34;</span> <span style=color:#f92672>+</span> id;
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            ResultSet rs <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeQuery</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>JdbcTemplate SQL 语句拼接</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// JDBCTemplate是Spring对JDBC的封装，底层实现实际上还是JDBC</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul3</span>(String type,String id,String username,String password) {
+</span></span><span style=display:flex><span>    DriverManagerDataSource dataSource <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> DriverManagerDataSource();
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setDriverClassName</span>(<span style=color:#e6db74>&#34;com.mysql.cj.jdbc.Driver&#34;</span>);
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setUrl</span>(dbUrl);
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setUsername</span>(dbUser);
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setPassword</span>(dbPass);
+</span></span><span style=display:flex><span>    JdbcTemplate jdbctemplate <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> JdbcTemplate(dataSource);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;add&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;INSERT INTO sqli (username, password) VALUES (&#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;, &#39;&#34;</span> <span style=color:#f92672>+</span> password <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;)&#34;</span>;
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//Spring的JdbcTemplate会自动管理连接的获取和释放，不需要手动关闭连接</span>
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>update</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;delete&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;DELETE FROM sqli WHERE id = &#39;&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>update</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;update&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;UPDATE sqli SET username = &#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;, password = &#39;&#34;</span> <span style=color:#f92672>+</span> password <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39; WHERE id = &#39;&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>update</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;select&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM sqli WHERE id  = &#34;</span> <span style=color:#f92672>+</span> id;
+</span></span><span style=display:flex><span>            resultList <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>queryForList</span>(sql);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=安全场景>安全场景
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e5%9c%ba%e6%99%af>#</a></h4><p><strong>JDBC 预编译</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// 采用预编译的方法，使用?占位，也叫参数化的SQL</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>safe1</span>(String type,String id,String username,String password) {
+</span></span><span style=display:flex><span>    Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;com.mysql.cj.jdbc.Driver&#34;</span>);
+</span></span><span style=display:flex><span>    Connection conn <span style=color:#f92672>=</span> DriverManager.<span style=color:#a6e22e>getConnection</span>(dbUrl, dbUser, dbPass);
+</span></span><span style=display:flex><span>    PreparedStatement stmt;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;add&#34;</span>:
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 这里可以看到使用了?占位符 sql语句和参数进行分离</span>
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;INSERT INTO sqli (username, password) VALUES (?, ?)&#34;</span>; 
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 参数化处理</span>
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>setString</span>(1, username); 
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>setString</span>(2, password);
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 使用预编译时 不需要传递sql语句</span>
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;delete&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;DELETE FROM sqli WHERE id = ?&#34;</span>;
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>setString</span>(1, id);
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>();
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;update&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;UPDATE sqli SET username = ?, password = ? WHERE id = ?&#34;</span>;
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>setString</span>(1, username);  
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>setString</span>(2, password);
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>setString</span>(3, id);
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeUpdate</span>();
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;select&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM sqli WHERE id  = ?&#34;</span>;
+</span></span><span style=display:flex><span>            stmt <span style=color:#f92672>=</span> conn.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            stmt.<span style=color:#a6e22e>setString</span>(1, id);
+</span></span><span style=display:flex><span>            ResultSet rs <span style=color:#f92672>=</span> stmt.<span style=color:#a6e22e>executeQuery</span>();
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>   }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>JdbcTemplate 参数绑定</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// JDBCTemplate预编译 此时在常规DML场景有效的防止了SQL注入攻击的发生</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>safe2</span>(String type,String id,String username,String password) {
+</span></span><span style=display:flex><span>    DriverManagerDataSource dataSource <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> DriverManagerDataSource();
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setDriverClassName</span>(<span style=color:#e6db74>&#34;com.mysql.cj.jdbc.Driver&#34;</span>);
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setUrl</span>(dbUrl);
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setUsername</span>(dbUser);
+</span></span><span style=display:flex><span>    dataSource.<span style=color:#a6e22e>setPassword</span>(dbPass);
+</span></span><span style=display:flex><span>    JdbcTemplate jdbctemplate <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> JdbcTemplate(dataSource);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;add&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;INSERT INTO sqli (username, password) VALUES (?,?)&#34;</span>;
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>update</span>(sql, username, password);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;delete&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;DELETE FROM sqli WHERE id = ?&#34;</span>;
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>update</span>(sql, id);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;update&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;UPDATE sqli SET username = ?, password = ? WHERE id = ?&#34;</span>;
+</span></span><span style=display:flex><span>            rowsAffected <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>update</span>(sql, username, password, id);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;select&#34;</span>:
+</span></span><span style=display:flex><span>            sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM sqli WHERE id  = ?&#34;</span>;
+</span></span><span style=display:flex><span>            stringObjectMap <span style=color:#f92672>=</span> jdbctemplate.<span style=color:#a6e22e>queryForMap</span>(sql, id);
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=mybatis>MyBatis
+<a class=anchor href=#mybatis>#</a></h3><p>MyBatis 支持两种参数符号，分别是 <code>#</code> 和 <code>$</code>，<code>#</code> 使用预编译，<code>$</code>使用 SQL 拼接。</p><h4 id=安全场景-1>安全场景
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e5%9c%ba%e6%99%af-1>#</a></h4><p><strong>MyBatis 内置方法</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// 这里以增加功能为例</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Controller层</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>safe1</span>(
+</span></span><span style=display:flex><span><span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;add&#34;</span>:
+</span></span><span style=display:flex><span>        rowsAffected <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>nativeInsert</span>(<span style=color:#66d9ef>new</span> Sqli(id, username, password));
+</span></span><span style=display:flex><span>        message <span style=color:#f92672>=</span> (rowsAffected <span style=color:#f92672>&gt;</span> 0) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;数据插入成功 username:&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; password:&#34;</span> <span style=color:#f92672>+</span> password : <span style=color:#e6db74>&#34;数据插入失败&#34;</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>        ...
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// Service层</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>nativeInsert</span>(Sqli user) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>insert</span>(user);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Mapper层</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>int</span> <span style=color:#a6e22e>insert</span>(T entity); 
+</span></span></code></pre></div><p><strong>MyBatis #{} 参数绑定</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// 这里以增加功能为例</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Controller层</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>safe2</span>( 
+</span></span><span style=display:flex><span><span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;add&#34;</span>:
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//这里插入数据使用MyBatiX插件生成的方法</span>
+</span></span><span style=display:flex><span>        rowsAffected <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>customInsert</span>(<span style=color:#66d9ef>new</span> Sqli(id, username, password));
+</span></span><span style=display:flex><span>        message <span style=color:#f92672>=</span> (rowsAffected <span style=color:#f92672>&gt;</span> 0) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;数据插入成功 username:&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; password:&#34;</span> <span style=color:#f92672>+</span> password : <span style=color:#e6db74>&#34;数据插入失败&#34;</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>        ...
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// Service层</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//自定义SQL-使用#{}</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>customInsert</span>(Sqli user) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>customInsert</span>(user);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Mapper层</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>insert id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;customInsert&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    insert into <span style=color:#a6e22e>sqli</span> (id,username,password) values (<span style=color:#960050;background-color:#1e0010>#</span>{id,jdbcType<span style=color:#f92672>=</span>INTEGER},<span style=color:#960050;background-color:#1e0010>#</span>{username,jdbcType<span style=color:#f92672>=</span>VARCHAR},<span style=color:#960050;background-color:#1e0010>#</span>{password,jdbcType<span style=color:#f92672>=</span>VARCHAR})
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>insert<span style=color:#f92672>&gt;</span>
+</span></span></code></pre></div><h4 id=特殊场景>特殊场景
+<a class=anchor href=#%e7%89%b9%e6%ae%8a%e5%9c%ba%e6%99%af>#</a></h4><h5 id=order-by-注入>order by 注入
+<a class=anchor href=#order-by-%e6%b3%a8%e5%85%a5>#</a></h5><p>由于使用<code>#{}</code>会将对象转化为字符串，形成<code>order by "user" desc</code>造成错误，隐藏很多开发会采用<code>${}</code>来解决，从而造成了注入。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// Controller层</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>special1OrderBy</span>() {
+</span></span><span style=display:flex><span>  List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> sqlis <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ArrayList<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;raw&#34;</span>:
+</span></span><span style=display:flex><span>          sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>orderByVul</span>(field);
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;prepareStatement&#34;</span>:
+</span></span><span style=display:flex><span>          sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>orderByPrepareStatement</span>(field);
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;writeList&#34;</span>:
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>checkUserInput.<span style=color:#a6e22e>checkSqlWhiteList</span>(field)) {
+</span></span><span style=display:flex><span>              <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;field字段不合法！&#34;</span>);
+</span></span><span style=display:flex><span>          }
+</span></span><span style=display:flex><span>          sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>orderByWriteList</span>(field);
+</span></span><span style=display:flex><span>      ...
+</span></span><span style=display:flex><span><span style=color:#75715e>// Service层</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//自定义SQL-使用#{}</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>orderByVul</span>(String field) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>orderByVul</span>(field);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>orderByPrepareStatement</span>(String field) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>orderByPrepareStatement</span>(field);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>orderByWriteList</span>(String field) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>orderByWriteList</span>(field);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// Mapper层</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;!--</span>    Order by下的${}拼接注入问题<span style=color:#960050;background-color:#1e0010>：</span>${}只能用于白名单枚举后的受控SQL结构<span style=color:#f92672>--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;orderByVul&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    SELECT <span style=color:#f92672>*</span> FROM sqli
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span><span style=color:#66d9ef>if</span> test<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;field != null and field != &#39;&#39;&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        ORDER BY ${field}
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span><span style=color:#66d9ef>if</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;!--</span>    Order by下的<span style=color:#960050;background-color:#1e0010>#</span>{}写法<span style=color:#960050;background-color:#1e0010>：#</span>{}只能绑定值<span style=color:#960050;background-color:#1e0010>，</span>不能绑定列名<span style=color:#960050;background-color:#1e0010>，</span>所以排序不生效<span style=color:#f92672>--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;orderByPrepareStatement&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    SELECT <span style=color:#f92672>*</span> FROM sqli
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span><span style=color:#66d9ef>if</span> test<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;field != null and field != &#39;&#39;&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        ORDER BY <span style=color:#960050;background-color:#1e0010>#</span>{field}
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span><span style=color:#66d9ef>if</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;!--</span>    Order by下的安全写法<span style=color:#960050;background-color:#1e0010>：</span>列名先做白名单枚举<span style=color:#960050;background-color:#1e0010>，</span>再进入${}拼接受控SQL结构<span style=color:#f92672>--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;orderByWriteList&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    SELECT <span style=color:#f92672>*</span> FROM sqli
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span><span style=color:#66d9ef>if</span> test<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;field != null and field != &#39;&#39;&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>choose<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;!--</span> 排序列名白名单 <span style=color:#f92672>--&gt;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;</span>when test<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;field == &#39;id&#39; or field == &#39;username&#39; or field == &#39;password&#39;&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>                ORDER BY ${field}
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;/</span>when<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;</span>otherwise<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&lt;!--</span> 默认使用id进行排序 <span style=color:#f92672>--&gt;</span>
+</span></span><span style=display:flex><span>                ORDER BY id
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;/</span>otherwise<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;/</span>choose<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span><span style=color:#66d9ef>if</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span></code></pre></div><h5 id=like-注入>like 注入
+<a class=anchor href=#like-%e6%b3%a8%e5%85%a5>#</a></h5><p>模糊搜索时，直接使用<code>%#{}%</code>会报错，部分开发为了方便直接改成<code>%${}%</code>从而造成注入。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// Controller层</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>special1OrderBy</span>() {
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@PostMapping</span>(<span style=color:#e6db74>&#34;/special2-Like&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>special2Like</span>(String type,String keyword) {
+</span></span><span style=display:flex><span>    List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> sqlis <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ArrayList<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;raw&#34;</span>:
+</span></span><span style=display:flex><span>            sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>likeVul</span>(keyword);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;prepareStatement&#34;</span>:
+</span></span><span style=display:flex><span>            sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>likePrepareStatement</span>(keyword);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span><span style=color:#75715e>// Service层</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>orderByWriteList</span>(String field) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>orderByWriteList</span>(field);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>likeVul</span>(String keyword) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>likeVul</span>(keyword);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// Mapper层</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;!--</span>  模糊查询<span style=color:#f92672>--&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;likeVul&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    SELECT <span style=color:#f92672>*</span> FROM sqli WHERE username LIKE <span style=color:#960050;background-color:#1e0010>&#39;</span><span style=color:#f92672>%</span>${keyword}<span style=color:#f92672>%</span><span style=color:#960050;background-color:#1e0010>&#39;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;likePrepareStatement&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    SELECT <span style=color:#f92672>*</span> FROM sqli WHERE username LIKE <span style=color:#a6e22e>CONCAT</span>(<span style=color:#e6db74>&#39;%&#39;</span>, <span style=color:#960050;background-color:#1e0010>#</span>{keyword}, <span style=color:#e6db74>&#39;%&#39;</span>)
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span></code></pre></div><h5 id=in-注入>in 注入
+<a class=anchor href=#in-%e6%b3%a8%e5%85%a5>#</a></h5><p>in 之后多个 id 查询时使用<code>#</code>同样会报错，从而造成注入。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>// Controller层</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>special3In</span>(String type,String scope) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>switch</span> (type) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;raw&#34;</span>:
+</span></span><span style=display:flex><span>          sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>inVul</span>(scope);
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;prepareStatement&#34;</span>:
+</span></span><span style=display:flex><span>          sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>inPrepareStatement</span>(scope);
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>case</span> <span style=color:#e6db74>&#34;Foreach&#34;</span>:
+</span></span><span style=display:flex><span>          List<span style=color:#f92672>&lt;</span>Integer<span style=color:#f92672>&gt;</span> idList <span style=color:#f92672>=</span> parseInputToList(scope);
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>if</span> (idList.<span style=color:#a6e22e>isEmpty</span>()) {
+</span></span><span style=display:flex><span>              <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;scope中没有合法整数ID!&#34;</span>);
+</span></span><span style=display:flex><span>          }
+</span></span><span style=display:flex><span>          sqlis <span style=color:#f92672>=</span> sqliService.<span style=color:#a6e22e>inSafeForeach</span>(idList);
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>  ...
+</span></span><span style=display:flex><span><span style=color:#75715e>// Service层</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>inVul</span>(String scope) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>inVul</span>(scope);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>inPrepareStatement</span>(String scope) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>inPrepareStatement</span>(scope);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>inSafeForeach</span>(List<span style=color:#f92672>&lt;</span>Integer<span style=color:#f92672>&gt;</span> scope) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sqliMapper.<span style=color:#a6e22e>inSafeForeach</span>(scope);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// Mapper层</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;inVul&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    select <span style=color:#f92672>*</span> from sqli where id <span style=color:#a6e22e>in</span> (${id})
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;inPrepareStatement&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    select <span style=color:#f92672>*</span> from sqli where id <span style=color:#a6e22e>in</span> (<span style=color:#960050;background-color:#1e0010>#</span>{id})
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>select id<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;inSafeForeach&#34;</span> resultType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;top.whgojp.modules.sqli.entity.Sqli&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    SELECT <span style=color:#f92672>*</span> FROM sqli WHERE id IN
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>foreach collection<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;scope&#34;</span> item<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;id&#34;</span> <span style=color:#66d9ef>open</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;(&#34;</span> separator<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;,&#34;</span> close<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;)&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#960050;background-color:#1e0010>#</span>{id}
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span>foreach<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>select<span style=color:#f92672>&gt;</span>
+</span></span></code></pre></div><h3 id=hibernate>Hibernate
+<a class=anchor href=#hibernate>#</a></h3><p>Hibernate 需要同时关注 HQL 和原生 SQL：参数值用setParameter绑定，动态列名、排序方向等SQL结构用枚举映射。测试时建议关注SQL执行结果和后端日志，并区分HQL语法与原生SQL语法差异。</p><h4 id=漏洞场景-1>漏洞场景
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%9c%ba%e6%99%af-1>#</a></h4><h5 id=原生-sql-注入>原生 SQL 注入
+<a class=anchor href=#%e5%8e%9f%e7%94%9f-sql-%e6%b3%a8%e5%85%a5>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul1</span>(<span style=color:#a6e22e>@RequestParam</span> String username) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        String sql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT * FROM sqli WHERE username = &#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>        Object<span style=color:#f92672>[]</span> result <span style=color:#f92672>=</span> (Object<span style=color:#f92672>[]</span>) hibernateTemplate.<span style=color:#a6e22e>execute</span>(session <span style=color:#f92672>-&gt;</span>
+</span></span><span style=display:flex><span>                session.<span style=color:#a6e22e>createNativeQuery</span>(sql).<span style=color:#a6e22e>uniqueResult</span>()
+</span></span><span style=display:flex><span>        );
+</span></span><span style=display:flex><span>        message <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;查询成功，用户名：&#34;</span> <span style=color:#f92672>+</span> result<span style=color:#f92672>[</span>1<span style=color:#f92672>]</span> <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; 密码：&#34;</span> <span style=color:#f92672>+</span>result<span style=color:#f92672>[</span>2<span style=color:#f92672>]</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;查询失败&#34;</span>, e);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(e.<span style=color:#a6e22e>getMessage</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h5 id=hql-注入>HQL 注入
+<a class=anchor href=#hql-%e6%b3%a8%e5%85%a5>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul2</span>(<span style=color:#a6e22e>@RequestParam</span> String username) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        String hql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;FROM Sqli WHERE username = &#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>        Sqli result <span style=color:#f92672>=</span> (Sqli) hibernateTemplate.<span style=color:#a6e22e>execute</span>(session <span style=color:#f92672>-&gt;</span>
+</span></span><span style=display:flex><span>                session.<span style=color:#a6e22e>createQuery</span>(hql).<span style=color:#a6e22e>uniqueResult</span>()
+</span></span><span style=display:flex><span>        );
+</span></span><span style=display:flex><span>        message <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;查询成功，用户名：&#34;</span> <span style=color:#f92672>+</span>result.<span style=color:#a6e22e>getUsername</span>()<span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; 密码：&#34;</span> <span style=color:#f92672>+</span>result.<span style=color:#a6e22e>getPassword</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;查询失败&#34;</span>, e);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(e.<span style=color:#a6e22e>getMessage</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=安全场景-2>安全场景
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e5%9c%ba%e6%99%af-2>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>safe</span>(<span style=color:#a6e22e>@RequestParam</span> String username) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        String hql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;FROM Sqli WHERE username = :username&#34;</span>;
+</span></span><span style=display:flex><span>        Sqli result <span style=color:#f92672>=</span> hibernateTemplate.<span style=color:#a6e22e>execute</span>(session <span style=color:#f92672>-&gt;</span>
+</span></span><span style=display:flex><span>                (Sqli) session.<span style=color:#a6e22e>createQuery</span>(hql)
+</span></span><span style=display:flex><span>                        .<span style=color:#a6e22e>setParameter</span>(<span style=color:#e6db74>&#34;username&#34;</span>, username)
+</span></span><span style=display:flex><span>                        .<span style=color:#a6e22e>uniqueResult</span>()
+</span></span><span style=display:flex><span>        );
+</span></span><span style=display:flex><span>        message <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;查询成功，用户名：&#34;</span> <span style=color:#f92672>+</span>result.<span style=color:#a6e22e>getUsername</span>()<span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; 密码：&#34;</span> <span style=color:#f92672>+</span>result.<span style=color:#a6e22e>getPassword</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;查询失败&#34;</span>, e);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(e.<span style=color:#a6e22e>getMessage</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=jpa>JPA
+<a class=anchor href=#jpa>#</a></h3><h4 id=漏洞场景-2>漏洞场景
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%9c%ba%e6%99%af-2>#</a></h4><h5 id=jpql-注入>JPQL 注入
+<a class=anchor href=#jpql-%e6%b3%a8%e5%85%a5>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul1</span>(<span style=color:#a6e22e>@RequestParam</span> String username) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        String jpql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT s FROM Sqli s WHERE s.username = &#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>        Query query <span style=color:#f92672>=</span> entityManager.<span style=color:#a6e22e>createQuery</span>(jpql);
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> results <span style=color:#f92672>=</span> query.<span style=color:#a6e22e>getResultList</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (results <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>||</span> results.<span style=color:#a6e22e>isEmpty</span>()) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;未找到记录&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        StringBuilder sb <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringBuilder();
+</span></span><span style=display:flex><span>        sb.<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;查询成功，找到 &#34;</span>).<span style=color:#a6e22e>append</span>(results.<span style=color:#a6e22e>size</span>()).<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34; 条记录\n&#34;</span>);
+</span></span><span style=display:flex><span>        message <span style=color:#f92672>=</span> sb.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>info</span>(message);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        String errorMsg <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;查询失败: {}&#34;</span>, errorMsg, e);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(errorMsg);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h5 id=动态排序注入>动态排序注入
+<a class=anchor href=#%e5%8a%a8%e6%80%81%e6%8e%92%e5%ba%8f%e6%b3%a8%e5%85%a5>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul2</span>(<span style=color:#a6e22e>@RequestParam</span> String orderBy) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        String jpql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT s FROM Sqli s ORDER BY s.&#34;</span> <span style=color:#f92672>+</span> orderBy;
+</span></span><span style=display:flex><span>        Query query <span style=color:#f92672>=</span> entityManager.<span style=color:#a6e22e>createQuery</span>(jpql);
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> results <span style=color:#f92672>=</span> query.<span style=color:#a6e22e>getResultList</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(formatResults(results));
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        String errorMsg <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;查询失败: {}&#34;</span>, errorMsg, e);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(errorMsg);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=安全场景-3>安全场景
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e5%9c%ba%e6%99%af-3>#</a></h4><h5 id=jpa-参数化查询>JPA 参数化查询
+<a class=anchor href=#jpa-%e5%8f%82%e6%95%b0%e5%8c%96%e6%9f%a5%e8%af%a2>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>safe</span>(<span style=color:#a6e22e>@RequestParam</span> String username) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        String jpql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SELECT s FROM Sqli s WHERE s.username = :username&#34;</span>;
+</span></span><span style=display:flex><span>        Query query <span style=color:#f92672>=</span> entityManager.<span style=color:#a6e22e>createQuery</span>(jpql)
+</span></span><span style=display:flex><span>                .<span style=color:#a6e22e>setParameter</span>(<span style=color:#e6db74>&#34;username&#34;</span>, username);
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> results <span style=color:#f92672>=</span> query.<span style=color:#a6e22e>getResultList</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (results <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>||</span> results.<span style=color:#a6e22e>isEmpty</span>()) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;未找到记录&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        StringBuilder sb <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringBuilder();
+</span></span><span style=display:flex><span>        sb.<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;查询成功，找到 &#34;</span>).<span style=color:#a6e22e>append</span>(results.<span style=color:#a6e22e>size</span>()).<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34; 条记录\n&#34;</span>);
+</span></span><span style=display:flex><span>        message <span style=color:#f92672>=</span> sb.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>info</span>(message);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(message);
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        String errorMsg <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;查询失败: {}&#34;</span>, errorMsg, e);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(errorMsg);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h5 id=动态排序白名单>动态排序白名单
+<a class=anchor href=#%e5%8a%a8%e6%80%81%e6%8e%92%e5%ba%8f%e7%99%bd%e5%90%8d%e5%8d%95>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>safeOrder</span>(<span style=color:#a6e22e>@RequestParam</span> String orderBy) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        Map<span style=color:#f92672>&lt;</span>String, String<span style=color:#f92672>&gt;</span> orderByMap <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>        orderByMap.<span style=color:#a6e22e>put</span>(<span style=color:#e6db74>&#34;id&#34;</span>, <span style=color:#e6db74>&#34;id&#34;</span>);
+</span></span><span style=display:flex><span>        orderByMap.<span style=color:#a6e22e>put</span>(<span style=color:#e6db74>&#34;username&#34;</span>, <span style=color:#e6db74>&#34;username&#34;</span>);
+</span></span><span style=display:flex><span>        orderByMap.<span style=color:#a6e22e>put</span>(<span style=color:#e6db74>&#34;password&#34;</span>, <span style=color:#e6db74>&#34;password&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        String safeOrderBy <span style=color:#f92672>=</span> orderByMap.<span style=color:#a6e22e>get</span>(orderBy);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (safeOrderBy <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;排序字段不合法&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        CriteriaBuilder cb <span style=color:#f92672>=</span> entityManager.<span style=color:#a6e22e>getCriteriaBuilder</span>();
+</span></span><span style=display:flex><span>        CriteriaQuery<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> cq <span style=color:#f92672>=</span> cb.<span style=color:#a6e22e>createQuery</span>(Sqli.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        Root<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> root <span style=color:#f92672>=</span> cq.<span style=color:#a6e22e>from</span>(Sqli.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        cq.<span style=color:#a6e22e>select</span>(root).<span style=color:#a6e22e>orderBy</span>(cb.<span style=color:#a6e22e>asc</span>(root.<span style=color:#a6e22e>get</span>(safeOrderBy)));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>Sqli<span style=color:#f92672>&gt;</span> results <span style=color:#f92672>=</span> entityManager.<span style=color:#a6e22e>createQuery</span>(cq).<span style=color:#a6e22e>getResultList</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(formatResults(results));
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        String errorMsg <span style=color:#f92672>=</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;查询失败: {}&#34;</span>, errorMsg, e);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(errorMsg);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=xxe>XXE
+<a class=anchor href=#xxe>#</a></h2><p>代码审计 SINK 点：</p><ol><li>XMLReader</li><li>SAXReader</li><li>DocumentBuilder</li><li>XMLStreamReader</li><li>SAXBuilder</li><li>SAXParser</li><li>SAXSource</li><li>TransformerFactory</li><li>SAXTransformerFactory</li><li>SchemaFactory</li><li>Unmarshaller</li><li>XPathExpression</li></ol><h3 id=漏洞场景-3>漏洞场景
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%9c%ba%e6%99%af-3>#</a></h3><p><strong>XMLReader</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>vul1</span>(String payload) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        XMLReader xmlReader <span style=color:#f92672>=</span> XMLReaderFactory.<span style=color:#a6e22e>createXMLReader</span>();
+</span></span><span style=display:flex><span>        StringWriter stringWriter <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringWriter();
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>setContentHandler</span>(<span style=color:#66d9ef>new</span> DefaultHandler() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>characters</span>(<span style=color:#66d9ef>char</span><span style=color:#f92672>[]</span> ch, <span style=color:#66d9ef>int</span> start, <span style=color:#66d9ef>int</span> length) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> start; i <span style=color:#f92672>&lt;</span> start <span style=color:#f92672>+</span> length; i<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (ch<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;\n&#39;</span>) {
+</span></span><span style=display:flex><span>                        stringWriter.<span style=color:#a6e22e>write</span>(<span style=color:#e6db74>&#34;&lt;br/&gt;&#34;</span>);
+</span></span><span style=display:flex><span>                    } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                        stringWriter.<span style=color:#a6e22e>write</span>(ch<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>);
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        });
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>parse</span>(<span style=color:#66d9ef>new</span> InputSource(<span style=color:#66d9ef>new</span> StringReader(payload)));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> stringWriter.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>SAXParser</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>vul2</span>(String payload) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        SAXParserFactory factory <span style=color:#f92672>=</span> SAXParserFactory.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>        SAXParser parser <span style=color:#f92672>=</span> factory.<span style=color:#a6e22e>newSAXParser</span>();
+</span></span><span style=display:flex><span>        ...
+</span></span><span style=display:flex><span>        parser.<span style=color:#a6e22e>parse</span>(<span style=color:#66d9ef>new</span> InputSource(<span style=color:#66d9ef>new</span> StringReader(payload)), handler);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> stringWriter.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> e.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>DocumentBuilder</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>vul3</span>(String payload) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        DocumentBuilderFactory factory <span style=color:#f92672>=</span> DocumentBuilderFactory.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>        DocumentBuilder builder <span style=color:#f92672>=</span> factory.<span style=color:#a6e22e>newDocumentBuilder</span>();
+</span></span><span style=display:flex><span>        Document document <span style=color:#f92672>=</span> builder.<span style=color:#a6e22e>parse</span>(<span style=color:#66d9ef>new</span> InputSource(<span style=color:#66d9ef>new</span> StringReader(payload)));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> document.<span style=color:#a6e22e>getDocumentElement</span>().<span style=color:#a6e22e>getTextContent</span>();
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> e.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=安全场景-4>安全场景
+<a class=anchor href=#%e5%ae%89%e5%85%a8%e5%9c%ba%e6%99%af-4>#</a></h3><p>安全编码建议：</p><ol><li>解析不可信 XML 时显式禁用 DOCTYPE、外部通用实体、外部参数实体和外部 DTD 加载。</li><li>配置 EntityResolver 或同类机制，确保解析器不会访问本地文件、内网地址或远程 DTD。</li><li>限制 XML 大小、解析深度和实体展开，避免 Billion Laughs 等拒绝服务攻击。</li><li>黑名单只能作为辅助检测，不应替代解析器安全配置。</li></ol><p><strong>禁用外部实体引用</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>safe1</span>(String payload) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        XMLReader xmlReader <span style=color:#f92672>=</span> XMLReaderFactory.<span style=color:#a6e22e>createXMLReader</span>();
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 禁用外部实体引用，防止XXE攻击</span>
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://apache.org/xml/features/disallow-doctype-decl&#34;</span>, <span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://xml.org/sax/features/external-general-entities&#34;</span>, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://xml.org/sax/features/external-parameter-entities&#34;</span>, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://apache.org/xml/features/nonvalidating/load-external-dtd&#34;</span>, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>setEntityResolver</span>((publicId, systemId) <span style=color:#f92672>-&gt;</span> <span style=color:#66d9ef>new</span> InputSource(<span style=color:#66d9ef>new</span> StringReader(<span style=color:#e6db74>&#34;&#34;</span>)));
+</span></span><span style=display:flex><span>         ...
+</span></span><span style=display:flex><span>        xmlReader.<span style=color:#a6e22e>parse</span>(<span style=color:#66d9ef>new</span> InputSource(<span style=color:#66d9ef>new</span> StringReader(payload)));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> stringWriter.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>DocumentBuilder 安全配置</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>safe3</span>(String payload) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        DocumentBuilderFactory factory <span style=color:#f92672>=</span> DocumentBuilderFactory.<span style=color:#a6e22e>newInstance</span>();
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://apache.org/xml/features/disallow-doctype-decl&#34;</span>, <span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://xml.org/sax/features/external-general-entities&#34;</span>, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://xml.org/sax/features/external-parameter-entities&#34;</span>, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setFeature</span>(<span style=color:#e6db74>&#34;http://apache.org/xml/features/nonvalidating/load-external-dtd&#34;</span>, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setXIncludeAware</span>(<span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setExpandEntityReferences</span>(<span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        setAttributeIfSupported(factory, XMLConstants.<span style=color:#a6e22e>ACCESS_EXTERNAL_DTD</span>, <span style=color:#e6db74>&#34;&#34;</span>);
+</span></span><span style=display:flex><span>        setAttributeIfSupported(factory, XMLConstants.<span style=color:#a6e22e>ACCESS_EXTERNAL_SCHEMA</span>, <span style=color:#e6db74>&#34;&#34;</span>);
+</span></span><span style=display:flex><span>        DocumentBuilder builder <span style=color:#f92672>=</span> factory.<span style=color:#a6e22e>newDocumentBuilder</span>();
+</span></span><span style=display:flex><span>        builder.<span style=color:#a6e22e>setEntityResolver</span>((publicId, systemId) <span style=color:#f92672>-&gt;</span> <span style=color:#66d9ef>new</span> InputSource(<span style=color:#66d9ef>new</span> StringReader(<span style=color:#e6db74>&#34;&#34;</span>)));
+</span></span><span style=display:flex><span>        ...
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> e.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setAttributeIfSupported</span>(DocumentBuilderFactory factory, String name, String value) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        factory.<span style=color:#a6e22e>setAttribute</span>(name, value);
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (IllegalArgumentException ignored) {
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=rce>RCE
+<a class=anchor href=#rce>#</a></h2><h3 id=命令注入>命令注入
+<a class=anchor href=#%e5%91%bd%e4%bb%a4%e6%b3%a8%e5%85%a5>#</a></h3><h4 id=processbuilder>ProcessBuilder
+<a class=anchor href=#processbuilder>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul1</span>(String payload) <span style=color:#66d9ef>throws</span> IOException {
+</span></span><span style=display:flex><span>    String<span style=color:#f92672>[]</span> command <span style=color:#f92672>=</span> {<span style=color:#e6db74>&#34;sh&#34;</span>, <span style=color:#e6db74>&#34;-c&#34;</span>,payload};
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    ProcessBuilder pb <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ProcessBuilder(command);
+</span></span><span style=display:flex><span>    pb.<span style=color:#a6e22e>redirectErrorStream</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>    Process process <span style=color:#f92672>=</span> pb.<span style=color:#a6e22e>start</span>();
+</span></span><span style=display:flex><span>    InputStream inputStream <span style=color:#f92672>=</span> process.<span style=color:#a6e22e>getInputStream</span>();
+</span></span><span style=display:flex><span>    BufferedReader reader <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> BufferedReader(<span style=color:#66d9ef>new</span> InputStreamReader(inputStream));
+</span></span><span style=display:flex><span>    String line;
+</span></span><span style=display:flex><span>    StringBuilder output <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringBuilder();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>while</span> ((line <span style=color:#f92672>=</span> reader.<span style=color:#a6e22e>readLine</span>()) <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>        output.<span style=color:#a6e22e>append</span>(line).<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;\n&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(output.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><code>ProcessBuilder</code>在调用列表参数的构造器时，会依次把参数传递给操作系统，但是第一个参数不会被 shell 解析，而是会去寻找第一个参数对应的可执行程序，并以这个程序开启一个进程，后面的参数就会被传入这个进程。如果第一个参数是<code>sh</code>，系统就会去调用<code>/bin/sh</code>这个可执行程序，后续的参数就被传入<code>sh</code>中解析。</p><h4 id=runtimegetruntimeexec>Runtime.getRuntime.exec()
+<a class=anchor href=#runtimegetruntimeexec>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul2</span>(String payload) <span style=color:#66d9ef>throws</span> IOException {
+</span></span><span style=display:flex><span>    StringBuilder sb <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringBuilder();
+</span></span><span style=display:flex><span>    String line;
+</span></span><span style=display:flex><span>    Process proc <span style=color:#f92672>=</span> Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(payload);
+</span></span><span style=display:flex><span>    InputStream inputStream <span style=color:#f92672>=</span> proc.<span style=color:#a6e22e>getInputStream</span>();
+</span></span><span style=display:flex><span>    InputStreamReader isr <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> InputStreamReader(inputStream);
+</span></span><span style=display:flex><span>    BufferedReader br <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> BufferedReader(isr);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>while</span> ((line <span style=color:#f92672>=</span> br.<span style=color:#a6e22e>readLine</span>()) <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>        sb.<span style=color:#a6e22e>append</span>(line);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(sb.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><code>Runtime.exec()</code>内部其实就是用<code>ProcessBuilder</code>来实现的：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(String command);
+</span></span><span style=display:flex><span><span style=color:#75715e>// 等价于：</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>new</span> ProcessBuilder(command.<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34; &#34;</span>)).<span style=color:#a6e22e>start</span>();  <span style=color:#75715e>// 按空格拆分！</span>
+</span></span></code></pre></div><p><strong>关键差异</strong>：</p><ul><li><code>ProcessBuilder</code> 让你<strong>显式传递参数列表</strong>（安全）</li><li><code>Runtime.exec()</code> 让你<strong>传递一个字符串</strong>，JVM帮你按空格拆分（容易出错）</li></ul><table><thead><tr><th style=text-align:left>方法签名</th><th style=text-align:left>参数形式</th><th style=text-align:left>安全性</th><th style=text-align:left>说明</th></tr></thead><tbody><tr><td style=text-align:left><code>exec(String command)</code></td><td style=text-align:left>单个字符串</td><td style=text-align:left>❌ <strong>高危</strong></td><td style=text-align:left>JVM按空格拆分，容易注入</td></tr><tr><td style=text-align:left><code>exec(String[] cmdarray)</code></td><td style=text-align:left>字符串数组</td><td style=text-align:left>⚠️ <strong>相对安全</strong></td><td style=text-align:left>和<code>ProcessBuilder</code>列表模式类似</td></tr><tr><td style=text-align:left><code>exec(String command, String[] envp)</code></td><td style=text-align:left>字符串 + 环境变量</td><td style=text-align:left>❌ <strong>高危</strong></td><td style=text-align:left>同上</td></tr><tr><td style=text-align:left><code>exec(String[] cmdarray, String[] envp)</code></td><td style=text-align:left>数组 + 环境变量</td><td style=text-align:left>⚠️ <strong>相对安全</strong></td><td style=text-align:left>同上</td></tr></tbody></table><h4 id=processimpl>ProcessImpl
+<a class=anchor href=#processimpl>#</a></h4><p>其实<code>ProcessImpl</code>才是所有命令执行方法的底层执行者，上面两种最终都是依赖于<code>ProcessImpl</code>实现命令执行的。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vul3</span>(String payload) <span style=color:#66d9ef>throws</span> Exception {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 获取 ProcessImpl 类对象</span>
+</span></span><span style=display:flex><span>    Class<span style=color:#f92672>&lt;?&gt;</span> clazz <span style=color:#f92672>=</span> Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;java.lang.ProcessImpl&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 获取 start 方法</span>
+</span></span><span style=display:flex><span>    Method method <span style=color:#f92672>=</span> clazz.<span style=color:#a6e22e>getDeclaredMethod</span>(<span style=color:#e6db74>&#34;start&#34;</span>, String<span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>, Map.<span style=color:#a6e22e>class</span>, String.<span style=color:#a6e22e>class</span>, ProcessBuilder.<span style=color:#a6e22e>Redirect</span><span style=color:#f92672>[]</span>.<span style=color:#a6e22e>class</span>, <span style=color:#66d9ef>boolean</span>.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>    method.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    Process process <span style=color:#f92672>=</span> (Process) method.<span style=color:#a6e22e>invoke</span>(<span style=color:#66d9ef>null</span>, <span style=color:#66d9ef>new</span> String<span style=color:#f92672>[]</span>{payload}, <span style=color:#66d9ef>null</span>, <span style=color:#66d9ef>null</span>, <span style=color:#66d9ef>null</span>, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> (BufferedReader reader <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> BufferedReader(<span style=color:#66d9ef>new</span> InputStreamReader(process.<span style=color:#a6e22e>getInputStream</span>()))) {
+</span></span><span style=display:flex><span>        StringBuilder output <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringBuilder();
+</span></span><span style=display:flex><span>        String line;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> ((line <span style=color:#f92672>=</span> reader.<span style=color:#a6e22e>readLine</span>()) <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            output.<span style=color:#a6e22e>append</span>(line).<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;\n&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(output.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=代码注入>代码注入
+<a class=anchor href=#%e4%bb%a3%e7%a0%81%e6%b3%a8%e5%85%a5>#</a></h3><h4 id=groovy-代码注入>Groovy 代码注入
+<a class=anchor href=#groovy-%e4%bb%a3%e7%a0%81%e6%b3%a8%e5%85%a5>#</a></h4><p>Groovy 是一种基于 JVM 的动态语言，语法简洁，支持闭包、动态类型和 Java 互操作性，常用于脚本开发和自动化任务。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> R <span style=color:#a6e22e>vulGroovy</span>(String payload) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        GroovyShell shell <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> GroovyShell();
+</span></span><span style=display:flex><span>        Object result <span style=color:#f92672>=</span> shell.<span style=color:#a6e22e>evaluate</span>(payload); 
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (result <span style=color:#66d9ef>instanceof</span> Process) {
+</span></span><span style=display:flex><span>            Process process <span style=color:#f92672>=</span> (Process) result;
+</span></span><span style=display:flex><span>            String output <span style=color:#f92672>=</span> getProcessOutput(process);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(<span style=color:#e6db74>&#34;[+] Groovy代码执行，结果：&#34;</span> <span style=color:#f92672>+</span> output);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>ok</span>(<span style=color:#e6db74>&#34;[+] Groovy代码执行，结果：&#34;</span> <span style=color:#f92672>+</span> result.<span style=color:#a6e22e>toString</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> R.<span style=color:#a6e22e>error</span>(e.<span style=color:#a6e22e>getMessage</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>private</span> String <span style=color:#a6e22e>getProcessOutput</span>(Process process) {
+</span></span><span style=display:flex><span>    StringBuilder output <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringBuilder();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> (BufferedReader reader <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> BufferedReader(<span style=color:#66d9ef>new</span> InputStreamReader(process.<span style=color:#a6e22e>getInputStream</span>()))) {
+</span></span><span style=display:flex><span>        String line;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> ((line <span style=color:#f92672>=</span> reader.<span style=color:#a6e22e>readLine</span>()) <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            output.<span style=color:#a6e22e>append</span>(line).<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;\n&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;读取输出失败: &#34;</span> <span style=color:#f92672>+</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> output.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>payload：<code>'calc'.execute()</code>。</p><h2 id=ssrf>SSRF
+<a class=anchor href=#ssrf>#</a></h2><p>代码审计 SINK 点：</p><ol><li>URL</li><li>URLConnection</li><li>HttpURLConnection</li><li>HttpClient</li><li>OkHttp</li><li>RestTemplate</li><li>WebClient</li><li>Socket</li><li>ImageIO</li><li>JNDI</li><li>DriverManager.getConnection</li></ol><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#a6e22e>@GetMapping</span>(<span style=color:#e6db74>&#34;/internal/metadata&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>internalMetadata</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;instance-id: i-javaseclab-ssrf ...&#34;</span>;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@GetMapping</span>(<span style=color:#e6db74>&#34;/redirect&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>redirect</span>(String target, HttpServletResponse response) <span style=color:#66d9ef>throws</span> IOException {
+</span></span><span style=display:flex><span>    response.<span style=color:#a6e22e>sendRedirect</span>(target);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>vul</span>(String url) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>        URL u <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> URL(url);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// URLConnection默认可请求file/http等协议，HTTP请求还可能自动跟随跳转</span>
+</span></span><span style=display:flex><span>        URLConnection conn <span style=color:#f92672>=</span> u.<span style=color:#a6e22e>openConnection</span>();
+</span></span><span style=display:flex><span>        BufferedReader reader <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> BufferedReader(<span style=color:#66d9ef>new</span> InputStreamReader(conn.<span style=color:#a6e22e>getInputStream</span>()));
+</span></span><span style=display:flex><span>        String content;
+</span></span><span style=display:flex><span>        StringBuilder html <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> StringBuilder();
+</span></span><span style=display:flex><span>        html.<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;&lt;pre&gt;&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> ((content <span style=color:#f92672>=</span> reader.<span style=color:#a6e22e>readLine</span>()) <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            html.<span style=color:#a6e22e>append</span>(content).<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;\n&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        html.<span style=color:#a6e22e>append</span>(<span style=color:#e6db74>&#34;&lt;/pre&gt;&#34;</span>);
+</span></span><span style=display:flex><span>        reader.<span style=color:#a6e22e>close</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> html.<span style=color:#a6e22e>toString</span>();
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> e.<span style=color:#a6e22e>getMessage</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#sql注入>SQL注入</a><ul><li><a href=#jdbc>JDBC</a></li><li><a href=#mybatis>MyBatis</a></li><li><a href=#hibernate>Hibernate</a></li><li><a href=#jpa>JPA</a></li></ul></li><li><a href=#xxe>XXE</a><ul><li><a href=#漏洞场景-3>漏洞场景</a></li><li><a href=#安全场景-4>安全场景</a></li></ul></li><li><a href=#rce>RCE</a><ul><li><a href=#命令注入>命令注入</a></li><li><a href=#代码注入>代码注入</a></li></ul></li><li><a href=#ssrf>SSRF</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

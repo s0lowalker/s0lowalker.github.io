@@ -1,0 +1,771 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  JavaEE
+  #
+
+
+  Servlet 技术
+  #
+
+
+  整体理解
+  #
+
+Servlet 是运行在 Web 服务器或应用服务器上的程序，它是作为来自 Web 浏览器或其他 HTTP 客户端的请求和 HTTP 服务器上的数据库或应用程序之间的中间层。使用 Servlet 可以收集来自网页表单的用户输入，呈现来自数据库或者其他源的记录，还可以动态创建网页。
+在纯 Servlet 项目中一般会用到 Tomcat。这里我们和 PHP 的经典架构 LAMP 进行一个类比。
+在 LAMP 中，当 Apache 接收到请求后会自己处理静态内容，如 HTML、CSS 等，然后把这些内容直接返回给客户端，而动态请求交给后续的 PHP 处理，比如查询数据库等。
+到 Java Web 架构中，也可以使用 Apache/Nginx 来处理静态资源，然后动态请求就会发到 Tomcat 处理，再由 Tomcat 交给 Servlet 处理并生成对应内容并返回客户端。当然也可以不使用 Apache/Nginx 这类应用，因为 Tomcat 本身具备一个简易的 Web Server，也可以处理 HTTP 请求，然后交给内部的 Servlet 处理请求。
+
+  Tomcat 与 Servlet
+  #
+
+Tomcat 是 Servlet 容器。Servlet 类写好之后是没有 main 方法的，无法自行启动。我们必须把 Servlet 放到 Tomcat 中 Tomcat 才能创建 Servlet 实例，并在合适的时机调用它的方法。同时 Tomcat 管理了 Servlet 的完整生命周期。当启动或第一次请求时，Tomcat 调用init()方法，让 Servlet 初始化；每一次处理请求时，Tomcat 开线程，调用service()方法（进而调用我们的doGet/doPost方法）；服务器关闭或应用卸载时，Tomcat 调用destroy()方法，让 Servlet 释放资源。"><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="JavaEE"><meta property="og:description" content="JavaEE # Servlet 技术 # 整体理解 # Servlet 是运行在 Web 服务器或应用服务器上的程序，它是作为来自 Web 浏览器或其他 HTTP 客户端的请求和 HTTP 服务器上的数据库或应用程序之间的中间层。使用 Servlet 可以收集来自网页表单的用户输入，呈现来自数据库或者其他源的记录，还可以动态创建网页。
+在纯 Servlet 项目中一般会用到 Tomcat。这里我们和 PHP 的经典架构 LAMP 进行一个类比。
+在 LAMP 中，当 Apache 接收到请求后会自己处理静态内容，如 HTML、CSS 等，然后把这些内容直接返回给客户端，而动态请求交给后续的 PHP 处理，比如查询数据库等。
+到 Java Web 架构中，也可以使用 Apache/Nginx 来处理静态资源，然后动态请求就会发到 Tomcat 处理，再由 Tomcat 交给 Servlet 处理并生成对应内容并返回客户端。当然也可以不使用 Apache/Nginx 这类应用，因为 Tomcat 本身具备一个简易的 Web Server，也可以处理 HTTP 请求，然后交给内部的 Servlet 处理请求。
+Tomcat 与 Servlet # Tomcat 是 Servlet 容器。Servlet 类写好之后是没有 main 方法的，无法自行启动。我们必须把 Servlet 放到 Tomcat 中 Tomcat 才能创建 Servlet 实例，并在合适的时机调用它的方法。同时 Tomcat 管理了 Servlet 的完整生命周期。当启动或第一次请求时，Tomcat 调用init()方法，让 Servlet 初始化；每一次处理请求时，Tomcat 开线程，调用service()方法（进而调用我们的doGet/doPost方法）；服务器关闭或应用卸载时，Tomcat 调用destroy()方法，让 Servlet 释放资源。"><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-08-19T00:00:00+00:00"><meta property="article:modified_time" content="2026-08-19T00:00:00+00:00"><title>JavaEE | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/><link rel=stylesheet href=/book.min.486a8282693a4a89ef6d1ebdc674ee9b43f9f237acb69d384c1b5a6a223d858d.css integrity="sha256-SGqCgmk6SonvbR69xnTum0P58jestp04TBtaaiI9hY0=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.3679a6bf34641cbccd68f11cfd71c94abe925df27d1acc40d5aa5fe3fe94c3a0.js integrity="sha256-NnmmvzRkHLzNaPEc/XHJSr6SXfJ9GsxA1apf4/6Uw6A=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之 Cc1</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle checked>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle checked>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/ class=active>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-4b8c89e1539cb7bd5cf76bb189686b16 class=toggle>
+<label for=section-4b8c89e1539cb7bd5cf76bb189686b16 class="flex justify-between"><a role=button>项目</a></label><ul><li><input type=checkbox id=section-9d12b352c320cbba4697bac07fbf83f9 class=toggle>
+<label for=section-9d12b352c320cbba4697bac07fbf83f9 class="flex justify-between"><a role=button>JD2M</a></label><ul><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/>JD2M源码分析</a></li><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/>JD2M技术栈——我的Java反编译器</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>JavaEE</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#servlet-技术>Servlet 技术</a><ul><li><a href=#整体理解>整体理解</a></li><li><a href=#tomcat-与-servlet>Tomcat 与 Servlet</a></li><li><a href=#样例代码>样例代码</a></li></ul></li><li><a href=#filter-过滤器>Filter 过滤器</a><ul><li><a href=#样例代码-1>样例代码</a></li></ul></li><li><a href=#listener-监听器>Listener 监听器</a><ul><li><a href=#样例代码-2>样例代码</a></li></ul></li><li><a href=#orm-框架>ORM 框架</a><ul><li><a href=#原生-jdbc>原生 JDBC</a></li><li><a href=#mybatis>MyBatis</a></li><li><a href=#hibernate>Hibernate</a></li></ul></li><li><a href=#fastjson>Fastjson</a><ul><li><a href=#简介>简介</a></li><li><a href=#序列化与反序列化>序列化与反序列化</a></li><li><a href=#代码demo>代码demo</a></li></ul></li><li><a href=#jndi>JNDI</a><ul><li><a href=#简介-1>简介</a></li></ul></li><li><a href=#log4j>Log4j</a><ul><li><a href=#简介-2>简介</a></li><li><a href=#样例代码-3>样例代码</a></li></ul></li><li><a href=#xstream>XStream</a><ul><li><a href=#样例代码-4>样例代码</a></li></ul></li><li><a href=#shiro>shiro</a></li><li><a href=#springboot>SpringBoot</a><ul><li><a href=#模板引擎>模板引擎</a></li><li><a href=#actuator>Actuator</a></li><li><a href=#swagger>Swagger</a></li><li><a href=#jwt-令牌>JWT 令牌</a></li><li><a href=#spring-security>Spring Security</a></li></ul></li><li><a href=#snakeyaml>SnakeYaml</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=javaee>JavaEE
+<a class=anchor href=#javaee>#</a></h1><h2 id=servlet-技术>Servlet 技术
+<a class=anchor href=#servlet-%e6%8a%80%e6%9c%af>#</a></h2><h3 id=整体理解>整体理解
+<a class=anchor href=#%e6%95%b4%e4%bd%93%e7%90%86%e8%a7%a3>#</a></h3><p>Servlet 是运行在 Web 服务器或应用服务器上的程序，它是作为来自 Web 浏览器或其他 HTTP 客户端的请求和 HTTP 服务器上的数据库或应用程序之间的中间层。使用 Servlet 可以收集来自网页表单的用户输入，呈现来自数据库或者其他源的记录，还可以动态创建网页。</p><p>在纯 Servlet 项目中一般会用到 Tomcat。这里我们和 PHP 的经典架构 LAMP 进行一个类比。</p><p>在 LAMP 中，当 Apache 接收到请求后会自己处理静态内容，如 HTML、CSS 等，然后把这些内容直接返回给客户端，而动态请求交给后续的 PHP 处理，比如查询数据库等。</p><p>到 Java Web 架构中，也可以使用 Apache/Nginx 来处理静态资源，然后动态请求就会发到 Tomcat 处理，再由 Tomcat 交给 Servlet 处理并生成对应内容并返回客户端。当然也可以不使用 Apache/Nginx 这类应用，因为 Tomcat 本身具备一个简易的 Web Server，也可以处理 HTTP 请求，然后交给内部的 Servlet 处理请求。</p><h3 id=tomcat-与-servlet>Tomcat 与 Servlet
+<a class=anchor href=#tomcat-%e4%b8%8e-servlet>#</a></h3><p>Tomcat 是 Servlet 容器。Servlet 类写好之后是没有 main 方法的，无法自行启动。我们必须把 Servlet 放到 Tomcat 中 Tomcat 才能创建 Servlet 实例，并在合适的时机调用它的方法。同时 Tomcat 管理了 Servlet 的完整生命周期。当启动或第一次请求时，Tomcat 调用<code>init()</code>方法，让 Servlet 初始化；每一次处理请求时，Tomcat 开线程，调用<code>service()</code>方法（进而调用我们的<code>doGet</code>/<code>doPost</code>方法）；服务器关闭或应用卸载时，Tomcat 调用<code>destroy()</code>方法，让 Servlet 释放资源。</p><p>同时，Tomcat 可以接收原始的 TCP 字节流并解析为 HTTP 请求，然后把各种请求的参数封装到<code>HttpServletRequest</code>对象中，我们可以直接调用<code>request.getParameter("xxx")</code>来获取参数。在处理 HTTP 响应时我们把结果写到<code>HttpServletResponse</code>对象中，Tomcat 会自动把它组装成合法的 HTTP 响应报文发送到客户端。当多个用户同时访问时，Tomcat 会自动分配多个线程来调用 Servlet，并保证每个请求之间互不干扰。而向长连接管理、SSL/TLS 加密、会话管理等都是由 Tomcat 提供的。</p><h3 id=样例代码>样例代码
+<a class=anchor href=#%e6%a0%b7%e4%be%8b%e4%bb%a3%e7%a0%81>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.servlet;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.ServletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.PrintWriter;
+</span></span><span style=display:flex><span><span style=color:#75715e>//一个简单的servlet样例</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>IndexServlet</span> <span style=color:#66d9ef>extends</span> HttpServlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>init</span>() <span style=color:#66d9ef>throws</span> ServletException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;init servlet&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doGet</span>(HttpServletRequest req, HttpServletResponse resp) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        String name <span style=color:#f92672>=</span> req.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;name&#34;</span>);
+</span></span><span style=display:flex><span>        resp.<span style=color:#a6e22e>setContentType</span>(<span style=color:#e6db74>&#34;text/html&#34;</span>);
+</span></span><span style=display:flex><span>        PrintWriter out <span style=color:#f92672>=</span> resp.<span style=color:#a6e22e>getWriter</span>();
+</span></span><span style=display:flex><span>        out.<span style=color:#a6e22e>println</span>(name);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;doGet servlet&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doPost</span>(HttpServletRequest req, HttpServletResponse resp) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;doPost servlet&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>destroy</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;destroy servlet&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>同时需要给这个文件配置路由，如果不配置路由则无法调用这个文件的相关方法。</p><p>第一种配置路由的方法是在 web.xml 种添加相关配置，比如添加：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;servlet&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;servlet-name&gt;</span>index<span style=color:#f92672>&lt;/servlet-name&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;servlet-class&gt;</span>com.example.servlet.IndexServlet<span style=color:#f92672>&lt;/servlet-class&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/servlet&gt;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;servlet-mapping&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;servlet-name&gt;</span>index<span style=color:#f92672>&lt;/servlet-name&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;url-pattern&gt;</span>/index<span style=color:#f92672>&lt;/url-pattern&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/servlet-mapping&gt;</span>
+</span></span></code></pre></div><p>第二种方法更加简单，直接在这个类的上面加上一行注解即可：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(name<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;index&#34;</span>,value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;/index&#34;</span>)
+</span></span></code></pre></div><h2 id=filter-过滤器>Filter 过滤器
+<a class=anchor href=#filter-%e8%bf%87%e6%bb%a4%e5%99%a8>#</a></h2><p>![屏幕截图 2026-08-05 214416](D:/hugoblog/myblog/static/images/screenshots/屏幕截图 2026-08-05 214416.png)</p><p>通过这一张图我们可以清楚地看到客户端访问时的数据走向。</p><p>Filter被称为过滤器，过滤器实际上就是对Web资源进行拦截，做一些处理后再交给下一个过滤器或Servlet处理，通常都是用来拦截request进行处理的，也可以对返回的 response进行拦截处理。开发人员利用filter技术，可以实现对所有Web资源的管理，例如实现权限访问控制、过滤敏感词汇、压缩响应信息等一些高级功能。</p><h3 id=样例代码-1>样例代码
+<a class=anchor href=#%e6%a0%b7%e4%be%8b%e4%bb%a3%e7%a0%81-1>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.servlet.Filter;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.*;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>XssFilter</span> <span style=color:#66d9ef>implements</span> Filter {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>init</span>(FilterConfig filterConfig) <span style=color:#66d9ef>throws</span> ServletException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;XssFilter init&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>destroy</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;XssFilter destroy&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doFilter</span>(ServletRequest request, ServletResponse response, FilterChain chain) <span style=color:#66d9ef>throws</span> IOException, ServletException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;XssFilter doFilter&#34;</span>);
+</span></span><span style=display:flex><span>        chain.<span style=color:#a6e22e>doFilter</span>(request,response);   <span style=color:#75715e>//数据放行</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后在 web.xml 里配置一下相关路由：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;filter&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;filter-name&gt;</span>xss<span style=color:#f92672>&lt;/filter-name&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;filter-class&gt;</span>com.example.servlet.Filter.XssFilter<span style=color:#f92672>&lt;/filter-class&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/filter&gt;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;filter-mapping&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;filter-name&gt;</span>xss<span style=color:#f92672>&lt;/filter-name&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;url-pattern&gt;</span>/index<span style=color:#f92672>&lt;/url-pattern&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/filter-mapping&gt;</span>
+</span></span></code></pre></div><p>或者配置注解：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#a6e22e>@WebFilter</span>(filterName <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;xss&#34;</span>,value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;/index&#34;</span>)
+</span></span></code></pre></div><p>然后运行代码，会发现我们还没有访问<code>/index</code>这个路由时，已经输出了<code>XssFilter init</code>。然后我们访问<code>/index</code>路由，先输出<code>init servlet</code>，再输出<code>XssFilter doFilter</code>。然后停止程序运行，先输出<code>destroy servlet</code>，再输出<code>XssFilter destroy</code>。</p><p>一个简单的 XSS 过滤：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.servlet.Filter;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.*;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>XssFilter</span> <span style=color:#66d9ef>implements</span> Filter {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>init</span>(FilterConfig filterConfig) <span style=color:#66d9ef>throws</span> ServletException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;XssFilter init&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>destroy</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;XssFilter destroy&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doFilter</span>(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain) <span style=color:#66d9ef>throws</span> IOException, ServletException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;XssFilter doFilter&#34;</span>);
+</span></span><span style=display:flex><span>        HttpServletRequest request <span style=color:#f92672>=</span> (HttpServletRequest) servletRequest;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        String name <span style=color:#f92672>=</span> request.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;name&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(<span style=color:#f92672>!</span>name.<span style=color:#a6e22e>contains</span>(<span style=color:#e6db74>&#34;script&#34;</span>)){
+</span></span><span style=display:flex><span>            chain.<span style=color:#a6e22e>doFilter</span>(servletRequest,servletResponse);
+</span></span><span style=display:flex><span>        }<span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;XSS attack&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>过滤器就是数据在到达核心程序之前进行一次过滤。后续内存马技术会涉及到过滤器。</p><h2 id=listener-监听器>Listener 监听器
+<a class=anchor href=#listener-%e7%9b%91%e5%90%ac%e5%99%a8>#</a></h2><p>监听器是 Servlet 规范中定义的一种特殊类：</p><ul><li>用来监听 ServletContext、HttpSession 和 ServletRequest 等域对象的创建和销毁事件</li><li>用来监听域对象的属性发生修改的事件</li><li>可以在事件发生前后做一些必要的处理</li></ul><p>Servlet规范中定义了9个监听器接口，可以用来监听ServletContext、HttpSession 和 ServletRequest 对象的生命周期 和属性变化事件。</p><p>监听器按照监听的事件可以分成3类：</p><ul><li>监听对象创建和销毁的监听器</li><li>监听对象属性变更的监听器</li><li>监听 HttpSession 中的对象状态改变的监听器</li></ul><p>关于监听器的更多了解参考<a href=https://blog.csdn.net/qq_52797170/article/details/124023760>Web应用监听器实战：在线人数统计与事件处理-CSDN博客</a></p><h3 id=样例代码-2>样例代码
+<a class=anchor href=#%e6%a0%b7%e4%be%8b%e4%bb%a3%e7%a0%81-2>#</a></h3><p>下面是一个简单的 Session 监听器：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.servlet.Listen;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebListener;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpSessionEvent;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpSessionListener;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebListener</span>(<span style=color:#e6db74>&#34;/admin&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>SessionListen</span> <span style=color:#66d9ef>implements</span> HttpSessionListener {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>sessionCreated</span>(HttpSessionEvent se) {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;Listen Session created&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>sessionDestroyed</span>(HttpSessionEvent se) {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;Listen Session destroyed&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.servlet.Servlet;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.ServletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(name<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;admin&#34;</span>,value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;/admin&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>AdminServlet</span> <span style=color:#66d9ef>extends</span> HttpServlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>init</span>() <span style=color:#66d9ef>throws</span> ServletException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;AdminServlet init&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doGet</span>(HttpServletRequest req, HttpServletResponse resp) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;AdminServlet doGet&#34;</span>);
+</span></span><span style=display:flex><span>        req.<span style=color:#a6e22e>getSession</span>().<span style=color:#a6e22e>invalidate</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>destroy</span>() {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=orm-框架>ORM 框架
+<a class=anchor href=#orm-%e6%a1%86%e6%9e%b6>#</a></h2><p>Java Web 中的 ORM 框架就是一个把 Java 对象和数据库表记录之间自动相互转换的工具。</p><h3 id=原生-jdbc>原生 JDBC
+<a class=anchor href=#%e5%8e%9f%e7%94%9f-jdbc>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.jdbc.servlet;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.ServletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.sql.*;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(name<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;jdbc&#34;</span>,value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;/sql&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>JdbcServlet</span> <span style=color:#66d9ef>extends</span> HttpServlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doGet</span>(HttpServletRequest req, HttpServletResponse resp) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        String id<span style=color:#f92672>=</span>req.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;id&#34;</span>);
+</span></span><span style=display:flex><span>        String sql<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;select * from users where user_id=&#34;</span><span style=color:#f92672>+</span>id;
+</span></span><span style=display:flex><span>        String url<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;jdbc:mysql://localhost:3306/dvwa?useUnicode=true&amp;characterEncoding=utf-8&#34;</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//加载驱动</span>
+</span></span><span style=display:flex><span>            Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;com.mysql.jdbc.Driver&#34;</span>);
+</span></span><span style=display:flex><span>            Connection connection <span style=color:#f92672>=</span> DriverManager.<span style=color:#a6e22e>getConnection</span>(url, <span style=color:#e6db74>&#34;root&#34;</span>, <span style=color:#e6db74>&#34;123456&#34;</span>);    <span style=color:#75715e>//连接数据库</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//创建SQL语句执行器</span>
+</span></span><span style=display:flex><span>            Statement statement <span style=color:#f92672>=</span> connection.<span style=color:#a6e22e>createStatement</span>(); 
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//执行查询语句</span>
+</span></span><span style=display:flex><span>            ResultSet resultSet <span style=color:#f92672>=</span> statement.<span style=color:#a6e22e>executeQuery</span>(sql);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>while</span> (resultSet.<span style=color:#a6e22e>next</span>()){
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//按照列名查找数据并转换为字符串类型，输出到浏览器上</span>
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;user_id&#34;</span>));
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;first_name&#34;</span>));
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;last_name&#34;</span>));
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;user&#34;</span>));
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (ClassNotFoundException <span style=color:#f92672>|</span> SQLException e) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> RuntimeException(e);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>以上是一个简单的原生 JDBC 代码，存在 SQL 注入漏洞。这么写既危险又繁琐，所以出现了其他 ORM 框架，既能简化代码，又能提高安全性。</p><h4 id=jdbc-中的-sql-预编译>JDBC 中的 SQL 预编译
+<a class=anchor href=#jdbc-%e4%b8%ad%e7%9a%84-sql-%e9%a2%84%e7%bc%96%e8%af%91>#</a></h4><p>为了提高原生 JDBC 的安全性、防止存在 SQL 注入，JDBC 中也有预编译机制。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.jdbc.servlet;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.ServletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.sql.*;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(name<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;jdbc&#34;</span>,value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;/sql&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>JdbcServlet</span> <span style=color:#66d9ef>extends</span> HttpServlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doGet</span>(HttpServletRequest req, HttpServletResponse resp) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        String id<span style=color:#f92672>=</span>req.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;id&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//不安全写法</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//String sql=&#34;select * from users where user_id=&#34;+id;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//预编译</span>
+</span></span><span style=display:flex><span>        String sql<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;select * from users where user_id=?&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        String url<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;jdbc:mysql://localhost:3306/dvwa?useUnicode=true&amp;characterEncoding=utf-8&#34;</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Class.<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;com.mysql.jdbc.Driver&#34;</span>);
+</span></span><span style=display:flex><span>            Connection connection <span style=color:#f92672>=</span> DriverManager.<span style=color:#a6e22e>getConnection</span>(url, <span style=color:#e6db74>&#34;root&#34;</span>, <span style=color:#e6db74>&#34;123456&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//Statement statement = connection.createStatement();</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//ResultSet resultSet = statement.executeQuery(sql);</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//预编译</span>
+</span></span><span style=display:flex><span>            PreparedStatement preparedStatement <span style=color:#f92672>=</span> connection.<span style=color:#a6e22e>prepareStatement</span>(sql);
+</span></span><span style=display:flex><span>            preparedStatement.<span style=color:#a6e22e>setString</span>(1,id);
+</span></span><span style=display:flex><span>            ResultSet resultSet <span style=color:#f92672>=</span> preparedStatement.<span style=color:#a6e22e>executeQuery</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>while</span> (resultSet.<span style=color:#a6e22e>next</span>()){
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;user_id&#34;</span>));
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;first_name&#34;</span>));
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;last_name&#34;</span>));
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(resultSet.<span style=color:#a6e22e>getString</span>(<span style=color:#e6db74>&#34;user&#34;</span>));
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (ClassNotFoundException <span style=color:#f92672>|</span> SQLException e) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> RuntimeException(e);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这就是原生 JDBC 中简单的 SQL 预编译代码，可以防御 SQL 注入漏洞。</p><h3 id=mybatis>MyBatis
+<a class=anchor href=#mybatis>#</a></h3><p>MyBatis 的配置相对复杂，这里也不记录如何配置了，直接放样例代码。</p><p>mybatis-config.xml：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#75715e>&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34; ?&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!DOCTYPE configuration
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        PUBLIC &#34;-//mybatis.org//DTD Config 3.0//EN&#34;
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        &#34;http://mybatis.org/dtd/mybatis-3-config.dtd&#34;&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;configuration&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;environments</span> <span style=color:#a6e22e>default=</span><span style=color:#e6db74>&#34;development&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;environment</span> <span style=color:#a6e22e>id=</span><span style=color:#e6db74>&#34;development&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;transactionManager</span> <span style=color:#a6e22e>type=</span><span style=color:#e6db74>&#34;JDBC&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;dataSource</span> <span style=color:#a6e22e>type=</span><span style=color:#e6db74>&#34;POOLED&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;driver&#34;</span> <span style=color:#a6e22e>value=</span><span style=color:#e6db74>&#34;com.mysql.cj.jdbc.Driver&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;url&#34;</span> <span style=color:#a6e22e>value=</span><span style=color:#e6db74>&#34;jdbc:mysql://localhost:3306/dvwa?serverTimezone=UTC&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;username&#34;</span> <span style=color:#a6e22e>value=</span><span style=color:#e6db74>&#34;root&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;password&#34;</span> <span style=color:#a6e22e>value=</span><span style=color:#e6db74>&#34;123456&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&lt;/dataSource&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;/environment&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/environments&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;mappers&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;mapper</span> <span style=color:#a6e22e>resource=</span><span style=color:#e6db74>&#34;UserMapper.xml&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/mappers&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/configuration&gt;</span>
+</span></span></code></pre></div><p>这个配置主要负责连接数据库。</p><p>UserMapper.xml：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#75715e>&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34; ?&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!DOCTYPE mapper
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        PUBLIC &#34;-//mybatis.org//DTD Mapper 3.0//EN&#34;
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        &#34;http://mybatis.org/dtd/mybatis-3-mapper.dtd&#34;&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;mapper</span> <span style=color:#a6e22e>namespace=</span><span style=color:#e6db74>&#34;com.example.mybatis.mapper.UserMapper&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;select</span> <span style=color:#a6e22e>id=</span><span style=color:#e6db74>&#34;findUserByName&#34;</span> <span style=color:#a6e22e>parameterType=</span><span style=color:#e6db74>&#34;String&#34;</span> <span style=color:#a6e22e>resultType=</span><span style=color:#e6db74>&#34;com.example.mybatis.model.User&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        select * from users where user = &#39;${name}&#39;
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/select&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/mapper&gt;</span>
+</span></span></code></pre></div><p>这个配置就是负责对数据库进行查询，同时 SQL 注入点也在这里。<code>${name}</code>是不安全的写法，会导致 SQL 注入，而<code>#{name}</code>就是预编译写法，更加安全。</p><p>UserMapper.java：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.mybatis.mapper;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.example.mybatis.model.User;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.ibatis.annotations.Param;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.List;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>interface</span> <span style=color:#a6e22e>UserMapper</span> {
+</span></span><span style=display:flex><span>    List<span style=color:#f92672>&lt;</span>User<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>findUserByName</span>(<span style=color:#a6e22e>@Param</span>(<span style=color:#e6db74>&#34;name&#34;</span>) String name);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这个接口来接收参数，并且会填充到 SQL 语句中。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.mybatis.model;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>User</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> user_id;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String user;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String password;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>toString</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;User{&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;user_id=&#34;</span> <span style=color:#f92672>+</span> user_id <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, user=&#39;&#34;</span> <span style=color:#f92672>+</span> user <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, password=&#39;&#34;</span> <span style=color:#f92672>+</span> password <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#39;}&#39;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getUser_id</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> user_id;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setUser_id</span>(<span style=color:#66d9ef>int</span> user_id) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>user_id</span> <span style=color:#f92672>=</span> user_id;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getUser</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> user;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setUser</span>(String user) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>user</span> <span style=color:#f92672>=</span> user;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getPassword</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> password;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setPassword</span>(String password) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>password</span> <span style=color:#f92672>=</span> password;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这个类接收查询到的数据。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.mybatis.servlet;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.example.mybatis.mapper.UserMapper;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.example.mybatis.model.User;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.ibatis.io.Resources;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.ibatis.session.SqlSession;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.ibatis.session.SqlSessionFactory;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.ibatis.session.SqlSessionFactoryBuilder;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.ServletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.InputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.List;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(name<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;user&#34;</span>,value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;/user&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>UserServlet</span> <span style=color:#66d9ef>extends</span> HttpServlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doGet</span>(HttpServletRequest req, HttpServletResponse resp) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        String name <span style=color:#f92672>=</span> req.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;name&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(name<span style=color:#f92672>==</span><span style=color:#66d9ef>null</span><span style=color:#f92672>||</span>name.<span style=color:#a6e22e>isEmpty</span>()){
+</span></span><span style=display:flex><span>            resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>write</span>(<span style=color:#e6db74>&#34;username can&#39;t be empty&#34;</span>);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        String resource <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;mybatis-config.xml&#34;</span>;
+</span></span><span style=display:flex><span>        InputStream inputStream <span style=color:#f92672>=</span> Resources.<span style=color:#a6e22e>getResourceAsStream</span>(resource);
+</span></span><span style=display:flex><span>        SqlSessionFactory sqlSessionFactory <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> SqlSessionFactoryBuilder().<span style=color:#a6e22e>build</span>(inputStream);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 获取 SqlSession</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> (SqlSession session <span style=color:#f92672>=</span> sqlSessionFactory.<span style=color:#a6e22e>openSession</span>()) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 获取 Mapper 接口</span>
+</span></span><span style=display:flex><span>            UserMapper mapper <span style=color:#f92672>=</span> session.<span style=color:#a6e22e>getMapper</span>(UserMapper.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 执行查询(注意:${name} 为拼接注入点,返回 List)</span>
+</span></span><span style=display:flex><span>            List<span style=color:#f92672>&lt;</span>User<span style=color:#f92672>&gt;</span> users <span style=color:#f92672>=</span> mapper.<span style=color:#a6e22e>findUserByName</span>(name);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 输出结果</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (users <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span>users.<span style=color:#a6e22e>isEmpty</span>()) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>for</span> (User user : users) {
+</span></span><span style=display:flex><span>                    resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;ID: &#34;</span> <span style=color:#f92672>+</span> user.<span style=color:#a6e22e>getUser_id</span>());
+</span></span><span style=display:flex><span>                    resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;username: &#34;</span> <span style=color:#f92672>+</span> user.<span style=color:#a6e22e>getUser</span>());
+</span></span><span style=display:flex><span>                    resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;password: &#34;</span> <span style=color:#f92672>+</span> user.<span style=color:#a6e22e>getPassword</span>());
+</span></span><span style=display:flex><span>                    resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;--------------------&#34;</span>);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>write</span>(<span style=color:#e6db74>&#34;111111no&#34;</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 渗透测试场景:把报错信息回显出来,方便报错注入/看列名</span>
+</span></span><span style=display:flex><span>            e.<span style=color:#a6e22e>printStackTrace</span>();
+</span></span><span style=display:flex><span>            resp.<span style=color:#a6e22e>getWriter</span>().<span style=color:#a6e22e>write</span>(<span style=color:#e6db74>&#34;failed: &#34;</span> <span style=color:#f92672>+</span> e.<span style=color:#a6e22e>getMessage</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这段代码负责处理用户输入和数据库查询。</p><h3 id=hibernate>Hibernate
+<a class=anchor href=#hibernate>#</a></h3><p>样例代码：</p><p>先创建一个 hibernate.cfg.xml：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#75715e>&lt;?xml version=&#39;1.0&#39; encoding=&#39;utf-8&#39;?&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>&lt;!DOCTYPE hibernate-configuration PUBLIC
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        &#34;-//Hibernate/Hibernate Configuration DTD 3.0//EN&#34;
+</span></span></span><span style=display:flex><span><span style=color:#75715e>        &#34;http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd&#34;&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;hibernate-configuration&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;session-factory&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>&lt;!--  数据库连接配置  --&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;hibernate.connection.driver_class&#34;</span><span style=color:#f92672>&gt;</span>com.mysql.cj.jdbc.Driver<span style=color:#f92672>&lt;/property&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;hibernate.connection.url&#34;</span><span style=color:#f92672>&gt;</span>jdbc:mysql://localhost:3306/phpstudy?useUnicode=true&amp;amp;characterEncoding=UTF-8&amp;amp;serverTimezone=Asia/Shanghai<span style=color:#f92672>&lt;/property&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;hibernate.connection.username&#34;</span><span style=color:#f92672>&gt;</span>root<span style=color:#f92672>&lt;/property&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;hibernate.connection.password&#34;</span><span style=color:#f92672>&gt;</span>123456<span style=color:#f92672>&lt;/property&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>&lt;!--  数据库方言  --&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;hibernate.dialect&#34;</span><span style=color:#f92672>&gt;</span>org.hibernate.dialect.MySQL8Dialect<span style=color:#f92672>&lt;/property&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>&lt;!--  显示 SQL 语句  --&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;hibernate.show_sql&#34;</span><span style=color:#f92672>&gt;</span>true<span style=color:#f92672>&lt;/property&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>&lt;!--  自动更新数据库表结构  --&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;hibernate.hbm2ddl.auto&#34;</span><span style=color:#f92672>&gt;</span>update<span style=color:#f92672>&lt;/property&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>&lt;!--  映射实体类  --&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;mapping</span> <span style=color:#a6e22e>class=</span><span style=color:#e6db74>&#34;com.example.entity.User&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/session-factory&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/hibernate-configuration&gt;</span>
+</span></span></code></pre></div><p>User.java 映射实体类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.entity;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.persistence.Entity;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.persistence.GeneratedValue;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.persistence.GenerationType;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.persistence.Id;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.persistence.Table;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Entity</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@Table</span>(name<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;users&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>User</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Id</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@GeneratedValue</span>(strategy <span style=color:#f92672>=</span> GenerationType.<span style=color:#a6e22e>IDENTITY</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> id;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String username;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String email;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>User</span>() {}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getId</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> id;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setId</span>(<span style=color:#66d9ef>int</span> id) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>id</span> <span style=color:#f92672>=</span> id;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getUsername</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> username;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setUsername</span>(String username) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>username</span> <span style=color:#f92672>=</span> username;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getEmail</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> email;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setEmail</span>(String email) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>email</span> <span style=color:#f92672>=</span> email;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>toString</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;User{id=&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;, username=&#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;, email=&#39;&#34;</span> <span style=color:#f92672>+</span> email <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;}&#34;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>工具类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.util;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.hibernate.SessionFactory;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.hibernate.cfg.Configuration;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>HibernateUtil</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>final</span> SessionFactory sessionFactory;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Configuration configuration <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Configuration().<span style=color:#a6e22e>configure</span>();
+</span></span><span style=display:flex><span>            sessionFactory <span style=color:#f92672>=</span> configuration.<span style=color:#a6e22e>buildSessionFactory</span>();
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (Throwable ex) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> ExceptionInInitializerError(ex);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> SessionFactory <span style=color:#a6e22e>getSessionFactory</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> sessionFactory;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Servlet 类部分：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.example.entity.User;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.example.util.HibernateUtil;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.hibernate.Session;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.hibernate.query.Query;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.ServletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.PrintWriter;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.List;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(<span style=color:#e6db74>&#34;/user&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>UserQueryServlet</span> <span style=color:#66d9ef>extends</span> HttpServlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doGet</span>(HttpServletRequest request, HttpServletResponse response) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        response.<span style=color:#a6e22e>setContentType</span>(<span style=color:#e6db74>&#34;text/html;charset=UTF-8&#34;</span>);
+</span></span><span style=display:flex><span>        PrintWriter out <span style=color:#f92672>=</span> response.<span style=color:#a6e22e>getWriter</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 获取参数（这里假设根据用户名查询）</span>
+</span></span><span style=display:flex><span>        String username <span style=color:#f92672>=</span> request.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;username&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 打开 Hibernate Session</span>
+</span></span><span style=display:flex><span>        Session session <span style=color:#f92672>=</span> HibernateUtil.<span style=color:#a6e22e>getSessionFactory</span>().<span style=color:#a6e22e>openSession</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 修改后的 HQL 语句，直接拼接字符串</span>
+</span></span><span style=display:flex><span>            String hql <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;FROM User WHERE username = &#39;&#34;</span> <span style=color:#f92672>+</span> username <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#39;&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//String hql = &#34;FROM User WHERE username=:username&#34;;</span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 创建查询对象</span>
+</span></span><span style=display:flex><span>            Query<span style=color:#f92672>&lt;</span>User<span style=color:#f92672>&gt;</span> query <span style=color:#f92672>=</span> session.<span style=color:#a6e22e>createQuery</span>(hql, User.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 执行查询</span>
+</span></span><span style=display:flex><span>            List<span style=color:#f92672>&lt;</span>User<span style=color:#f92672>&gt;</span> users <span style=color:#f92672>=</span> query.<span style=color:#a6e22e>getResultList</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 输出查询结果</span>
+</span></span><span style=display:flex><span>            out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;html&gt;&lt;body&gt;&#34;</span>);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (users.<span style=color:#a6e22e>isEmpty</span>()) {
+</span></span><span style=display:flex><span>                out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;p&gt;未找到匹配的用户。&lt;/p&gt;&#34;</span>);
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>for</span> (User user : users) {
+</span></span><span style=display:flex><span>                    out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;p&gt;&#34;</span> <span style=color:#f92672>+</span> user <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&lt;/p&gt;&#34;</span>);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;/body&gt;&lt;/html&gt;&#34;</span>);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>            e.<span style=color:#a6e22e>printStackTrace</span>();
+</span></span><span style=display:flex><span>            out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;html&gt;&lt;body&gt;&lt;p&gt;查询出错，请稍后重试。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&#34;</span>);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>finally</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// 关闭 Session</span>
+</span></span><span style=display:flex><span>            session.<span style=color:#a6e22e>close</span>();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这里的代码是存在 SQL 注入的。在 Hibernate 中用预编译来写就是<code>String hql = "FROM User WHERE username=:username"</code>。</p><h2 id=fastjson>Fastjson
+<a class=anchor href=#fastjson>#</a></h2><h3 id=简介>简介
+<a class=anchor href=#%e7%ae%80%e4%bb%8b>#</a></h3><p>Fastjson 是阿里巴巴的开源库，用于对 JSON 格式的数据进行解析和打包。其实简单的来说就是处理 json 格式的数据。例如将 JSON 转换成一个类，或者是将一个类转换成一段 json 数据。Fastjson 是一个 Java 库，提供了 Java 对象与 JSON 相互转换。</p><h3 id=序列化与反序列化>序列化与反序列化
+<a class=anchor href=#%e5%ba%8f%e5%88%97%e5%8c%96%e4%b8%8e%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96>#</a></h3><ol><li>序列化方法</li></ol><p><code>JSON.toJsonString()</code>，返回字符串</p><p><code>JSON.toJSONBytes()</code>，返回 byte 数组</p><ol start=2><li>反序列化方法</li></ol><p><code>JSON.parseObject()</code>，返回<code>JsonObject</code></p><p><code>JSON.parse()</code>，返回<code>Object</code></p><p><code>JSON.parseArray()</code>，返回<code>JSONArray</code></p><p>将 JSON 对象转换为 java 对象：<code>JSON.toJavaObject()</code></p><p>将 JSON 对象写入 write 流：<code>JSON.writeJSONString()</code></p><ol start=3><li>常用</li></ol><p><code>JSON.toJSONString()</code>、<code>JSON.parse()</code>、<code>JSON.parseObject()</code></p><h3 id=代码demo>代码demo
+<a class=anchor href=#%e4%bb%a3%e7%a0%81demo>#</a></h3><h4 id=序列化实现>序列化实现
+<a class=anchor href=#%e5%ba%8f%e5%88%97%e5%8c%96%e5%ae%9e%e7%8e%b0>#</a></h4><p>首先导入 Fastjson 的依赖，这里使用 1.2.24 版本的：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;dependency&gt;</span>  
+</span></span><span style=display:flex><span> <span style=color:#f92672>&lt;groupId&gt;</span>com.alibaba<span style=color:#f92672>&lt;/groupId&gt;</span>  
+</span></span><span style=display:flex><span> <span style=color:#f92672>&lt;artifactId&gt;</span>fastjson<span style=color:#f92672>&lt;/artifactId&gt;</span>  
+</span></span><span style=display:flex><span> <span style=color:#f92672>&lt;version&gt;</span>1.2.24<span style=color:#f92672>&lt;/version&gt;</span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/dependency&gt;</span>
+</span></span></code></pre></div><p>先定义一个 Student 类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Student</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String name;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> age;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Student</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;构造函数&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getName</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getName&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setName</span>(String name) {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;setName&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getAge</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getAge&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> age;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setAge</span>(<span style=color:#66d9ef>int</span> age) {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;setAge&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>age</span> <span style=color:#f92672>=</span> age;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后用<code>JSON.toJSONString()</code>来序列化：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.serializer.SerializerFeature;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>StudentSerialize</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        Student student <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Student();
+</span></span><span style=display:flex><span>        student.<span style=color:#a6e22e>setName</span>(<span style=color:#e6db74>&#34;solowalker&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        String jsonString <span style=color:#f92672>=</span> JSON.<span style=color:#a6e22e>toJSONString</span>(student, SerializerFeature.<span style=color:#a6e22e>WriteClassName</span>);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(jsonString);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>输出：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setName
+</span></span><span style=display:flex><span>getAge
+</span></span><span style=display:flex><span>getName
+</span></span><span style=display:flex><span>{&#34;@type&#34;:&#34;com.example.Student&#34;,&#34;age&#34;:0,&#34;name&#34;:&#34;solowalker&#34;}
+</span></span></code></pre></div><p>很显然<code>String jsonString = JSON.toJSONString(student, SerializerFeature.WriteClassName);</code>这一句是非常关键的。</p><p>我们关注一下这里的参数：</p><p>第一个参数是 student，就是我们要序列化的对象。第二个参数是<code>SerializerFeature.WriteClassName</code>，是<code>JSON.toJSONString()</code>中的一个设置属性值，设置之后在序列化时会多写入一个<code>@type</code>，即会写上被序列化的类名，type 可以指定反序列化的类，并且反序列化时调用其<code>getter</code>/<code>setter</code>/<code>is</code>方法。</p><ul><li>Fastjson 接受的 JSON 可以通过@type字段来指定该JSON应当还原成何种类型的对象，在反序列化的时候方便操作。</li></ul><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>// 设置了SerializerFeature.WriteClassName
+</span></span><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setName
+</span></span><span style=display:flex><span>setAge
+</span></span><span style=display:flex><span>getAge
+</span></span><span style=display:flex><span>getName
+</span></span><span style=display:flex><span>{&#34;@type&#34;:&#34;com.example.Student&#34;,&#34;age&#34;:6,&#34;name&#34;:&#34;John&#34;}
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>// 未设置SerializerFeature.WriteClassName
+</span></span><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setName
+</span></span><span style=display:flex><span>setAge
+</span></span><span style=display:flex><span>getAge
+</span></span><span style=display:flex><span>getName
+</span></span><span style=display:flex><span>{&#34;age&#34;:6,&#34;name&#34;:&#34;John&#34;}
+</span></span></code></pre></div><h4 id=反序列化实现>反序列化实现
+<a class=anchor href=#%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e5%ae%9e%e7%8e%b0>#</a></h4><p>调用<code>JSON.parseObject()</code>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.parser.Feature;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>StudentUnserialize</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        String jsonString<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;{\&#34;@type\&#34;:\&#34;com.example.Student\&#34;,\&#34;age\&#34;:0,\&#34;name\&#34;:\&#34;solowalker\&#34;}&#34;</span>;
+</span></span><span style=display:flex><span>        Student student <span style=color:#f92672>=</span> JSON.<span style=color:#a6e22e>parseObject</span>(jsonString, Student.<span style=color:#a6e22e>class</span>, Feature.<span style=color:#a6e22e>SupportNonPublicField</span>);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(student);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(student.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getName</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>输出：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setAge
+</span></span><span style=display:flex><span>setName
+</span></span><span style=display:flex><span>com.example.Student@5b37e0d2
+</span></span><span style=display:flex><span>com.example.Student
+</span></span></code></pre></div><p>总结一下反序列化时 getter 和 setter 的调用情况：</p><ol><li>当序列化时有<code>SerializerFeature.WriteClassName</code>参数，即 json 中有<code>@type</code>时，反序列化时<code>parse</code>就会调用<code>setter</code>，<code>parseObject</code>就是调用<code>getter</code>和<code>setter</code></li><li>当反序列化时指定<code>Class</code>，<code>parseObject(text, Class)</code>主要会调用<code>setter</code>，特定情况下会调用<code>getter</code></li></ol><h2 id=jndi>JNDI
+<a class=anchor href=#jndi>#</a></h2><h3 id=简介-1>简介
+<a class=anchor href=#%e7%ae%80%e4%bb%8b-1>#</a></h3><p>JNDI 全称 Java Naming and Directory Interflace（Java 命名和目录接口），也就是一个名字对应一个 Java 对象，一个字符串对应一个对象。</p><p>JNDI 是一组应用程序接口，为开发人员查找和访问各种资源提供了统一的通用接口，可以用来定义用户、网络、机器、对象和服务等各种资源。JNDI 支持的服务主要有：DNS、LDAP、CORBA、RMI 等。</p><p>关于 JNDI 的攻击方式后续会在 Java 安全专题里更新。</p><h2 id=log4j>Log4j
+<a class=anchor href=#log4j>#</a></h2><h3 id=简介-2>简介
+<a class=anchor href=#%e7%ae%80%e4%bb%8b-2>#</a></h3><p>Log4j 是 Java 编程中最流行的一个<strong>日志记录工具</strong>。简单来说就是开发人员在代码里“埋点”，让程序在运行过程中把各种状态、错误、信息打印出来（比如输出到控制台或文件），方便开发人员排查问题和监控系统。</p><p>在大型企业级应用中，日志系统是必备的。Log4j 因为性能好、功能强、配置灵活，几乎成了 Java 日志的事实标准，被全球数以百万计的应用使用。</p><h3 id=样例代码-3>样例代码
+<a class=anchor href=#%e6%a0%b7%e4%be%8b%e4%bb%a3%e7%a0%81-3>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.log4jdemo;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.logging.log4j.LogManager;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.logging.log4j.Logger;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Log4jTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>final</span> Logger log <span style=color:#f92672>=</span> LogManager.<span style=color:#a6e22e>getLogger</span>(Log4jTest.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;hello&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        String code<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;${java:os}&#34;</span>;
+</span></span><span style=display:flex><span>        log.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;{}&#34;</span>,code);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这段代码简单利用了 Log4j 的漏洞打印了系统的基本信息。</p><h2 id=xstream>XStream
+<a class=anchor href=#xstream>#</a></h2><p>XStream 是一个 Java 库，核心功能是把 Java 对象转换为 XML、把 XML 转换成 Java 对象，就是序列化和反序列化的过程。</p><h3 id=样例代码-4>样例代码
+<a class=anchor href=#%e6%a0%b7%e4%be%8b%e4%bb%a3%e7%a0%81-4>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.xstreamdemo;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.Serializable;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Car</span> <span style=color:#66d9ef>implements</span> Serializable {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String name;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> price;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Car</span>(String name, <span style=color:#66d9ef>int</span> price) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> name;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>price</span> <span style=color:#f92672>=</span> price;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getName</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setName</span>(String name) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getPrice</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> price;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setPrice</span>(<span style=color:#66d9ef>int</span> price) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>price</span> <span style=color:#f92672>=</span> price;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>readObject</span>(ObjectInputStream s) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        s.<span style=color:#a6e22e>defaultReadObject</span>();
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;print car&#34;</span>);
+</span></span><span style=display:flex><span>        Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(<span style=color:#e6db74>&#34;calc&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.xstreamdemo;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.thoughtworks.xstream.XStream;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>XStreamTest</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        Car ferrari <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Car(<span style=color:#e6db74>&#34;Ferrari&#34;</span>, 4000000);
+</span></span><span style=display:flex><span>        XStream xStream <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> XStream();
+</span></span><span style=display:flex><span>        String xml <span style=color:#f92672>=</span> xStream.<span style=color:#a6e22e>toXML</span>(ferrari);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(xml);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>输出：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>&lt;com.example.xstreamdemo.Car serialization=&#34;custom&#34;&gt;
+</span></span><span style=display:flex><span>  &lt;com.example.xstreamdemo.Car&gt;
+</span></span><span style=display:flex><span>    &lt;default&gt;
+</span></span><span style=display:flex><span>      &lt;price&gt;4000000&lt;/price&gt;
+</span></span><span style=display:flex><span>      &lt;name&gt;Ferrari&lt;/name&gt;
+</span></span><span style=display:flex><span>    &lt;/default&gt;
+</span></span><span style=display:flex><span>  &lt;/com.example.xstreamdemo.Car&gt;
+</span></span><span style=display:flex><span>&lt;/com.example.xstreamdemo.Car&gt;
+</span></span></code></pre></div><p>反序列化：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.example.xstreamdemo;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.thoughtworks.xstream.XStream;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>XStreamSer</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        XStream xStream <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> XStream();
+</span></span><span style=display:flex><span>        String payload<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;&lt;com.example.xstreamdemo.Car serialization=\&#34;custom\&#34;&gt;\n&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;  &lt;com.example.xstreamdemo.Car&gt;\n&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;    &lt;default&gt;\n&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;      &lt;price&gt;4000000&lt;/price&gt;\n&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;      &lt;name&gt;Ferrari&lt;/name&gt;\n&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;    &lt;/default&gt;\n&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;  &lt;/com.example.xstreamdemo.Car&gt;\n&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;&lt;/com.example.xstreamdemo.Car&gt;&#34;</span>;
+</span></span><span style=display:flex><span>        xStream.<span style=color:#a6e22e>fromXML</span>(payload);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>运行之后会弹出计算器，说明 XStream 在反序列化时会调用<code>readObject()</code>方法。</p><h2 id=shiro>shiro
+<a class=anchor href=#shiro>#</a></h2><p>Apache Shiro 是一个强大且易用的 Java 安全框架，它的目标是让应用程序的安全控制变的简单直观。它关注的是应用安全的四大基石，即认证、授权、会话管理和加密。</p><p>Shiro 可以轻松实现以下功能：</p><ul><li><strong>认证 (Authentication)</strong>：也就是“登录”，验证用户的身份。</li><li><strong>授权 (Authorization)</strong>：也就是“访问控制”，判断用户是否有权限做某件事。</li><li><strong>会话管理 (Session Management)</strong>：即使在非 Web 环境（如命令行程序）中，也能管理用户会话。</li><li><strong>加密 (Cryptography)</strong>：提供简单的 API 来使用加密算法保护数据。</li><li><strong>其他功能</strong>：它还支持“记住我”、缓存、多线程并发等特性。</li></ul><h2 id=springboot>SpringBoot
+<a class=anchor href=#springboot>#</a></h2><p>SpringBoot 是 Java 生态中最流行的应用开发框架（基于 Spring 框架），核心目标是简化 Spring 应用的初始搭建和开发过程。</p><p>在 Spring Boot 出现之前，用 Spring 开发一个 Web 项目，你需要：</p><ul><li>配置大量的 XML 文件</li><li>手动管理各种 Jar 包的版本依赖</li><li>部署到外置的 Tomcat 服务器</li><li>配置数据源、事务管理器等基础设施</li></ul><p>这些工作繁琐且容易出错。Spring Boot 的核心理念是**&ldquo;约定优于配置&rdquo;**——它给你一套默认的配置，只要你遵循约定，几乎不需要额外配置就能直接运行。</p><h3 id=模板引擎>模板引擎
+<a class=anchor href=#%e6%a8%a1%e6%9d%bf%e5%bc%95%e6%93%8e>#</a></h3><p>Java 中用到的模板引擎主要是 Thymeleaf、Freemarker、Velocity。Java 的模板引擎同样存在 SSTI 漏洞。</p><p>关于这些模板引擎的漏洞后续专题更新。</p><h3 id=actuator>Actuator
+<a class=anchor href=#actuator>#</a></h3><p>Spring Boot Actuator 是 Spring Boot 框架中一个非常重要的模块，它为应用提供了一系列<strong>生产就绪的功能</strong>，比如监控、管理和查看应用内部状态 。你可以把它看作是应用运行时的“体检中心”和“控制面板”，让你能轻松了解应用的健康状况、性能指标和配置信息 。</p><p>简单来说，Actuator 通过暴露一系列 <strong>HTTP 端点</strong>（或 JMX MBean）来提供功能。这些端点就像一个个“接口”，通过访问它们就能获取或操作应用的内部信息 。</p><table><thead><tr><th style=text-align:left>端点分类</th><th style=text-align:left>常用端点示例</th><th style=text-align:left>功能介绍</th></tr></thead><tbody><tr><td style=text-align:left><strong>应用健康与状态</strong></td><td style=text-align:left><code>/health</code>, <code>/info</code></td><td style=text-align:left>检查应用是否存活、就绪，以及获取应用的自定义信息，是 Kubernetes 探针的基础 。</td></tr><tr><td style=text-align:left><strong>性能与度量指标</strong></td><td style=text-align:left><code>/metrics</code>, <code>/threaddump</code>, <code>/heapdump</code></td><td style=text-align:left>获取 JVM 内存使用、CPU 负载、线程状态、堆转储等关键指标，用于性能分析 。</td></tr><tr><td style=text-align:left><strong>应用配置与环境</strong></td><td style=text-align:left><code>/env</code>, <code>/configprops</code>, <code>/beans</code></td><td style=text-align:left>查看应用所有的环境变量、配置属性以及 Spring 容器中的所有 Bean，方便排查配置问题 。</td></tr><tr><td style=text-align:left><strong>操作与控制</strong></td><td style=text-align:left><code>/shutdown</code>, <code>/loggers</code></td><td style=text-align:left>允许远程关闭应用（需谨慎开启），或在运行时动态调整日志级别 。</td></tr></tbody></table><h3 id=swagger>Swagger
+<a class=anchor href=#swagger>#</a></h3><p>Swagger 是当下比较流行的实时接口文档生成工具。接口文档是当前前后端分离项目中必不可少的工具，在前后端开发之前，后端要先出接口文档，前端根据接口文档来进行项目的开发，双方开发结束后再进行联调测试。</p><p>在前后端分离的开发模式中，它能解决以下痛点：</p><ul><li><strong>消除信息孤岛</strong>：后端修改了接口（如改变了参数名），Swagger文档会<strong>实时刷新</strong>，前端能立刻看到最新定义，无需口头沟通或等待文档更新。</li><li><strong>降低测试成本</strong>：Swagger-UI页面提供“<strong>Try it out</strong>”按钮，开发者无需使用Postman，在浏览器中就能直接填充参数、发送请求、查看JSON返回结果。</li><li><strong>规范接口设计</strong>：通过强类型约束和注解，倒逼开发者设计出更清晰的入参和出参结构。</li></ul><h3 id=jwt-令牌>JWT 令牌
+<a class=anchor href=#jwt-%e4%bb%a4%e7%89%8c>#</a></h3><p>JWT（JSON Web Token）是由服务端用加密算法对信息签名来保证其完整性和不可伪造；Token 中可以包含所有必要信息，这样服务端就不需要保存任何关于用户或会话的信息；JWT 用于身份认证、会话维持等，由三部分组成：header、payload 与 signature。</p><p>JWT 的安全问题一般就两点：</p><ol><li>目标使用的空加密</li><li>爆破密钥，但是复杂的密钥几乎无法爆破</li></ol><h3 id=spring-security>Spring Security
+<a class=anchor href=#spring-security>#</a></h3><p>Spring Security 是 Spring 生态中为应用提供**身份认证（你是谁）<strong>和</strong>授权（你能干什么）**能力的基石。</p><p>Spring Security 的核心本质，就是一套<strong>过滤器链（Filter Chain）</strong>。一个请求进来，需要经过层层过滤器的检查。其中最重要的两个核心概念是：</p><ul><li><strong>认证（Authentication）</strong>：验证<strong>你是谁</strong>。常见方式是用户名+密码、手机号验证码、JWT（JSON Web Token）令牌等。</li><li><strong>授权（Authorization）</strong>：验证<strong>你能做什么</strong>。即认证通过后，判断你是否有权限访问某个资源或执行某个操作（比如普通用户不能调用管理员的删除接口）。</li></ul><p>这两个概念在代码中分别对应两个核心接口：</p><ul><li><code>Authentication</code>：代表当前用户的身份凭证。</li><li><code>GrantedAuthority</code>：代表用户拥有的权限（通常表现为角色或权限字符串）。</li></ul><h2 id=snakeyaml>SnakeYaml
+<a class=anchor href=#snakeyaml>#</a></h2><p>在Java生态里，SnakeYAML 是最主流、最成熟的 <strong>YAML 解析库</strong>。它几乎成了“在Java里处理YAML”的代名词，尤其是在 Spring Boot 这类广泛使用 YAML 做配置文件的框架中，它的身影随处可见。</p><p>简单来说，SnakeYAML 是一个 Java 库，专门用来在 YAML 格式和 Java 对象之间进行转换。YAML 是一种对人极其友好的数据序列化格式，常被用来写配置文件，它比 XML 和 Properties 文件都更清晰易读。</p><p>序列化时会调用对象的构造方法、<code>getter</code>和<code>setter</code>；反序列化时会调用构造方法和<code>setter</code>。</p><p>SnakeYaml 有一个 SPI 机制，解决了 JNDI 注入无法绕过的情况，存在高危利用。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#servlet-技术>Servlet 技术</a><ul><li><a href=#整体理解>整体理解</a></li><li><a href=#tomcat-与-servlet>Tomcat 与 Servlet</a></li><li><a href=#样例代码>样例代码</a></li></ul></li><li><a href=#filter-过滤器>Filter 过滤器</a><ul><li><a href=#样例代码-1>样例代码</a></li></ul></li><li><a href=#listener-监听器>Listener 监听器</a><ul><li><a href=#样例代码-2>样例代码</a></li></ul></li><li><a href=#orm-框架>ORM 框架</a><ul><li><a href=#原生-jdbc>原生 JDBC</a></li><li><a href=#mybatis>MyBatis</a></li><li><a href=#hibernate>Hibernate</a></li></ul></li><li><a href=#fastjson>Fastjson</a><ul><li><a href=#简介>简介</a></li><li><a href=#序列化与反序列化>序列化与反序列化</a></li><li><a href=#代码demo>代码demo</a></li></ul></li><li><a href=#jndi>JNDI</a><ul><li><a href=#简介-1>简介</a></li></ul></li><li><a href=#log4j>Log4j</a><ul><li><a href=#简介-2>简介</a></li><li><a href=#样例代码-3>样例代码</a></li></ul></li><li><a href=#xstream>XStream</a><ul><li><a href=#样例代码-4>样例代码</a></li></ul></li><li><a href=#shiro>shiro</a></li><li><a href=#springboot>SpringBoot</a><ul><li><a href=#模板引擎>模板引擎</a></li><li><a href=#actuator>Actuator</a></li><li><a href=#swagger>Swagger</a></li><li><a href=#jwt-令牌>JWT 令牌</a></li><li><a href=#spring-security>Spring Security</a></li></ul></li><li><a href=#snakeyaml>SnakeYaml</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
