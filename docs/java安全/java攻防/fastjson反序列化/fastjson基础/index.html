@@ -1,0 +1,301 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  Fastjson 基础
+  #
+
+
+  简介
+  #
+
+Fastjson 是阿里巴巴用 Java 开发的高性能 JSON 库，用于将数据在 JSON 和 Java 对象之间互相转换。
+主要使用两个接口来分别实现序列化和反序列化：
+
+JSON.toJSONString()将 Java 对象转化为 JSON 对象，这是序列化的过程
+JSON.parseObject()/JSON.parse()将 JSON 对象转化为 Java 对象，这是反序列化的过程
+
+可以把 JSON 简单理解为一个字符串。
+
+  代码样例
+  #
+
+
+  序列化
+  #
+
+先在 pom.xml 里导入 Fastjson 的依赖：
+<dependency>  
+ <groupId>com.alibaba</groupId>  
+ <artifactId>fastjson</artifactId>  
+ <version>1.2.24</version>  
+</dependency>
+定义一个 Student 类：
+package org.example;
+
+public class Student {
+    private String name;
+    private int age;
+
+    public Student() {
+        System.out.println("构造函数");
+    }
+
+    public String getName() {
+        System.out.println("getname");
+        return name;
+    }
+
+    public void setName(String name) {
+        System.out.println("setname");
+        this.name = name;
+    }
+
+    public int getAge() {
+        System.out.println("getage");
+        return age;
+    }
+
+    public void setAge(int age) {
+        System.out.println("setage");
+        this.age = age;
+    }
+}
+然后进行序列化，用JSON.toJsonString()来序列化对象：'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Fastjson基础"><meta property="og:description" content='Fastjson 基础 # 简介 # Fastjson 是阿里巴巴用 Java 开发的高性能 JSON 库，用于将数据在 JSON 和 Java 对象之间互相转换。
+主要使用两个接口来分别实现序列化和反序列化：
+JSON.toJSONString()将 Java 对象转化为 JSON 对象，这是序列化的过程 JSON.parseObject()/JSON.parse()将 JSON 对象转化为 Java 对象，这是反序列化的过程 可以把 JSON 简单理解为一个字符串。
+代码样例 # 序列化 # 先在 pom.xml 里导入 Fastjson 的依赖：
+<dependency> <groupId>com.alibaba</groupId> <artifactId>fastjson</artifactId> <version>1.2.24</version> </dependency> 定义一个 Student 类：
+package org.example; public class Student { private String name; private int age; public Student() { System.out.println("构造函数"); } public String getName() { System.out.println("getname"); return name; } public void setName(String name) { System.out.println("setname"); this.name = name; } public int getAge() { System.out.println("getage"); return age; } public void setAge(int age) { System.out.println("setage"); this.age = age; } } 然后进行序列化，用JSON.toJsonString()来序列化对象：'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-09-03T00:00:00+00:00"><meta property="article:modified_time" content="2026-09-03T00:00:00+00:00"><title>Fastjson基础 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/><link rel=stylesheet href=/book.min.486a8282693a4a89ef6d1ebdc674ee9b43f9f237acb69d384c1b5a6a223d858d.css integrity="sha256-SGqCgmk6SonvbR69xnTum0P58jestp04TBtaaiI9hY0=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.69e6db5d5ff82f39ec78a4c5981332782ff8b44a3545cff0bd6a862cdce942d4.js integrity="sha256-aebbXV/4LznseKTFmBMyeC/4tEo1Rc/wvWqGLNzpQtQ=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java攻防</a></label><ul><li><input type=checkbox id=section-ed10ff85653d7364765d5831a959b09b class=toggle checked>
+<label for=section-ed10ff85653d7364765d5831a959b09b class="flex justify-between"><a role=button>Fastjson反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/ class=active>Fastjson基础</a></li></ul></li><li><input type=checkbox id=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class=toggle>
+<label for=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class="flex justify-between"><a role=button>Shiro反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro721/>Shiro721</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/>Shiro550</a></li></ul></li><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc11/>java反序列化之CC11</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jndi/>JNDI</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-4b8c89e1539cb7bd5cf76bb189686b16 class=toggle>
+<label for=section-4b8c89e1539cb7bd5cf76bb189686b16 class="flex justify-between"><a role=button>项目</a></label><ul><li><input type=checkbox id=section-9d12b352c320cbba4697bac07fbf83f9 class=toggle>
+<label for=section-9d12b352c320cbba4697bac07fbf83f9 class="flex justify-between"><a role=button>JD2M</a></label><ul><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%BA%90%E7%A0%81%E7%90%86%E8%A7%A3%E8%AE%B0%E5%BD%95/>JD2M源码分析</a></li><li><a href=/docs/%E9%A1%B9%E7%9B%AE/jd2m/jd2m%E6%8A%80%E6%9C%AF%E6%A0%88%E6%88%91%E7%9A%84java%E5%8F%8D%E7%BC%96%E8%AF%91%E5%99%A8/>JD2M技术栈——我的Java反编译器</a></li></ul></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li><li><a href=/docs/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Fastjson基础</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#简介>简介</a></li><li><a href=#代码样例>代码样例</a><ul><li><a href=#序列化>序列化</a></li><li><a href=#反序列化>反序列化</a></li></ul></li><li><a href=#其他基础知识>其他基础知识</a><ul><li><a href=#反序列化时的-featuresupportnonpublicfield-参数>反序列化时的 Feature.SupportNonPublicField 参数</a></li><li><a href=#只进行-jsonparseobjectjsonstring>只进行 JSON.parseObject(jsonString)</a></li><li><a href=#parse-和-parseobject-的区别>parse 和 parseObject 的区别</a></li></ul></li><li><a href=#fastjson-反序列化漏洞原理>Fastjson 反序列化漏洞原理</a><ul><li><a href=#漏洞原理>漏洞原理</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=fastjson-基础>Fastjson 基础
+<a class=anchor href=#fastjson-%e5%9f%ba%e7%a1%80>#</a></h1><h2 id=简介>简介
+<a class=anchor href=#%e7%ae%80%e4%bb%8b>#</a></h2><p>Fastjson 是阿里巴巴用 Java 开发的高性能 JSON 库，用于将数据在 JSON 和 Java 对象之间互相转换。</p><p>主要使用两个接口来分别实现序列化和反序列化：</p><ul><li><code>JSON.toJSONString()</code>将 Java 对象转化为 JSON 对象，这是序列化的过程</li><li><code>JSON.parseObject()/JSON.parse()</code>将 JSON 对象转化为 Java 对象，这是反序列化的过程</li></ul><p>可以把 JSON 简单理解为一个字符串。</p><h2 id=代码样例>代码样例
+<a class=anchor href=#%e4%bb%a3%e7%a0%81%e6%a0%b7%e4%be%8b>#</a></h2><h3 id=序列化>序列化
+<a class=anchor href=#%e5%ba%8f%e5%88%97%e5%8c%96>#</a></h3><p>先在 pom.xml 里导入 Fastjson 的依赖：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;dependency&gt;</span>  
+</span></span><span style=display:flex><span> <span style=color:#f92672>&lt;groupId&gt;</span>com.alibaba<span style=color:#f92672>&lt;/groupId&gt;</span>  
+</span></span><span style=display:flex><span> <span style=color:#f92672>&lt;artifactId&gt;</span>fastjson<span style=color:#f92672>&lt;/artifactId&gt;</span>  
+</span></span><span style=display:flex><span> <span style=color:#f92672>&lt;version&gt;</span>1.2.24<span style=color:#f92672>&lt;/version&gt;</span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/dependency&gt;</span>
+</span></span></code></pre></div><p>定义一个 Student 类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Student</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String name;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> age;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Student</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;构造函数&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getName</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getname&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setName</span>(String name) {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;setname&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getAge</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getage&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> age;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setAge</span>(<span style=color:#66d9ef>int</span> age) {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;setage&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>age</span> <span style=color:#f92672>=</span> age;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后进行序列化，用<code>JSON.toJsonString()</code>来序列化对象：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.serializer.SerializerFeature;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>StudentSerialize</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        Student student <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> Student();
+</span></span><span style=display:flex><span>        student.<span style=color:#a6e22e>setName</span>(<span style=color:#e6db74>&#34;solo&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        String jsonString <span style=color:#f92672>=</span> JSON.<span style=color:#a6e22e>toJSONString</span>(student, SerializerFeature.<span style=color:#a6e22e>WriteClassName</span>);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(jsonString);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>序列化的逻辑可以调试看一下。</p><p>首先进入 JSON 类，然后进入<code>toJSONString()</code>方法，创建了一个<code>SerializeWriter</code>对象，序列化这一步在这里就已经完成了。</p><p><img src=https://drun1baby.top/2022/08/04/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Fastjson%E7%AF%8701-Fastjson%E5%9F%BA%E7%A1%80/SerializeWriter.png alt=1></p><p>在下面的变量里有个 static 的变量，写着<code>members of JSON</code>，主要是一个值<code>DEFAULT_TYPE_KEY</code>为<code>@type</code>，这个在反序列化漏洞里很重要。</p><p><img src=https://drun1baby.top/2022/08/04/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96Fastjson%E7%AF%8701-Fastjson%E5%9F%BA%E7%A1%80/static.png alt=2></p><p>跟进到<code>SerializeWriter</code>里，里面定义了一些初值，然后把这个对象赋值给<code>out</code>作为后续<code>JSONSerializer</code>的参数。然后就是<code>toString()</code>方法显示最后的运行结果。</p><p>很明显<code>String jsonString = JSON.toJSONString(student, SerializerFeature.WriteClassName)</code>这个语句是最关键的。关注一下它的参数：</p><p>第一个参数是 student，就是我们要进行序列化的对象。</p><p>第二个参数是<code>SerializerFeature.WriteClassName</code>，这是<code>JSON.toJSONString()</code>中的一个设置属性值，设置之后在序列化的时候会多写入一个<code>@type</code>，即写上被序列化的类名，<code>type</code>可以指定反序列化的类，并且调用其<code>getter</code>/<code>setter</code>/<code>is</code>方法。</p><blockquote><p>Fastjson 接收的 JSON 可以通过 @type 字段来指定该 JSON 应该还原成什么类型的对象，方便反序列化的时候的操作。</p></blockquote><p>输出结果：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>//设置了SerializerFeature.WriteClassName</span>
+</span></span><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setname
+</span></span><span style=display:flex><span>setage
+</span></span><span style=display:flex><span>getage
+</span></span><span style=display:flex><span>getname
+</span></span><span style=display:flex><span>{<span style=color:#e6db74>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.example.Student&#34;</span>,<span style=color:#e6db74>&#34;age&#34;</span>:18,<span style=color:#e6db74>&#34;name&#34;</span>:<span style=color:#e6db74>&#34;solo&#34;</span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//不设置SerializerFeature.WriteClassName</span>
+</span></span><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setname
+</span></span><span style=display:flex><span>setage
+</span></span><span style=display:flex><span>getage
+</span></span><span style=display:flex><span>getname
+</span></span><span style=display:flex><span>{<span style=color:#e6db74>&#34;age&#34;</span>:18,<span style=color:#e6db74>&#34;name&#34;</span>:<span style=color:#e6db74>&#34;solo&#34;</span>}
+</span></span></code></pre></div><h3 id=反序列化>反序列化
+<a class=anchor href=#%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96>#</a></h3><p>调用<code>JSON.parseObject()</code>来进行反序列化。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.parser.Feature;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>StudentUnserialize01</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        String jsonString <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;{\&#34;@type\&#34;:\&#34;org.example.Student\&#34;,\&#34;age\&#34;:18,\&#34;name\&#34;:\&#34;solo\&#34;}&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Student student <span style=color:#f92672>=</span> JSON.<span style=color:#a6e22e>parseObject</span>(jsonString, Student.<span style=color:#a6e22e>class</span>, Feature.<span style=color:#a6e22e>SupportNonPublicField</span>);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(student);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(student.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getName</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>输出结果：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setage
+</span></span><span style=display:flex><span>setname
+</span></span><span style=display:flex><span>org.example.Student@4b85612c
+</span></span><span style=display:flex><span>org.example.Student
+</span></span></code></pre></div><h2 id=其他基础知识>其他基础知识
+<a class=anchor href=#%e5%85%b6%e4%bb%96%e5%9f%ba%e7%a1%80%e7%9f%a5%e8%af%86>#</a></h2><h3 id=反序列化时的-featuresupportnonpublicfield-参数>反序列化时的 Feature.SupportNonPublicField 参数
+<a class=anchor href=#%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e6%97%b6%e7%9a%84-featuresupportnonpublicfield-%e5%8f%82%e6%95%b0>#</a></h3><p>在反序列化的时候，如果不加<code>Feature.SupportNonPublicField</code>并且没有对应的<code>setter</code>，我们无法获取<code>age</code>的值，因为是私有属性。</p><p>如果想要还原出私有属性的话还需要在<code>JSON.parseObject()/JSON.parse()</code>中加上<code>Feature.SupportNonPublicField</code>参数。</p><p>修改一下 Student 类，把私有属性 age 的 setAge() 方法注释掉：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>//没添加Feature.SupportNonPublicField
+</span></span><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setname
+</span></span><span style=display:flex><span>org.example.Student@5c29bfd
+</span></span><span style=display:flex><span>org.example.Student
+</span></span><span style=display:flex><span>getname
+</span></span><span style=display:flex><span>solo
+</span></span><span style=display:flex><span>getage
+</span></span><span style=display:flex><span>0
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>//添加了Feature.SupportNonPublicField
+</span></span><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setname
+</span></span><span style=display:flex><span>org.example.Student@4b85612c
+</span></span><span style=display:flex><span>org.example.Student
+</span></span><span style=display:flex><span>getname
+</span></span><span style=display:flex><span>solo
+</span></span><span style=display:flex><span>getage
+</span></span><span style=display:flex><span>18
+</span></span></code></pre></div><p>针对私有属性，Fastjson 有两种处理方法：</p><ol><li>该私有属性有公共的<code>setter</code>，即使不开启<code>Feature.SupportNonPublicField</code>也能成功给属性赋值，因为 Fastjson 在这里是调用的<code>setter</code>方法来赋值。</li><li>该属性没有对应的<code>setter</code>方法，也无法通过其他方式（如构造方法）赋值时，Fastjson 默认无法对其进行反序列化。此时就需要开启<code>Feature.SupportNonPublicField</code>，让 Fastjson 能够直接通过反射访问私有字段来进行赋值。</li></ol><h3 id=只进行-jsonparseobjectjsonstring>只进行 JSON.parseObject(jsonString)
+<a class=anchor href=#%e5%8f%aa%e8%bf%9b%e8%a1%8c-jsonparseobjectjsonstring>#</a></h3><p>再看一下<code>parseObject()</code>的指定或不指定反序列化类型之间的差异。</p><p>由于 Fastjson 反序列化漏洞利用只和包含了<code>@type</code>的 JSON 数据有关，因此这里我们只对序列化时设置了<code>SerializerFeature.WriteClassName</code>，即含有<code>@type</code>指定反序列化类型的 JSON 数据进行反序列化。其实也存在<code>@type</code>不指定反序列化类型的攻击方式，这个后面再讨论。</p><p>修改一下 Student 类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Properties;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Student</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String name;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>int</span> age;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String address;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> Properties properties;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Student</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;构造函数&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getName</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getName&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setName</span>(String name) {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;setName&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getAge</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getAge&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> age;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getAddress</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getAddress&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> address;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Properties <span style=color:#a6e22e>getProperties</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;getProperties&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> properties;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>再改一下反序列化，先默认调用<code>parseObject()</code>不带指定类型的参数：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSONObject;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>StudentUnserialize02</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        String jsonString<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;{\&#34;@type\&#34;:\&#34;org.example.Student\&#34;,\&#34;age\&#34;:19,&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;\&#34;name\&#34;:\&#34;solo\&#34;,\&#34;address\&#34;:\&#34;china\&#34;,\&#34;properties\&#34;:{}}&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        JSONObject obj <span style=color:#f92672>=</span> JSON.<span style=color:#a6e22e>parseObject</span>(jsonString);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(obj);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(obj.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getName</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>输出：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setName
+</span></span><span style=display:flex><span>getProperties
+</span></span><span style=display:flex><span>getAddress
+</span></span><span style=display:flex><span>getAge
+</span></span><span style=display:flex><span>getName
+</span></span><span style=display:flex><span>getProperties
+</span></span><span style=display:flex><span>{&#34;name&#34;:&#34;solo&#34;,&#34;age&#34;:0}
+</span></span><span style=display:flex><span>com.alibaba.fastjson.JSONObject
+</span></span></code></pre></div><p>输出可以看到调用了 Student 类的构造函数、所有属性的<code>getter</code>方法、存在的<code>setter</code>方法，其中<code>getProperties()</code>调用了两次，最后可以看到是未反序列化成功的。</p><p>然后给反序列化语句加上指定反序列化的类型，就能得到成功反序列化的回显。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setName
+</span></span><span style=display:flex><span>getProperties
+</span></span><span style=display:flex><span>org.example.Student@46f7f36a
+</span></span><span style=display:flex><span>org.example.Student
+</span></span></code></pre></div><h3 id=parse-和-parseobject-的区别>parse 和 parseObject 的区别
+<a class=anchor href=#parse-%e5%92%8c-parseobject-%e7%9a%84%e5%8c%ba%e5%88%ab>#</a></h3><p>两者的主要区别就是<code>parseObject()</code>返回的是<code>JSONObject</code>而<code>parse()</code>返回的是实际类型的对象。当在没有对应类的定义的情况下，一般情况下都会使用<code>JSON.parseObject()</code>来获取数据。</p><blockquote><p>Fastjson 中的<code>parse()</code>和<code>parseObject()</code>方法都可以用来将 JSON 字符串反序列化成 Java 对象，<code>parseObject()</code>本质上也是调用了<code>parse()</code>进行反序列化的，但是<code>parseObject()</code>会额外把 Java 对象转化为 JSONObject 对象，即进行<code>JSON.toJSON()</code>。所以进行反序列化时的细节区别在于，<code>parse()</code>会识别并调用目标类的<code>setter</code>方法以及某些特殊条件的<code>getter</code>方法，而<code>parseObject()</code>由于多执行了<code>JSON.toJSON(obj)</code>，所以在处理过程中会调用反序列化目标类的所有<code>setter</code>和<code>getter</code>方法。</p></blockquote><p>也就是说，我们用<code>parse()</code>反序列化会直接得到特定的类，而无需像<code>parseObject()</code>一样返回的是 JSONObject 类型的对象，还可能需要去设置第二个参数指定特定的类。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSONObject;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.parser.Feature;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>StudentUnserialize02</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        String jsonString<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;{\&#34;@type\&#34;:\&#34;org.example.Student\&#34;,\&#34;age\&#34;:19,&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;\&#34;name\&#34;:\&#34;solo\&#34;,\&#34;address\&#34;:\&#34;china\&#34;,\&#34;properties\&#34;:{}}&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//Student obj = JSON.parseObject(jsonString, Student.class);</span>
+</span></span><span style=display:flex><span>        Object obj <span style=color:#f92672>=</span> JSON.<span style=color:#a6e22e>parse</span>(jsonString, Feature.<span style=color:#a6e22e>SupportNonPublicField</span>);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(obj);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(obj.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getName</span>());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>输出：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>构造函数
+</span></span><span style=display:flex><span>setName
+</span></span><span style=display:flex><span>getProperties
+</span></span><span style=display:flex><span>org.example.Student@41906a77
+</span></span><span style=display:flex><span>org.example.Student
+</span></span></code></pre></div><h2 id=fastjson-反序列化漏洞原理>Fastjson 反序列化漏洞原理
+<a class=anchor href=#fastjson-%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e6%bc%8f%e6%b4%9e%e5%8e%9f%e7%90%86>#</a></h2><p>Fastjson 在反序列化的时候会去找我们在<code>@type</code>中规定的类是哪个类，然后在反序列化的时候会自动调用这些<code>setter</code>与<code>getter</code>方法，但并不是所有的<code>setter</code>和<code>getter</code>。</p><p><strong>Fastjson 会对满足下列要求的 setter/getter 方法进行调用：</strong></p><p>满足条件的 setter：</p><ul><li>非静态函数</li><li>返回类型为 void 或当前类</li><li>参数个数为1个</li></ul><p>满足条件的 getter：</p><ul><li>非静态方法</li><li>无参数</li><li><strong>返回值类型继承自 Collection/Map/AtomicBoolean/AtomicInteger/AtomicLong</strong></li></ul><p>Fastjson 的攻击其实是比较简单的，因为并没有那么多复杂的链子，也不需要反射修改值，直接在 json 中赋值就行了。</p><h3 id=漏洞原理>漏洞原理
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%8e%9f%e7%90%86>#</a></h3><p>前面的分析可知，Fastjson 是自己实现了一套序列化和反序列化的机制，并不是用的 Java 原生的序列化和反序列化的机制。在 Fastjson 的绝大部分版本中，Fastjson 的原理都是一样的，只不过不同版本是针对不同的黑名单或者利用不同利用链来进行绕过利用罢了。</p><p>通过 Fastjson 反序列化漏洞，攻击者可以传入一个恶意构造的 JSON 数据，程序对其进行反序列化后得到恶意类并执行了恶意类中的恶意函数，进而导致代码执行。</p><h4 id=如何反序列化出恶意类>如何反序列化出恶意类
+<a class=anchor href=#%e5%a6%82%e4%bd%95%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e5%87%ba%e6%81%b6%e6%84%8f%e7%b1%bb>#</a></h4><p>从前面的代码样例可以知道，Fastjson 使用<code>parseObject()</code>/<code>parse()</code>进行反序列化的时候可以指定类型，如果指定的类型太大，包含太多子类，就有利用空间了。比如说，如果指定类型是<code>Object</code>或者<code>JSONObject</code>，则可以反序列化出来任意类。例如代码写<code>Object o = JSON.parseObject(poc,Object.class)</code>就可以反序列化出Object类或其任意子类，而Object又是任意类的父类，所以就可以反序列化出所有类。</p><h4 id=如何让触发反序列化得到的恶意类中的恶意函数>如何让触发反序列化得到的恶意类中的恶意函数
+<a class=anchor href=#%e5%a6%82%e4%bd%95%e8%ae%a9%e8%a7%a6%e5%8f%91%e5%8f%8d%e5%ba%8f%e5%88%97%e5%8c%96%e5%be%97%e5%88%b0%e7%9a%84%e6%81%b6%e6%84%8f%e7%b1%bb%e4%b8%ad%e7%9a%84%e6%81%b6%e6%84%8f%e5%87%bd%e6%95%b0>#</a></h4><p>在某些情况下进行反序列化时会将反序列化得到的类的构造函数、<code>getter</code>、<code>setter</code>执行一遍，如果这三种方法中存在危险操作，则可能导致反序列化漏洞的存在。换句话说，就是攻击者传入要进行反序列化的类中的构造函数、<code>getter</code>方法、<code>setter</code>方法中要存在漏洞才能触发。</p><p>我们到<code>DefaultJSONParser.parseObject(Map object, Object fieldName)</code>中看下，JSON中以@type形式传入的类的时候，调用<code>deserializer.deserialize()</code>处理该类，并去调用这个类的<code>setter</code>和<code>getter</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>final</span> Object <span style=color:#a6e22e>parseObject</span>(<span style=color:#66d9ef>final</span> Map object, Object fieldName) {
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// JSON.DEFAULT_TYPE_KEY即@type</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (key <span style=color:#f92672>==</span> JSON.<span style=color:#a6e22e>DEFAULT_TYPE_KEY</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span>lexer.<span style=color:#a6e22e>isEnabled</span>(Feature.<span style=color:#a6e22e>DisableSpecialKeyDetect</span>)) {
+</span></span><span style=display:flex><span>        ...
+</span></span><span style=display:flex><span>        ObjectDeserializer deserializer <span style=color:#f92672>=</span> config.<span style=color:#a6e22e>getDeserializer</span>(clazz);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> deserializer.<span style=color:#a6e22e>deserialze</span>(<span style=color:#66d9ef>this</span>, clazz, fieldName);
+</span></span></code></pre></div><p>若反序列化指定类型的类如<code>Student obj = JSON.parseObject(text, Student.class);</code>，该类本身的构造函数、<code>setter</code>方法、<code>getter</code>方法存在危险操作，则存在Fastjson反序列化漏洞。</p><p>若反序列化未指定类型的类如<code>Object obj = JSON.parseObject(text, Object.class);</code>，该若该类的子类的构造方法、<code>setter</code>方法、<code>getter</code>方法存在危险操作，则存在Fastjson反序列化漏洞。</p><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>总结一下漏洞发生在反序列化的点，也就是 <code>Obj.parse</code> 和 <code>Obj.parseObject</code> 这里。必须的是传参要带入 class 的参数，最好带上 Feature.SupportNonPublicField。PoC 是通过 String 传进去的，要以 <code>@type</code> 打头。漏洞的原因是反序列化的时候去调用了 getter 和 setter 的方法。其余就没什么了，比较简单。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#简介>简介</a></li><li><a href=#代码样例>代码样例</a><ul><li><a href=#序列化>序列化</a></li><li><a href=#反序列化>反序列化</a></li></ul></li><li><a href=#其他基础知识>其他基础知识</a><ul><li><a href=#反序列化时的-featuresupportnonpublicfield-参数>反序列化时的 Feature.SupportNonPublicField 参数</a></li><li><a href=#只进行-jsonparseobjectjsonstring>只进行 JSON.parseObject(jsonString)</a></li><li><a href=#parse-和-parseobject-的区别>parse 和 parseObject 的区别</a></li></ul></li><li><a href=#fastjson-反序列化漏洞原理>Fastjson 反序列化漏洞原理</a><ul><li><a href=#漏洞原理>漏洞原理</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
