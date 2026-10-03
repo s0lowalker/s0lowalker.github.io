@@ -19,6 +19,7 @@ Java Agent 是 JVM 提供的一种“寄生”机制，它允许一段代码在 
   Java Agent 能做什么
   #
 
+
 graph TB
     subgraph CAPABILITY["Java Agent 的核心能力"]
         C1["修改字节码<br/>（在类加载时或运行期）"]
@@ -28,99 +29,10 @@ graph TB
     end
 
     style CAPABILITY fill:#d5f5e3,stroke:#333
-典型用途：
-
-	
-			
-					用途
-					例子
-			
-	
-	
-			
-					RASP
-					拦截 ProcessBuilder.start，检测命令注入
-			
-			
-					APM
-					拦截 Statement.execute，统计 SQL 耗时
-			
-			
-					调试工具
-					Arthas 动态查看方法调用、参数、返回值
-			
-			
-					热部署
-					JRebel 在不重启的情况下加载新代码
-			
-			
-					Mock 测试
-					在测试环境替换某些方法的实现
-			
-	
-
-
-  两种挂载方式
-  #
-
-graph TB
-    subgraph PREMAIN["方式一：启动时挂载（premain）"]
-        P1["JVM 启动参数加 -javaagent"]
-        P2["JVM 调用 premain"]
-        P3["业务无流量时插桩"]
-        P4["零 STW"]
-    end
-
-    subgraph AGENTMAIN["方式二：运行期挂载（agentmain）"]
-        A1["通过 Attach API 动态挂载"]
-        A2["JVM 调用 agentmain"]
-        A3["业务运行中插桩"]
-        A4["触发 STW"]
-    end
-
-    style PREMAIN fill:#d5f5e3,stroke:#333
-    style AGENTMAIN fill:#f99,stroke:#333
-
-	
-			
-					维度
-					premain
-					agentmain
-			
-	
-	
-			
-					触发方式
-					-javaagent:xxx.jar
-					Attach API
-			
-			
-					触发时机
-					JVM 启动时
-					运行期任意时刻
-			
-			
-					是否需要重启
-					需要
-					不需要
-			
-			
-					STW 风险
-					零
-					有（美团实测 TP9999 5ms → 1000ms）
-			
-			
-					适用场景
-					RASP、APM
-					Arthas、诊断工具
-			
-	
-
-RASP 首选 premain，因为它在业务无流量时插桩，零 STW。'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="RASP开发(1)——第一个跑通的 Java Agent"><meta property="og:description" content='RASP开发(1)——第一个跑通的 Java Agent # 这一系列文章将以我的 Jasp 项目为线索进行撰写，记录我的 RASP 开发实践路径以及学习笔记。
+典型用途：'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="RASP开发(1)——第一个跑通的 Java Agent"><meta property="og:description" content='RASP开发(1)——第一个跑通的 Java Agent # 这一系列文章将以我的 Jasp 项目为线索进行撰写，记录我的 RASP 开发实践路径以及学习笔记。
 前言 # Java Agent # 在记录 RASP 开发之前，先讲讲 Java Agent 机制。
 Java Agent 是 JVM 提供的一种“寄生”机制，它允许一段代码在 JVM 启动时或运行期挂载上去，修改已加载或将要加载的类的字节码。它是所有 Java RASP、APM、Arthas 这类工具的技术底座。
-Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能力"] C1["修改字节码<br/>（在类加载时或运行期）"] C2["获取 JVM 内部信息<br/>（已加载类、对象大小、内存）"] C3["拦截方法调用<br/>（在方法前后插入逻辑）"] C4["替换类实现<br/>（有限度的重定义）"] end style CAPABILITY fill:#d5f5e3,stroke:#333 典型用途：
-用途 例子 RASP 拦截 ProcessBuilder.start，检测命令注入 APM 拦截 Statement.execute，统计 SQL 耗时 调试工具 Arthas 动态查看方法调用、参数、返回值 热部署 JRebel 在不重启的情况下加载新代码 Mock 测试 在测试环境替换某些方法的实现 两种挂载方式 # graph TB subgraph PREMAIN["方式一：启动时挂载（premain）"] P1["JVM 启动参数加 -javaagent"] P2["JVM 调用 premain"] P3["业务无流量时插桩"] P4["零 STW"] end subgraph AGENTMAIN["方式二：运行期挂载（agentmain）"] A1["通过 Attach API 动态挂载"] A2["JVM 调用 agentmain"] A3["业务运行中插桩"] A4["触发 STW"] end style PREMAIN fill:#d5f5e3,stroke:#333 style AGENTMAIN fill:#f99,stroke:#333 维度 premain agentmain 触发方式 -javaagent:xxx.jar Attach API 触发时机 JVM 启动时 运行期任意时刻 是否需要重启 需要 不需要 STW 风险 零 有（美团实测 TP9999 5ms → 1000ms） 适用场景 RASP、APM Arthas、诊断工具 RASP 首选 premain，因为它在业务无流量时插桩，零 STW。'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-09-18T00:00:00+00:00"><meta property="article:modified_time" content="2026-09-18T00:00:00+00:00"><title>RASP开发(1)——第一个跑通的 Java Agent | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/><link rel=stylesheet href=/book.min.486a8282693a4a89ef6d1ebdc674ee9b43f9f237acb69d384c1b5a6a223d858d.css integrity="sha256-SGqCgmk6SonvbR69xnTum0P58jestp04TBtaaiI9hY0=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.f9fc39953e7a76a0a7df81ccaa9bc08ccbd58fd3f31a455012b00faa082aa159.js integrity="sha256-+fw5lT56dqCn34HMqpvAjMvVj9PzGkVQErAPqggqoVk=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能力"] C1["修改字节码<br/>（在类加载时或运行期）"] C2["获取 JVM 内部信息<br/>（已加载类、对象大小、内存）"] C3["拦截方法调用<br/>（在方法前后插入逻辑）"] C4["替换类实现<br/>（有限度的重定义）"] end style CAPABILITY fill:#d5f5e3,stroke:#333 典型用途：'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-09-18T00:00:00+00:00"><meta property="article:modified_time" content="2026-09-18T00:00:00+00:00"><title>RASP开发(1)——第一个跑通的 Java Agent | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/><link rel=stylesheet href=/book.min.bef206ca73466d23b093d88913fd40ccba55f422e1e51ed680a9e04a58cdc341.css integrity="sha256-vvIGynNGbSOwk9iJE/1AzLpV9CLh5R7WgKngSljNw0E=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.b2f9d3af753d2897b1be58adb2ddcd265c7c66a2d2b226dedad569e89259d142.js integrity="sha256-svnTr3U9KJexvlitst3NJlx8ZqLSsibe2tVp6JJZ0UI=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
 <a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
 <a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle>
@@ -147,7 +59,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 <a class=anchor href=#rasp%e5%bc%80%e5%8f%911%e7%ac%ac%e4%b8%80%e4%b8%aa%e8%b7%91%e9%80%9a%e7%9a%84-java-agent>#</a></h1><blockquote><p>这一系列文章将以我的 Jasp 项目为线索进行撰写，记录我的 RASP 开发实践路径以及学习笔记。</p></blockquote><h2 id=前言>前言
 <a class=anchor href=#%e5%89%8d%e8%a8%80>#</a></h2><h3 id=java-agent>Java Agent
 <a class=anchor href=#java-agent>#</a></h3><p>在记录 RASP 开发之前，先讲讲 Java Agent 机制。</p><p>Java Agent 是 JVM 提供的一种“寄生”机制，它允许一段代码在 JVM 启动时或运行期挂载上去，修改已加载或将要加载的类的字节码。它是所有 Java RASP、APM、Arthas 这类工具的技术底座。</p><h4 id=java-agent-能做什么>Java Agent 能做什么
-<a class=anchor href=#java-agent-%e8%83%bd%e5%81%9a%e4%bb%80%e4%b9%88>#</a></h4><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+<a class=anchor href=#java-agent-%e8%83%bd%e5%81%9a%e4%bb%80%e4%b9%88>#</a></h4><script src=/mermaid.min.js></script><script>mermaid.initialize({theme:"default",flowchart:{useMaxWidth:!1,subGraphTitleMargin:{top:0,bottom:20}},sequence:{useMaxWidth:!1},gantt:{useMaxWidth:!1},class:{useMaxWidth:!1},state:{useMaxWidth:!1},er:{useMaxWidth:!1},journey:{useMaxWidth:!1},pie:{useMaxWidth:!1},gitGraph:{useMaxWidth:!1},mindmap:{useMaxWidth:!1},timeline:{useMaxWidth:!1},quadrantChart:{useMaxWidth:!1},requirement:{useMaxWidth:!1},sankey:{useMaxWidth:!1},block:{useMaxWidth:!1},packet:{useMaxWidth:!1},architecture:{useMaxWidth:!1}})</script><pre class=mermaid>graph TB
     subgraph CAPABILITY[&#34;Java Agent 的核心能力&#34;]
         C1[&#34;修改字节码&lt;br/&gt;（在类加载时或运行期）&#34;]
         C2[&#34;获取 JVM 内部信息&lt;br/&gt;（已加载类、对象大小、内存）&#34;]
@@ -155,9 +67,8 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
         C4[&#34;替换类实现&lt;br/&gt;（有限度的重定义）&#34;]
     end
 
-    style CAPABILITY fill:#d5f5e3,stroke:#333
-</code></pre><p><strong>典型用途：</strong></p><table><thead><tr><th style=text-align:left>用途</th><th style=text-align:left>例子</th></tr></thead><tbody><tr><td style=text-align:left><strong>RASP</strong></td><td style=text-align:left>拦截 <code>ProcessBuilder.start</code>，检测命令注入</td></tr><tr><td style=text-align:left><strong>APM</strong></td><td style=text-align:left>拦截 <code>Statement.execute</code>，统计 SQL 耗时</td></tr><tr><td style=text-align:left><strong>调试工具</strong></td><td style=text-align:left>Arthas 动态查看方法调用、参数、返回值</td></tr><tr><td style=text-align:left><strong>热部署</strong></td><td style=text-align:left>JRebel 在不重启的情况下加载新代码</td></tr><tr><td style=text-align:left><strong>Mock 测试</strong></td><td style=text-align:left>在测试环境替换某些方法的实现</td></tr></tbody></table><h4 id=两种挂载方式>两种挂载方式
-<a class=anchor href=#%e4%b8%a4%e7%a7%8d%e6%8c%82%e8%bd%bd%e6%96%b9%e5%bc%8f>#</a></h4><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+    style CAPABILITY fill:#d5f5e3,stroke:#333</pre><p><strong>典型用途：</strong></p><table><thead><tr><th style=text-align:left>用途</th><th style=text-align:left>例子</th></tr></thead><tbody><tr><td style=text-align:left><strong>RASP</strong></td><td style=text-align:left>拦截 <code>ProcessBuilder.start</code>，检测命令注入</td></tr><tr><td style=text-align:left><strong>APM</strong></td><td style=text-align:left>拦截 <code>Statement.execute</code>，统计 SQL 耗时</td></tr><tr><td style=text-align:left><strong>调试工具</strong></td><td style=text-align:left>Arthas 动态查看方法调用、参数、返回值</td></tr><tr><td style=text-align:left><strong>热部署</strong></td><td style=text-align:left>JRebel 在不重启的情况下加载新代码</td></tr><tr><td style=text-align:left><strong>Mock 测试</strong></td><td style=text-align:left>在测试环境替换某些方法的实现</td></tr></tbody></table><h4 id=两种挂载方式>两种挂载方式
+<a class=anchor href=#%e4%b8%a4%e7%a7%8d%e6%8c%82%e8%bd%bd%e6%96%b9%e5%bc%8f>#</a></h4><pre class=mermaid>graph TB
     subgraph PREMAIN[&#34;方式一：启动时挂载（premain）&#34;]
         P1[&#34;JVM 启动参数加 -javaagent&#34;]
         P2[&#34;JVM 调用 premain&#34;]
@@ -173,8 +84,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     end
 
     style PREMAIN fill:#d5f5e3,stroke:#333
-    style AGENTMAIN fill:#f99,stroke:#333
-</code></pre><table><thead><tr><th style=text-align:left>维度</th><th style=text-align:left>premain</th><th style=text-align:left>agentmain</th></tr></thead><tbody><tr><td style=text-align:left>触发方式</td><td style=text-align:left><code>-javaagent:xxx.jar</code></td><td style=text-align:left>Attach API</td></tr><tr><td style=text-align:left>触发时机</td><td style=text-align:left>JVM 启动时</td><td style=text-align:left>运行期任意时刻</td></tr><tr><td style=text-align:left>是否需要重启</td><td style=text-align:left>需要</td><td style=text-align:left>不需要</td></tr><tr><td style=text-align:left>STW 风险</td><td style=text-align:left>零</td><td style=text-align:left>有（美团实测 TP9999 5ms → 1000ms）</td></tr><tr><td style=text-align:left>适用场景</td><td style=text-align:left>RASP、APM</td><td style=text-align:left>Arthas、诊断工具</td></tr></tbody></table><p><strong>RASP 首选 <code>premain</code>，因为它在业务无流量时插桩，零 STW。</strong></p><blockquote><p>STW 是一种现象，JVM 暂停所有业务线程，做一件必须独占的事，做完才能恢复。这是 RASP 面临的一大挑战，到底是选择用<code>premain</code>还是<code>agentmain</code>：<code>premain</code>是在业务无流量时插桩，即 RASP 和业务代码一起启动；<code>agentmain</code>则是在业务代码已经加载，然后进行插桩。前者因为是和业务一起启动的，影响是发生在业务启动之前；后者在业务运行时插桩，肯定会引起所有业务线程停在安全点来运行插桩操作，所以会导致 STW。</p></blockquote><h4 id=java-agent-的核心-api>Java Agent 的核心 API
+    style AGENTMAIN fill:#f99,stroke:#333</pre><table><thead><tr><th style=text-align:left>维度</th><th style=text-align:left>premain</th><th style=text-align:left>agentmain</th></tr></thead><tbody><tr><td style=text-align:left>触发方式</td><td style=text-align:left><code>-javaagent:xxx.jar</code></td><td style=text-align:left>Attach API</td></tr><tr><td style=text-align:left>触发时机</td><td style=text-align:left>JVM 启动时</td><td style=text-align:left>运行期任意时刻</td></tr><tr><td style=text-align:left>是否需要重启</td><td style=text-align:left>需要</td><td style=text-align:left>不需要</td></tr><tr><td style=text-align:left>STW 风险</td><td style=text-align:left>零</td><td style=text-align:left>有（美团实测 TP9999 5ms → 1000ms）</td></tr><tr><td style=text-align:left>适用场景</td><td style=text-align:left>RASP、APM</td><td style=text-align:left>Arthas、诊断工具</td></tr></tbody></table><p><strong>RASP 首选 <code>premain</code>，因为它在业务无流量时插桩，零 STW。</strong></p><blockquote><p>STW 是一种现象，JVM 暂停所有业务线程，做一件必须独占的事，做完才能恢复。这是 RASP 面临的一大挑战，到底是选择用<code>premain</code>还是<code>agentmain</code>：<code>premain</code>是在业务无流量时插桩，即 RASP 和业务代码一起启动；<code>agentmain</code>则是在业务代码已经加载，然后进行插桩。前者因为是和业务一起启动的，影响是发生在业务启动之前；后者在业务运行时插桩，肯定会引起所有业务线程停在安全点来运行插桩操作，所以会导致 STW。</p></blockquote><h4 id=java-agent-的核心-api>Java Agent 的核心 API
 <a class=anchor href=#java-agent-%e7%9a%84%e6%a0%b8%e5%bf%83-api>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>MyAgent</span> {
 </span></span><span style=display:flex><span>    
 </span></span><span style=display:flex><span>    <span style=color:#75715e>// 启动时挂载</span>
@@ -188,7 +98,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p><code>Instrumentation</code>接口提供的能力：</p><table><thead><tr><th style=text-align:left>方法</th><th style=text-align:left>用途</th><th style=text-align:left>STW</th></tr></thead><tbody><tr><td style=text-align:left><code>addTransformer(ClassFileTransformer)</code></td><td style=text-align:left>注册字节码转换器</td><td style=text-align:left>无</td></tr><tr><td style=text-align:left><code>removeTransformer(ClassFileTransformer)</code></td><td style=text-align:left>移除转换器</td><td style=text-align:left>无</td></tr><tr><td style=text-align:left><code>retransformClasses(Class...)</code></td><td style=text-align:left>重新转换已加载的类</td><td style=text-align:left>有</td></tr><tr><td style=text-align:left><code>redefineClasses(ClassDefinition...)</code></td><td style=text-align:left>重定义类（不能改结构）</td><td style=text-align:left>有</td></tr><tr><td style=text-align:left><code>getAllLoadedClasses()</code></td><td style=text-align:left>获取所有已加载的类</td><td style=text-align:left>无</td></tr><tr><td style=text-align:left><code>getObjectSize(Object)</code></td><td style=text-align:left>获取对象大小</td><td style=text-align:left>无</td></tr><tr><td style=text-align:left><code>appendToBootstrapClassLoaderSearch(JarFile)</code></td><td style=text-align:left>把 Jar 加到 BootstrapClassLoader</td><td style=text-align:left>无</td></tr></tbody></table><h4 id=字节码转换的时机>字节码转换的时机
-<a class=anchor href=#%e5%ad%97%e8%8a%82%e7%a0%81%e8%bd%ac%e6%8d%a2%e7%9a%84%e6%97%b6%e6%9c%ba>#</a></h4><pre tabindex=0><code class=language-mermaid data-lang=mermaid>sequenceDiagram
+<a class=anchor href=#%e5%ad%97%e8%8a%82%e7%a0%81%e8%bd%ac%e6%8d%a2%e7%9a%84%e6%97%b6%e6%9c%ba>#</a></h4><pre class=mermaid>sequenceDiagram
     participant JVM as JVM
     participant CT as ClassFileTransformer
     participant App as 业务类
@@ -198,8 +108,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     CT-&gt;&gt;CT: 修改字节码
     CT--&gt;&gt;JVM: 返回修改后的字节码
     JVM-&gt;&gt;App: 定义类（用修改后的字节码）
-    Note over App: 从此这个类的行为&lt;br/&gt;就带上了 Agent 的逻辑
-</code></pre><p><code>ClassFileTransformer</code>在类加载时被调用，可以修改字节码。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>MyTransformer</span> <span style=color:#66d9ef>implements</span> ClassFileTransformer {
+    Note over App: 从此这个类的行为&lt;br/&gt;就带上了 Agent 的逻辑</pre><p><code>ClassFileTransformer</code>在类加载时被调用，可以修改字节码。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>MyTransformer</span> <span style=color:#66d9ef>implements</span> ClassFileTransformer {
 </span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>transform</span>(ClassLoader loader, String className,
 </span></span><span style=display:flex><span>                            Class<span style=color:#f92672>&lt;?&gt;</span> classBeingRedefined,
@@ -224,7 +133,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>Can-Retransform-Classes: true             ← 是否支持重转换
 </span></span></code></pre></div><p>使用方式：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-bash data-lang=bash><span style=display:flex><span>java -javaagent:/path/to/my-agent.jar<span style=color:#f92672>=</span>key1<span style=color:#f92672>=</span>value1 -jar app.jar
 </span></span></code></pre></div><p><code>key1=value1</code>会作为<code>agentArgs</code>传给<code>premain</code>。</p><h4 id=java-agent-的物理限制>Java Agent 的物理限制
-<a class=anchor href=#java-agent-%e7%9a%84%e7%89%a9%e7%90%86%e9%99%90%e5%88%b6>#</a></h4><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+<a class=anchor href=#java-agent-%e7%9a%84%e7%89%a9%e7%90%86%e9%99%90%e5%88%b6>#</a></h4><pre class=mermaid>graph TB
     subgraph LIMIT[&#34;硬性限制&#34;]
         L1[&#34;不能新增方法/字段&lt;br/&gt;（retransform 只能改方法体）&#34;]
         L2[&#34;不能改方法签名&lt;br/&gt;（不能增删参数）&#34;]
@@ -233,9 +142,8 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
         L5[&#34;已加载的类无法回炉&lt;br/&gt;（只能改方法体）&#34;]
     end
 
-    style LIMIT fill:#f99,stroke:#333
-</code></pre><p>这些限制来自于 JVMTI 规范，所有 Java Agent 都绕不开。</p><h4 id=java-agent-的典型架构>Java Agent 的典型架构
-<a class=anchor href=#java-agent-%e7%9a%84%e5%85%b8%e5%9e%8b%e6%9e%b6%e6%9e%84>#</a></h4><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+    style LIMIT fill:#f99,stroke:#333</pre><p>这些限制来自于 JVMTI 规范，所有 Java Agent 都绕不开。</p><h4 id=java-agent-的典型架构>Java Agent 的典型架构
+<a class=anchor href=#java-agent-%e7%9a%84%e5%85%b8%e5%9e%8b%e6%9e%b6%e6%9e%84>#</a></h4><pre class=mermaid>graph TB
     subgraph AGENT[&#34;Java Agent 系统&#34;]
         A1[&#34;入口类&lt;br/&gt;premain / agentmain&#34;]
         A2[&#34;ClassFileTransformer&lt;br/&gt;字节码转换&#34;]
@@ -248,8 +156,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     A2 --&gt;|&#34;修改字节码&#34;| A3
     A1 --&gt;|&#34;解析&#34;| A4
 
-    style A1 fill:#f9f,stroke:#333,stroke-width:3px
-</code></pre><h4 id=java-agent-的常见坑>Java Agent 的常见坑
+    style A1 fill:#f9f,stroke:#333,stroke-width:3px</pre><h4 id=java-agent-的常见坑>Java Agent 的常见坑
 <a class=anchor href=#java-agent-%e7%9a%84%e5%b8%b8%e8%a7%81%e5%9d%91>#</a></h4><table><thead><tr><th style=text-align:left>坑</th><th style=text-align:left>原因</th><th style=text-align:left>解法</th></tr></thead><tbody><tr><td style=text-align:left><code>premain</code> 抛异常导致业务起不来</td><td style=text-align:left>JVM 直接终止</td><td style=text-align:left>整体 try/catch，静默降级</td></tr><tr><td style=text-align:left>类加载器冲突</td><td style=text-align:left>Agent 的依赖和业务冲突</td><td style=text-align:left>Shade 重定位</td></tr><tr><td style=text-align:left><code>NoClassDefFoundError</code></td><td style=text-align:left>child-first 类加载器看不到 Agent 的类</td><td style=text-align:left><code>Boot-Class-Path</code> 或 <code>appendToBootstrapClassLoaderSearch</code></td></tr><tr><td style=text-align:left>STW 抖动</td><td style=text-align:left><code>agentmain</code> 运行期插桩</td><td style=text-align:left>禁止运行期插桩，只用 <code>premain</code></td></tr><tr><td style=text-align:left>元空间泄漏</td><td style=text-align:left>插件 ClassLoader 无法卸载</td><td style=text-align:left>代际模型 + 引用清零</td></tr><tr><td style=text-align:left>递归插桩</td><td style=text-align:left>插桩逻辑里的日志被插桩</td><td style=text-align:left>黑名单排除日志框架</td></tr></tbody></table><h2 id=jvm-入口>JVM 入口
 <a class=anchor href=#jvm-%e5%85%a5%e5%8f%a3>#</a></h2><p>JVM 入口也就是我们整个 Java Agent 的入口，必须包含至少一个方法：<code>premain</code>或<code>agentmain</code>。考虑到不影响实际业务，后续的逻辑都以<code>premain</code>为主，<code>premain</code>完成全部转换，<code>agentmain</code>只开开关。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.jasp.agent;
 </span></span><span style=display:flex><span>
@@ -277,7 +184,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>最关键的就是<code>try-catch</code>这一段，一旦<code>premain</code>抛异常，JVM 直接启动失败，导致业务跑不起来。使用<code>Throwable</code>而不是<code>Exception</code>，是因为可能会抛出<code>Error</code>，如果抛出<code>Error</code>会直接影响 JVM ，<strong>导致业务 JVM 启动失败</strong>。</p><p>同时 RASP 的日志一般会输出到<code>stderr</code>里来，这样就不影响业务的<code>stdout</code>，对于正式产品会写到本地文件中。</p><h2 id=hook>Hook
 <a class=anchor href=#hook>#</a></h2><h3 id=hook-处理逻辑>Hook 处理逻辑
-<a class=anchor href=#hook-%e5%a4%84%e7%90%86%e9%80%bb%e8%be%91>#</a></h3><p>一个完整的 Hook 由三部分组成：</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+<a class=anchor href=#hook-%e5%a4%84%e7%90%86%e9%80%bb%e8%be%91>#</a></h3><p>一个完整的 Hook 由三部分组成：</p><pre class=mermaid>graph TB
     subgraph HOOK[&#34;完整的 Hook&#34;]
         A[&#34;① 插桩规则&lt;br/&gt;（告诉 ByteBuddy 要 Hook 哪个方法）&#34;]
         B[&#34;② 织入逻辑&lt;br/&gt;（方法被调用时要执行什么）&#34;]
@@ -288,8 +195,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 
     style A fill:#d4e6f1,stroke:#333
     style B fill:#f9f,stroke:#333,stroke-width:3px
-    style C fill:#d5f5e3,stroke:#333
-</code></pre><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.jasp.agent;
+    style C fill:#d5f5e3,stroke:#333</pre><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.jasp.agent;
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#f92672>import</span> net.bytebuddy.asm.Advice;
 </span></span><span style=display:flex><span>
@@ -331,9 +237,9 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>	...
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>这个类定义织入什么代码，而<code>JaspTransformer</code>这个类决定要不要织、织入哪个方法。通过把选择器和内容分开，能够实现一个 selector 可以配不同的 advice。</p><p>下面简单讲讲里面的代码。</p><p><code>@Advice.OnMethodEnter</code>这个注解是告诉<code>ByteBuddy</code>插在方法体的开头，对应还有<code>@Advice.OnMethodExit</code>插在返回前。对于<code>ByteBuddy</code>的<code>Advice</code>机制来说有一条硬性要求：用<code>Advice</code>注解的方法，必须是<code>static</code>的。因为<code>@Advice</code>的代码是内联的，而不是调用。</p><p><code>@Advice.This</code>的作用是把目标方法的<code>this</code>注入进来，从而代替<code>Advice</code>方法的<code>this</code>。</p><p>还有一些其他的<code>@Advice</code>注解：</p><table><thead><tr><th>注解</th><th>拿到什么</th><th>备注</th></tr></thead><tbody><tr><td>@Advice.This</td><td>this 对象</td><td>静态方法中用不了</td></tr><tr><td>@Advice.Argument(0)</td><td>第0个参数</td><td>不发散、不分配</td></tr><tr><td>@Advice.AllArguments</td><td>所有参数</td><td>会分配数组，一般不用</td></tr><tr><td>@Advice.Origin</td><td>被织入方法的签名信息</td><td>常用于日志</td></tr><tr><td>@Advice.Return</td><td>返回值</td><td>读返回值的时候用这个</td></tr><tr><td>@Advice.Thrown</td><td>抛出的异常</td><td>-</td></tr></tbody></table><h3 id=hook-插桩实现>Hook 插桩实现
-<a class=anchor href=#hook-%e6%8f%92%e6%a1%a9%e5%ae%9e%e7%8e%b0>#</a></h3><p>要实现插桩需要四样东西：一个入口、一个转换器、一套匹配规则、一段织入逻辑。</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+<a class=anchor href=#hook-%e6%8f%92%e6%a1%a9%e5%ae%9e%e7%8e%b0>#</a></h3><p>要实现插桩需要四样东西：一个入口、一个转换器、一套匹配规则、一段织入逻辑。</p><pre class=mermaid>graph TB
     subgraph REQUIRED[&#34;插桩的四个必需组件&#34;]
-        A[&#34;① 入口&lt;br/&gt;premain + Instrumentation&#34;]
+        A[&#34;① 入口&lt;br/&gt;premain &#43; Instrumentation&#34;]
         B[&#34;② 转换器&lt;br/&gt;ClassFileTransformer&#34;]
         C[&#34;③ 匹配规则&lt;br/&gt;要 Hook 哪个类/方法&#34;]
         D[&#34;④ 织入逻辑&lt;br/&gt;方法被调用时执行什么&#34;]
@@ -342,8 +248,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     A --&gt; B --&gt; C --&gt; D
 
     style A fill:#f9f,stroke:#333,stroke-width:3px
-    style D fill:#d5f5e3,stroke:#333,stroke-width:3px
-</code></pre><table><thead><tr><th style=text-align:left>#</th><th style=text-align:left>组件</th><th style=text-align:left>对应代码</th><th style=text-align:left>职责</th></tr></thead><tbody><tr><td style=text-align:left>①</td><td style=text-align:left>入口</td><td style=text-align:left><code>JaspAgent.premain</code></td><td style=text-align:left>JVM 调用的点，拿到 <code>Instrumentation</code></td></tr><tr><td style=text-align:left>②</td><td style=text-align:left>转换器</td><td style=text-align:left><code>JaspTransformer.install</code></td><td style=text-align:left>注册到 <code>Instrumentation</code>，拦截类加载</td></tr><tr><td style=text-align:left>③</td><td style=text-align:left>匹配规则</td><td style=text-align:left><code>.type(named("java.lang.ProcessBuilder"))</code> + <code>.on(named("start"))</code></td><td style=text-align:left>决定 Hook 谁</td></tr><tr><td style=text-align:left>④</td><td style=text-align:left>织入逻辑</td><td style=text-align:left><code>CommandHookAdvice.enter</code></td><td style=text-align:left>方法被调用时执行什么</td></tr></tbody></table><p>我这个项目中这第一个插桩实现的职责是<strong>统计类加载情况+给<code>ProcessBuilder.start</code>织入 Hook</strong>。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.jasp.agent;
+    style D fill:#d5f5e3,stroke:#333,stroke-width:3px</pre><table><thead><tr><th style=text-align:left>#</th><th style=text-align:left>组件</th><th style=text-align:left>对应代码</th><th style=text-align:left>职责</th></tr></thead><tbody><tr><td style=text-align:left>①</td><td style=text-align:left>入口</td><td style=text-align:left><code>JaspAgent.premain</code></td><td style=text-align:left>JVM 调用的点，拿到 <code>Instrumentation</code></td></tr><tr><td style=text-align:left>②</td><td style=text-align:left>转换器</td><td style=text-align:left><code>JaspTransformer.install</code></td><td style=text-align:left>注册到 <code>Instrumentation</code>，拦截类加载</td></tr><tr><td style=text-align:left>③</td><td style=text-align:left>匹配规则</td><td style=text-align:left><code>.type(named("java.lang.ProcessBuilder"))</code> + <code>.on(named("start"))</code></td><td style=text-align:left>决定 Hook 谁</td></tr><tr><td style=text-align:left>④</td><td style=text-align:left>织入逻辑</td><td style=text-align:left><code>CommandHookAdvice.enter</code></td><td style=text-align:left>方法被调用时执行什么</td></tr></tbody></table><p>我这个项目中这第一个插桩实现的职责是<strong>统计类加载情况+给<code>ProcessBuilder.start</code>织入 Hook</strong>。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.jasp.agent;
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#f92672>import</span> net.bytebuddy.agent.builder.AgentBuilder;
 </span></span><span style=display:flex><span><span style=color:#f92672>import</span> net.bytebuddy.asm.Advice;
@@ -412,7 +317,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><h4 id=整体结构>整体结构
-<a class=anchor href=#%e6%95%b4%e4%bd%93%e7%bb%93%e6%9e%84>#</a></h4><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+<a class=anchor href=#%e6%95%b4%e4%bd%93%e7%bb%93%e6%9e%84>#</a></h4><pre class=mermaid>graph TB
     subgraph INSTALL[&#34;JaspTransformer.install(inst)&#34;]
         A1[&#34;① 统计转换器&lt;br/&gt;（只计数，不修改）&#34;]
         A2[&#34;② AgentBuilder&lt;br/&gt;（织入器）&#34;]
@@ -421,8 +326,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 
     A1 --&gt; A2 --&gt; A3
 
-    style A2 fill:#f9f,stroke:#333,stroke-width:3px
-</code></pre><p>只做三件事：</p><ol><li>注册一个只计数的<code>ClassFileTransformer</code>——统计 JVM 加载了多少个类</li><li>用<code>AgentBuilder</code>织入<code>ProcessBuilder.start</code>——真正的 Hook</li><li>注册 ShutdownHook ——退出时打印统计</li></ol><h4 id=统计转换器>统计转换器
+    style A2 fill:#f9f,stroke:#333,stroke-width:3px</pre><p>只做三件事：</p><ol><li>注册一个只计数的<code>ClassFileTransformer</code>——统计 JVM 加载了多少个类</li><li>用<code>AgentBuilder</code>织入<code>ProcessBuilder.start</code>——真正的 Hook</li><li>注册 ShutdownHook ——退出时打印统计</li></ol><h4 id=统计转换器>统计转换器
 <a class=anchor href=#%e7%bb%9f%e8%ae%a1%e8%bd%ac%e6%8d%a2%e5%99%a8>#</a></h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>inst.<span style=color:#a6e22e>addTransformer</span>(<span style=color:#66d9ef>new</span> ClassFileTransformer() {
 </span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>transform</span>(ClassLoader loader, String className, ...) {
@@ -470,14 +374,13 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>        <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;, woven = &#34;</span> <span style=color:#f92672>+</span> CLASSES_WOVEN.<span style=color:#a6e22e>get</span>());
 </span></span><span style=display:flex><span>}, <span style=color:#e6db74>&#34;jasp-stats&#34;</span>));  <span style=color:#75715e>//jasp-stats是线程名</span>
 </span></span></code></pre></div><p>这里的作用就是当 JVM 退出时打印统计，这其实是一个临时方案，用来验证“Agent 到底看到了多少类、织入了多少类”。</p><p>然后在<code>premain</code>加上一个<code>JaspTransformer.install(inst);</code>就能实现插桩以及织入了。</p><h2 id=两个不可逆契约>两个不可逆契约
-<a class=anchor href=#%e4%b8%a4%e4%b8%aa%e4%b8%8d%e5%8f%af%e9%80%86%e5%a5%91%e7%ba%a6>#</a></h2><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+<a class=anchor href=#%e4%b8%a4%e4%b8%aa%e4%b8%8d%e5%8f%af%e9%80%86%e5%a5%91%e7%ba%a6>#</a></h2><pre class=mermaid>graph TB
     subgraph CONTRACT[&#34;两个不可逆契约&#34;]
         A[&#34;① 槽位编号 HookSlots&lt;br/&gt;（Hook 点的身份标识）&#34;]
         B[&#34;② 事件类型 EventTypes&lt;br/&gt;（事件的分类标识）&#34;]
     end
 
-    style CONTRACT fill:#f9f,stroke:#333,stroke-width:3px
-</code></pre><table><thead><tr><th style=text-align:left>契约</th><th style=text-align:left>是什么</th><th style=text-align:left>谁用</th></tr></thead><tbody><tr><td style=text-align:left><strong>槽位编号</strong></td><td style=text-align:left>每个 Hook 点一个整数编号</td><td style=text-align:left>分发器、位图开关、插件契约</td></tr><tr><td style=text-align:left><strong>事件类型</strong></td><td style=text-align:left>每个事件类别一个整数编号</td><td style=text-align:left>事件位图、插件订阅、调度器路由</td></tr></tbody></table><p>简单来说，我们需要用一个位图来控制“哪些 Hook 生效”。所以我们需要一个<code>long[]</code>，而位图则是其中每一位对应的一个 Hook 点，而每一个 Hook 点都需要一个<strong>稳定的整数编号</strong>，这就产生了我们的<code>hookSlots</code>类。而位图打开后就要有人来干活，而干活的人需要接收一些参数，这就产生了<code>HookHandler</code>这个类。这两个东西一旦发布就不能改，因为它们会同时进入插件的声明、已经被织入业务类字节码的调用形态。</p><h3 id=hookslots>HookSlots
+    style CONTRACT fill:#f9f,stroke:#333,stroke-width:3px</pre><table><thead><tr><th style=text-align:left>契约</th><th style=text-align:left>是什么</th><th style=text-align:left>谁用</th></tr></thead><tbody><tr><td style=text-align:left><strong>槽位编号</strong></td><td style=text-align:left>每个 Hook 点一个整数编号</td><td style=text-align:left>分发器、位图开关、插件契约</td></tr><tr><td style=text-align:left><strong>事件类型</strong></td><td style=text-align:left>每个事件类别一个整数编号</td><td style=text-align:left>事件位图、插件订阅、调度器路由</td></tr></tbody></table><p>简单来说，我们需要用一个位图来控制“哪些 Hook 生效”。所以我们需要一个<code>long[]</code>，而位图则是其中每一位对应的一个 Hook 点，而每一个 Hook 点都需要一个<strong>稳定的整数编号</strong>，这就产生了我们的<code>hookSlots</code>类。而位图打开后就要有人来干活，而干活的人需要接收一些参数，这就产生了<code>HookHandler</code>这个类。这两个东西一旦发布就不能改，因为它们会同时进入插件的声明、已经被织入业务类字节码的调用形态。</p><h3 id=hookslots>HookSlots
 <a class=anchor href=#hookslots>#</a></h3><p>它会给每个 Hook 点发一个不会变的编号。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.jasp.agent;
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>HookSlots</span> {
@@ -730,15 +633,14 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>它在整个链路中的位置：</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph LR
+</span></span></code></pre></div><p>它在整个链路中的位置：</p><pre class=mermaid>graph LR
     A[&#34;业务调用&lt;br/&gt;ProcessBuilder.start&#34;] --&gt; B[&#34;织入的代码&lt;br/&gt;CommandHookAdvice.enter&#34;]
     B --&gt; C[&#34;HookDispatcher&lt;br/&gt;（本文件）&#34;]
     C --&gt; D[&#34;HookHandler&lt;br/&gt;（检测逻辑）&#34;]
     D --&gt; E[&#34;L0 / L1&#34;]
 
-    style C fill:#f9f,stroke:#333,stroke-width:3px
-</code></pre><p>这其实就是一个分发器，织入代码把数据交给它，它再转发给对应的 Handler。</p><p>其中一共有两个核心数据结构：<code>ACTIVE_MASK</code>和<code>HANDLERS</code>。</p><h3 id=active_mask>ACTIVE_MASK
-<a class=anchor href=#active_mask>#</a></h3><p><code>ACTIVE_MASK</code>：这是一个生效集合位图，管理槽位是否启用。</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+    style C fill:#f9f,stroke:#333,stroke-width:3px</pre><p>这其实就是一个分发器，织入代码把数据交给它，它再转发给对应的 Handler。</p><p>其中一共有两个核心数据结构：<code>ACTIVE_MASK</code>和<code>HANDLERS</code>。</p><h3 id=active_mask>ACTIVE_MASK
+<a class=anchor href=#active_mask>#</a></h3><p><code>ACTIVE_MASK</code>：这是一个生效集合位图，管理槽位是否启用。</p><pre class=mermaid>graph TB
     subgraph BITMAP[&#34;ACTIVE_MASK（8192 位 = 128 个 long）&#34;]
         L0[&#34;long[0]&lt;br/&gt;槽位 0~63&#34;]
         L1[&#34;long[1]&lt;br/&gt;槽位 64~127&#34;]
@@ -747,8 +649,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
         L127[&#34;long[127]&lt;br/&gt;槽位 8128~8191&#34;]
     end
 
-    style BITMAP fill:#f9f,stroke:#333,stroke-width:3px
-</code></pre><p>每一个 bit 代表一个槽位是否启用：</p><ul><li><code>bit=1</code>：该 Hook 启用</li><li><code>bit=0</code>：该 Hook 停用</li></ul><h3 id=handlers>HANDLERS
+    style BITMAP fill:#f9f,stroke:#333,stroke-width:3px</pre><p>每一个 bit 代表一个槽位是否启用：</p><ul><li><code>bit=1</code>：该 Hook 启用</li><li><code>bit=0</code>：该 Hook 停用</li></ul><h3 id=handlers>HANDLERS
 <a class=anchor href=#handlers>#</a></h3><p><code>HANDLERS</code>：槽位到处理逻辑的映射。</p><p>这是一个数组，索引是槽位编号，值是处理逻辑：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>HANDLERS[0]    → PROCESS_BUILDER_START 的 Handler
 </span></span><span style=display:flex><span>HANDLERS[1]    → RUNTIME_EXEC 的 Handler
 </span></span><span style=display:flex><span>HANDLERS[2]    → 未注册，NOOP
@@ -761,7 +662,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>        HookDispatcher.<span style=color:#a6e22e>enterO</span>(HookSlots.<span style=color:#a6e22e>PROCESS_BUILDER_START</span>, self);
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>这里用位运算来判断<code>ACTIVE_MASK</code>这个<code>AtomicLongArray</code>的某个<code>long[]</code>的某一位是 0 还是 1。</p><p><strong>setActive()</strong></p><p>这个方法里用到了 CAS，先了解一下 CAS 是啥。</p><p><strong>CAS = Compare-And-Swap（比较并交换）</strong>，这是一种无锁的原子操作。它是 Java 并发编程的基石。（其实这里我也没理解是什么意思。）</p><p>CAS 有三个参数：内存地址、期望值、新值。</p><p>语义就是：如果<strong>内存地址</strong>的当前值 == 期望值，则把<strong>内存地址</strong>的值改位为新值并返回<code>true</code>，否则不做修改并返回<code>false</code>。这里的关键就是：<strong>整个比较加交换的流程是一个原子操作，不能分割</strong>。而放到实际场景中，如果两个线程同时启用不同槽位，但是修改的都是<code>long[0]</code>的<code>bit</code>，如果不使用 CAS 就可能导致一个线程的修改覆盖了另一个线程的修改。</p><p><strong>register()</strong></p><p>这个方法负责注册 Handler + 启用。</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>sequenceDiagram
+</span></span></code></pre></div><p>这里用位运算来判断<code>ACTIVE_MASK</code>这个<code>AtomicLongArray</code>的某个<code>long[]</code>的某一位是 0 还是 1。</p><p><strong>setActive()</strong></p><p>这个方法里用到了 CAS，先了解一下 CAS 是啥。</p><p><strong>CAS = Compare-And-Swap（比较并交换）</strong>，这是一种无锁的原子操作。它是 Java 并发编程的基石。（其实这里我也没理解是什么意思。）</p><p>CAS 有三个参数：内存地址、期望值、新值。</p><p>语义就是：如果<strong>内存地址</strong>的当前值 == 期望值，则把<strong>内存地址</strong>的值改位为新值并返回<code>true</code>，否则不做修改并返回<code>false</code>。这里的关键就是：<strong>整个比较加交换的流程是一个原子操作，不能分割</strong>。而放到实际场景中，如果两个线程同时启用不同槽位，但是修改的都是<code>long[0]</code>的<code>bit</code>，如果不使用 CAS 就可能导致一个线程的修改覆盖了另一个线程的修改。</p><p><strong>register()</strong></p><p>这个方法负责注册 Handler + 启用。</p><pre class=mermaid>sequenceDiagram
     participant T as 注册线程
     participant H as HANDLERS
     participant M as ACTIVE_MASK
@@ -772,17 +673,15 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     Note over B: 业务线程此时才可能看到 active=true
     B-&gt;&gt;M: active(slot) → true
     B-&gt;&gt;H: HANDLERS[slot].enterO(...)
-    Note over H: Handler 已经就位
-</code></pre><p><strong>unregister()</strong></p><p>这个方法负责停用 + 清引用。先清除位图然后再清除引用。</p><p>停用和卸载是两码事：</p><table><thead><tr><th style=text-align:left>操作</th><th style=text-align:left>时机</th><th style=text-align:left>成本</th></tr></thead><tbody><tr><td style=text-align:left><strong>停用</strong></td><td style=text-align:left>运行期</td><td style=text-align:left>纳秒级（清位图）</td></tr><tr><td style=text-align:left><strong>卸载</strong></td><td style=text-align:left>插件退役时</td><td style=text-align:left>分钟级（排水 + 清引用 + 回收 ClassLoader）</td></tr></tbody></table><p><strong>分发入口</strong></p><p><strong>每种签名对应一种参数形态：</strong></p><table><thead><tr><th style=text-align:left>签名</th><th style=text-align:left>参数</th><th style=text-align:left>用途</th></tr></thead><tbody><tr><td style=text-align:left><code>enterO</code></td><td style=text-align:left><code>(slot, Object)</code></td><td style=text-align:left>单对象（如 <code>ProcessBuilder</code> 实例）</td></tr><tr><td style=text-align:left><code>enterOO</code></td><td style=text-align:left><code>(slot, Object, Object)</code></td><td style=text-align:left>双对象</td></tr><tr><td style=text-align:left><code>enterS</code></td><td style=text-align:left><code>(slot, String)</code></td><td style=text-align:left>单字符串（如 SQL 语句）</td></tr><tr><td style=text-align:left><code>enterSS</code></td><td style=text-align:left><code>(slot, String, String)</code></td><td style=text-align:left>双字符串（如协议 + URL）</td></tr><tr><td style=text-align:left><code>enterII</code></td><td style=text-align:left><code>(slot, int, int)</code></td><td style=text-align:left>双整数</td></tr></tbody></table><p>这几个分发器是为了适配不同的 Hook 点的参数形态而预定义的“签名族”。它们就是为了解决一个核心问题：<strong>不同方法被 Hook 时，需要传给 Handler 的参数不一样，但是分发器不能每次都<code>new</code>一个数组</strong>。</p><p>看一下一个样例调用链：</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph LR
+    Note over H: Handler 已经就位</pre><p><strong>unregister()</strong></p><p>这个方法负责停用 + 清引用。先清除位图然后再清除引用。</p><p>停用和卸载是两码事：</p><table><thead><tr><th style=text-align:left>操作</th><th style=text-align:left>时机</th><th style=text-align:left>成本</th></tr></thead><tbody><tr><td style=text-align:left><strong>停用</strong></td><td style=text-align:left>运行期</td><td style=text-align:left>纳秒级（清位图）</td></tr><tr><td style=text-align:left><strong>卸载</strong></td><td style=text-align:left>插件退役时</td><td style=text-align:left>分钟级（排水 + 清引用 + 回收 ClassLoader）</td></tr></tbody></table><p><strong>分发入口</strong></p><p><strong>每种签名对应一种参数形态：</strong></p><table><thead><tr><th style=text-align:left>签名</th><th style=text-align:left>参数</th><th style=text-align:left>用途</th></tr></thead><tbody><tr><td style=text-align:left><code>enterO</code></td><td style=text-align:left><code>(slot, Object)</code></td><td style=text-align:left>单对象（如 <code>ProcessBuilder</code> 实例）</td></tr><tr><td style=text-align:left><code>enterOO</code></td><td style=text-align:left><code>(slot, Object, Object)</code></td><td style=text-align:left>双对象</td></tr><tr><td style=text-align:left><code>enterS</code></td><td style=text-align:left><code>(slot, String)</code></td><td style=text-align:left>单字符串（如 SQL 语句）</td></tr><tr><td style=text-align:left><code>enterSS</code></td><td style=text-align:left><code>(slot, String, String)</code></td><td style=text-align:left>双字符串（如协议 + URL）</td></tr><tr><td style=text-align:left><code>enterII</code></td><td style=text-align:left><code>(slot, int, int)</code></td><td style=text-align:left>双整数</td></tr></tbody></table><p>这几个分发器是为了适配不同的 Hook 点的参数形态而预定义的“签名族”。它们就是为了解决一个核心问题：<strong>不同方法被 Hook 时，需要传给 Handler 的参数不一样，但是分发器不能每次都<code>new</code>一个数组</strong>。</p><p>看一下一个样例调用链：</p><pre class=mermaid>graph LR
     A[&#34;ProcessBuilder.start()&#34;] --&gt; B[&#34;CommandHookAdvice.enter&#34;]
     B --&gt; C[&#34;HookDispatcher.enterO(slot, self)&#34;]
     C --&gt; D[&#34;HANDLERS[slot].enterO(slot, self)&#34;]
     D --&gt; E[&#34;COMMAND_HANDLER.enterO&#34;]
 
     style C fill:#ff9,stroke:#333,stroke-width:3px
-    style D fill:#f9f,stroke:#333,stroke-width:3px
-</code></pre><h2 id=总结>总结
-<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>看一下我目前的几个类之间的关系：</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph TB
+    style D fill:#f9f,stroke:#333,stroke-width:3px</pre><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>看一下我目前的几个类之间的关系：</p><pre class=mermaid>graph TB
     subgraph BOOTSTRAP[&#34;启动层&#34;]
         JA[&#34;JaspAgent&lt;br/&gt;premain / agentmain&#34;]
         JT[&#34;JaspTransformer&lt;br/&gt;install(inst)&#34;]
@@ -798,7 +697,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     end
 
     subgraph CONTRACT[&#34;契约层&#34;]
-        HS[&#34;HookSlots&lt;br/&gt;槽位编号 + 名称&#34;]
+        HS[&#34;HookSlots&lt;br/&gt;槽位编号 &#43; 名称&#34;]
     end
 
     JA --&gt;|&#34;① register(slot, handler)&#34;| HD
@@ -818,8 +717,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     style JA fill:#f9f,stroke:#333,stroke-width:3px
     style HD fill:#ff9,stroke:#333,stroke-width:3px
     style HS fill:#d5f5e3,stroke:#333,stroke-width:2px
-    style CHA fill:#d4e6f1,stroke:#333,stroke-width:2px
-</code></pre><p>依赖方向：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>JaspAgent
+    style CHA fill:#d4e6f1,stroke:#333,stroke-width:2px</pre><p>依赖方向：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>JaspAgent
 </span></span><span style=display:flex><span>  ├── HookDispatcher    （注册 Handler）
 </span></span><span style=display:flex><span>  ├── JaspTransformer   （安装转换器）
 </span></span><span style=display:flex><span>  └── HookHandler       （实现 Handler）
@@ -841,7 +739,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>HookSlots
 </span></span><span style=display:flex><span>  └── （无依赖，纯常量）
-</span></span></code></pre></div><p>JVM 启动阶段时序图：</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>sequenceDiagram
+</span></span></code></pre></div><p>JVM 启动阶段时序图：</p><pre class=mermaid>sequenceDiagram
     autonumber
     participant JVM as JVM
     participant JA as JaspAgent
@@ -859,8 +757,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
     JT-&gt;&gt;HS: 读 CAPACITY
     JT-&gt;&gt;JVM: addTransformer(统计转换器)
     JT-&gt;&gt;JVM: AgentBuilder.installOn(inst)
-    Note over JT: 等待类加载时织入
-</code></pre><p>业务阶段时序图：</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>sequenceDiagram
+    Note over JT: 等待类加载时织入</pre><p>业务阶段时序图：</p><pre class=mermaid>sequenceDiagram
     autonumber
     participant Biz as 业务线程
     participant PB as ProcessBuilder
@@ -885,8 +782,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
         HD--&gt;&gt;CHA: 返回
         CHA--&gt;&gt;PB: 返回
         PB--&gt;&gt;Biz: 执行业务逻辑
-    end
-</code></pre><p>完整数据流图：</p><pre tabindex=0><code class=language-mermaid data-lang=mermaid>graph LR
+    end</pre><p>完整数据流图：</p><pre class=mermaid>graph LR
     subgraph STARTUP[&#34;启动阶段&#34;]
         A1[&#34;JaspAgent.premain&#34;]
         A2[&#34;HookDispatcher.register&#34;]
@@ -921,8 +817,7 @@ Java Agent 能做什么 # graph TB subgraph CAPABILITY["Java Agent 的核心能�
 
     style A1 fill:#f9f,stroke:#333,stroke-width:3px
     style C3 fill:#ff9,stroke:#333,stroke-width:3px
-    style C5 fill:#d5f5e3,stroke:#333,stroke-width:3px
-</code></pre><table><thead><tr><th style=text-align:left>文件</th><th style=text-align:left>角色</th><th style=text-align:left>依赖</th><th style=text-align:left>被谁依赖</th></tr></thead><tbody><tr><td style=text-align:left><strong>JaspAgent</strong></td><td style=text-align:left>启动入口</td><td style=text-align:left>HookDispatcher / JaspTransformer / HookHandler</td><td style=text-align:left>JVM</td></tr><tr><td style=text-align:left><strong>JaspTransformer</strong></td><td style=text-align:left>字节码转换</td><td style=text-align:left>CommandHookAdvice / HookSlots</td><td style=text-align:left>JaspAgent</td></tr><tr><td style=text-align:left><strong>CommandHookAdvice</strong></td><td style=text-align:left>织入逻辑</td><td style=text-align:left>HookDispatcher / HookSlots</td><td style=text-align:left>JaspTransformer（织入）</td></tr><tr><td style=text-align:left><strong>HookDispatcher</strong></td><td style=text-align:left>分发中心</td><td style=text-align:left>HookHandler / HookSlots</td><td style=text-align:left>CommandHookAdvice / JaspAgent</td></tr><tr><td style=text-align:left><strong>HookHandler</strong></td><td style=text-align:left>处理逻辑抽象</td><td style=text-align:left>无</td><td style=text-align:left>HookDispatcher / JaspAgent</td></tr><tr><td style=text-align:left><strong>HookSlots</strong></td><td style=text-align:left>契约常量</td><td style=text-align:left>无</td><td style=text-align:left>全部</td></tr></tbody></table><p>一句话总结一下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>JaspAgent         启动入口，注册 Handler + 安装转换器
+    style C5 fill:#d5f5e3,stroke:#333,stroke-width:3px</pre><table><thead><tr><th style=text-align:left>文件</th><th style=text-align:left>角色</th><th style=text-align:left>依赖</th><th style=text-align:left>被谁依赖</th></tr></thead><tbody><tr><td style=text-align:left><strong>JaspAgent</strong></td><td style=text-align:left>启动入口</td><td style=text-align:left>HookDispatcher / JaspTransformer / HookHandler</td><td style=text-align:left>JVM</td></tr><tr><td style=text-align:left><strong>JaspTransformer</strong></td><td style=text-align:left>字节码转换</td><td style=text-align:left>CommandHookAdvice / HookSlots</td><td style=text-align:left>JaspAgent</td></tr><tr><td style=text-align:left><strong>CommandHookAdvice</strong></td><td style=text-align:left>织入逻辑</td><td style=text-align:left>HookDispatcher / HookSlots</td><td style=text-align:left>JaspTransformer（织入）</td></tr><tr><td style=text-align:left><strong>HookDispatcher</strong></td><td style=text-align:left>分发中心</td><td style=text-align:left>HookHandler / HookSlots</td><td style=text-align:left>CommandHookAdvice / JaspAgent</td></tr><tr><td style=text-align:left><strong>HookHandler</strong></td><td style=text-align:left>处理逻辑抽象</td><td style=text-align:left>无</td><td style=text-align:left>HookDispatcher / JaspAgent</td></tr><tr><td style=text-align:left><strong>HookSlots</strong></td><td style=text-align:left>契约常量</td><td style=text-align:left>无</td><td style=text-align:left>全部</td></tr></tbody></table><p>一句话总结一下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>JaspAgent         启动入口，注册 Handler + 安装转换器
 </span></span><span style=display:flex><span>    ↓
 </span></span><span style=display:flex><span>JaspTransformer   字节码转换器，把 CommandHookAdvice 织入 ProcessBuilder
 </span></span><span style=display:flex><span>    ↓
