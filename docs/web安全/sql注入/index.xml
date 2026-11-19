@@ -1,1 +1,222 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>SQL注入 on Solowalker</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/</link><description>Recent content in SQL注入 on Solowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Sat, 23 May 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/index.xml" rel="self" type="application/rss+xml"/><item><title>SQLite下的SQL注入</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</link><pubDate>Sat, 23 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</guid><description>&lt;h1 id="sqlite下的sql注入"&gt;&#10; SQLite下的SQL注入&#10; &lt;a class="anchor" href="#sqlite%e4%b8%8b%e7%9a%84sql%e6%b3%a8%e5%85%a5"&gt;#&lt;/a&gt;&#10;&lt;/h1&gt;&#10;&lt;p&gt;在极客大挑战复现的时候遇到了 SQLite 数据库的 SQL 注入，所以现在在此记录一下，也是扩展一下关于数据库的知识。&lt;/p&gt;&#10;&lt;h2 id="sqlite-基础"&gt;&#10; SQLite 基础&#10; &lt;a class="anchor" href="#sqlite-%e5%9f%ba%e7%a1%80"&gt;#&lt;/a&gt;&#10;&lt;/h2&gt;&#10;&lt;p&gt;SQLite 和 MySQL 的区别还是比较大的，由于架构设计、语法和内置函数的不同，所以 MySQL 的注入技巧在 SQLite 上大部分会失效。&lt;/p&gt;&#10;&lt;p&gt;下面是 MySQL 和 SQLite 的一些区别：&lt;/p&gt;&#10;&lt;table&gt;&#10;&#9;&lt;thead&gt;&#10;&#9;&#9;&#9;&lt;tr&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;th&gt;差异&lt;/th&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;th&gt;MySQL&lt;/th&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;th&gt;SQLite&lt;/th&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;th&gt;注意点&lt;/th&gt;&#10;&#9;&#9;&#9;&lt;/tr&gt;&#10;&#9;&lt;/thead&gt;&#10;&#9;&lt;tbody&gt;&#10;&#9;&#9;&#9;&lt;tr&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;数据库架构&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;客户端-服务器模式，有独立的服务进程&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;嵌入式数据据库，整个数据库是一个独立文件&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;攻击 SQLite时，可能通过文件读取漏洞直接获取&lt;code&gt;.db&lt;/code&gt;文件，而在 MySQL 中几乎不可能&lt;/td&gt;&#10;&#9;&#9;&#9;&lt;/tr&gt;&#10;&#9;&#9;&#9;&lt;tr&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;元数据表&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;通过&lt;code&gt;information_schema&lt;/code&gt;数据库查询所有表、列信息&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;使用&lt;code&gt;sqlite_master&lt;/code&gt;表存储所有表结构信息&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;所有基于&lt;code&gt;information_schema&lt;/code&gt;的语句都会失效&lt;/td&gt;&#10;&#9;&#9;&#9;&lt;/tr&gt;&#10;&#9;&#9;&#9;&lt;tr&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;多语句执行&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;PHP等连接器默认不支持堆叠注入&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;支持使用&lt;code&gt;;&lt;/code&gt;执行多条SQL语句&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;SQLite的注入理论上危害更大，可以直接执行&lt;code&gt;INSERT/UPDATE/DELETE&lt;/code&gt;等语句&lt;/td&gt;&#10;&#9;&#9;&#9;&lt;/tr&gt;&#10;&#9;&#9;&#9;&lt;tr&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;盲注函数&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;常用&lt;code&gt;sleep()&lt;/code&gt;或&lt;code&gt;benchmark()&lt;/code&gt;制造时间延迟来判断条件&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;无&lt;code&gt;sleep()&lt;/code&gt;函数，需要找替代方案&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;所有基于&lt;code&gt;sleep()&lt;/code&gt;的延时注入脚本和工具都无法直接使用&lt;/td&gt;&#10;&#9;&#9;&#9;&lt;/tr&gt;&#10;&#9;&#9;&#9;&lt;tr&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;用户与权限&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;有完整的用户和权限系统，可高权限跨库操作或读写文件&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;无用户概念，其权限完全基于操作系统对文件的读写权限&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;无法使用&lt;code&gt;load_file&lt;/code&gt;、&lt;code&gt;into outfile()&lt;/code&gt;这类需要MySQL特定权限的函数&lt;/td&gt;&#10;&#9;&#9;&#9;&lt;/tr&gt;&#10;&#9;&#9;&#9;&lt;tr&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;文件操作&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;拥有&lt;code&gt;FILE&lt;/code&gt;权限时可使用&lt;code&gt;load_file()&lt;/code&gt;和&lt;code&gt;into outfile()&lt;/code&gt;读写文件&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;没有内置的文件读写函数，可通过附加数据库等方式间接操作&lt;/td&gt;&#10;&#9;&#9;&#9;&#9;&#9;&lt;td&gt;直接的读写文件操作无法执行&lt;/td&gt;&#10;&#9;&#9;&#9;&lt;/tr&gt;&#10;&#9;&lt;/tbody&gt;&#10;&lt;/table&gt;&#10;&lt;h3 id="sqlite简介"&gt;&#10; SQLite简介&#10; &lt;a class="anchor" href="#sqlite%e7%ae%80%e4%bb%8b"&gt;#&lt;/a&gt;&#10;&lt;/h3&gt;&#10;&lt;p&gt;SQLite 是一个轻量级、无服务器、直接读写文件的数据库。它的架构是嵌入式，不是独立进程，而是一个链接到程序中的库，数据库就是一个文件，这点可以理解为C语言中 include 文件，一个程序&lt;code&gt;include&lt;/code&gt;SQLite，就把 SQLite 中所有的函数声明都引入进来了。&lt;/p&gt;&#10;&lt;p&gt;由于 SQLite 是一个独立文件，所以 SQLite 没有用户验证，读写操作完全依赖于操作系统的权限。&lt;/p&gt;</description></item><item><title>堆叠注入之利用handler语句获取数据</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/</link><pubDate>Tue, 24 Mar 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/</guid><description>&lt;h1 id="buuctf之gyctf2020blacklist"&gt;&#10; BUUCTF之[GYCTF2020]Blacklist&#10; &lt;a class="anchor" href="#buuctf%e4%b9%8bgyctf2020blacklist"&gt;#&lt;/a&gt;&#10;&lt;/h1&gt;&#10;&lt;h2 id="handler语句"&gt;&#10; handler语句&#10; &lt;a class="anchor" href="#handler%e8%af%ad%e5%8f%a5"&gt;#&lt;/a&gt;&#10;&lt;/h2&gt;&#10;&lt;p&gt;HANDLER 是 MySQL 中用于直接访问表存储引擎接口的语句，类似于文件操作：&lt;/p&gt;&#10;&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-mysql" data-lang="mysql"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;-- 打开表&#10;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name OPEN [&lt;span style="color:#66d9ef"&gt;AS&lt;/span&gt; alias];&#10;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&#10;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;-- 读取数据&#10;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name &lt;span style="color:#66d9ef"&gt;READ&lt;/span&gt; FIRST; &lt;span style="color:#75715e"&gt;-- 读取第一行&#10;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name &lt;span style="color:#66d9ef"&gt;READ&lt;/span&gt; NEXT; &lt;span style="color:#75715e"&gt;-- 读取下一行&#10;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name &lt;span style="color:#66d9ef"&gt;READ&lt;/span&gt; &lt;span style="color:#960050;background-color:#1e0010"&gt;{索引名}&lt;/span&gt; &lt;span style="color:#960050;background-color:#1e0010"&gt;{操作}&lt;/span&gt;;&#10;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&#10;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;-- 关闭表&#10;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;HANDLER table_name CLOSE;&#10;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id="与union的对比"&gt;&#10; 与union的对比&#10; &lt;a class="anchor" href="#%e4%b8%8eunion%e7%9a%84%e5%af%b9%e6%af%94"&gt;#&lt;/a&gt;&#10;&lt;/h3&gt;&#10;&lt;h4 id="handler的优势"&gt;&#10; handler的优势&#10; &lt;a class="anchor" href="#handler%e7%9a%84%e4%bc%98%e5%8a%bf"&gt;#&lt;/a&gt;&#10;&lt;/h4&gt;&#10;&lt;ul&gt;&#10;&lt;li&gt;不需要知道列数，即不需要&lt;code&gt;order by&lt;/code&gt;来查询&lt;/li&gt;&#10;&lt;li&gt;不受&lt;code&gt;select&lt;/code&gt;限制，如果&lt;code&gt;select&lt;/code&gt;被ban了也能查询到数据&lt;/li&gt;&#10;&lt;li&gt;访问数据更灵活，可以精确控制读取到哪一行&lt;/li&gt;&#10;&lt;/ul&gt;&#10;&lt;h2 id="注入过程"&gt;&#10; 注入过程&#10; &lt;a class="anchor" href="#%e6%b3%a8%e5%85%a5%e8%bf%87%e7%a8%8b"&gt;#&lt;/a&gt;&#10;&lt;/h2&gt;&#10;&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-01.png" alt="1" /&gt;&lt;/p&gt;&#10;&lt;p&gt;首先测试一下是什么类型的注入，输入&lt;code&gt;1'&lt;/code&gt;报错，即为字符型注入。&lt;/p&gt;&#10;&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-02.png" alt="2" /&gt;&lt;/p&gt;&#10;&lt;p&gt;然后测试了&lt;code&gt;1' order by 3&lt;/code&gt;，没有这一列，测试&lt;code&gt;order by 2&lt;/code&gt;则通过。&lt;/p&gt;&#10;&lt;p&gt;尝试经典的联合查询注入，结果回显：&lt;/p&gt;&#10;&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-03.png" alt="3" /&gt;&lt;/p&gt;&#10;&lt;p&gt;回显了waf，&lt;code&gt;select&lt;/code&gt;等查询字符被过滤。大概率是堆叠注入。然后测试&lt;code&gt;show&lt;/code&gt;语句，输入&lt;code&gt;1';show databases;#&lt;/code&gt;，回显：&lt;/p&gt;&#10;&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-04.png" alt="4" /&gt;&lt;/p&gt;&#10;&lt;p&gt;确认是堆叠注入，也能看到这些数据库名。然后看一下当前数据库的数据表，输入&lt;code&gt;1';show tables;#&lt;/code&gt;，回显：&lt;/p&gt;&#10;&lt;p&gt;&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-05.png" alt="5" /&gt;&lt;/p&gt;</description></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>SQL注入 on Solowalker</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/</link><description>Recent content in SQL注入 on Solowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Tue, 10 Nov 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/index.xml" rel="self" type="application/rss+xml"/><item><title>MSSQL下的SQL注入</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/mssql%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</link><pubDate>Tue, 10 Nov 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/mssql%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</guid><description>&lt;h1 id="mssql下的sql注入">
+ MSSQL下的SQL注入
+ &lt;a class="anchor" href="#mssql%e4%b8%8b%e7%9a%84sql%e6%b3%a8%e5%85%a5">#&lt;/a>
+&lt;/h1>
+&lt;h2 id="sql-server-基础">
+ SQL Server 基础
+ &lt;a class="anchor" href="#sql-server-%e5%9f%ba%e7%a1%80">#&lt;/a>
+&lt;/h2>
+&lt;p>Microsoft SQL Server 也叫 MSSQL，它是一个数据库平台，提供数据库的从服务器到终端的完整解决方案，其中数据库服务器部分是一个数据库管理系统，用于建立、使用和维护数据库，属于关系型数据库，默认端口号为 1433。&lt;/p>
+&lt;h3 id="默认数据库">
+ 默认数据库
+ &lt;a class="anchor" href="#%e9%bb%98%e8%ae%a4%e6%95%b0%e6%8d%ae%e5%ba%93">#&lt;/a>
+&lt;/h3>
+&lt;p>SQL Server 有 6 个默认数据库，是用于维护系统正常运行的&lt;strong>系统数据库&lt;/strong>，其中包括四个系统数据库：master、model、msdb、tempdb，和两个实例数据库：ReportServer、ReportServerTempDB。&lt;/p>
+&lt;p>系统数据库：&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>master&lt;/strong>：记录了 SQL Server 实例的所有系统级消息，包括实例范围的元数据（如登录账号、断点、链接服务器和系统配置设置）&lt;/li>
+&lt;li>msdb：供 SQL Server 代理服务调度报警和作业记录操作员的使用，保存关于调度报警、作业、操作员等信息&lt;/li>
+&lt;li>model：SQL Server 实例上创建的所有数据库的模板&lt;/li>
+&lt;li>tempdb：临时数据库，用于保存临时对象或中间结果集，为数据库的排列等操作提供了一个临时的工作空间&lt;/li>
+&lt;/ul>
+&lt;p>实例数据库：&lt;/p>
+&lt;ul>
+&lt;li>ReportServer：存储 SSRS 配置部分，报告定义，报告元数据，报告历史，缓存政策，快照，资源，安全设置，加密数据，调度和提交数据，以及扩展信息&lt;/li>
+&lt;li>ReportServerTempDB：存储中间处理产品，例如缓冲的报告、会话和执行数据等&lt;/li>
+&lt;/ul>
+&lt;h3 id="数据库的组成">
+ 数据库的组成
+ &lt;a class="anchor" href="#%e6%95%b0%e6%8d%ae%e5%ba%93%e7%9a%84%e7%bb%84%e6%88%90">#&lt;/a>
+&lt;/h3>
+&lt;p>在 SQL Server 中，数据库是以文件的形式存在的，由文件和文件组组成。&lt;/p>
+&lt;h4 id="文件">
+ 文件
+ &lt;a class="anchor" href="#%e6%96%87%e4%bb%b6">#&lt;/a>
+&lt;/h4>
+&lt;p>数据库中的文件基本是分为以下三类：&lt;/p>
+&lt;ul>
+&lt;li>主要数据文件：存放数据和数据库的初始化信息。每个数据库有且只能有一个主要数据文件，以&lt;code>.mdf&lt;/code>结尾&lt;/li>
+&lt;li>次要数据文件：存放除了主要数据文件以外的所有数据文件。次要数据文件不是必须的，可以没有，也可以有多个，以&lt;code>.ndf&lt;/code>结尾&lt;/li>
+&lt;li>事务日志文件：存放用户回复数据库的所有文件信息。每个数据库至少有一个日志文件，也可以有多个，以&lt;code>.ldf&lt;/code>结尾&lt;/li>
+&lt;/ul>
+&lt;h4 id="文件组">
+ 文件组
+ &lt;a class="anchor" href="#%e6%96%87%e4%bb%b6%e7%bb%84">#&lt;/a>
+&lt;/h4>
+&lt;p>文件组是数据库文件一种逻辑管理单位，他将数据库文件分成不同的文件组，方便对文件的分配和管理，分为两种类型：&lt;/p>
+&lt;ul>
+&lt;li>主文件组&lt;code>Primary&lt;/code>：主要是数据文件和没有明确指派给其他文件组的文件&lt;/li>
+&lt;li>用户自定义的文件组：&lt;code>Create DataBase&lt;/code>或者&lt;code>Alter DataBase&lt;/code>语句，&lt;code>FileGroup&lt;/code>关键字指定的文件组&lt;/li>
+&lt;/ul>
+&lt;h4 id="设计原则">
+ 设计原则
+ &lt;a class="anchor" href="#%e8%ae%be%e8%ae%a1%e5%8e%9f%e5%88%99">#&lt;/a>
+&lt;/h4>
+&lt;p>SQL Server 数据库的设计原则如下：&lt;/p>
+&lt;ul>
+&lt;li>文件只能是一个文件组的成员&lt;/li>
+&lt;li>文件或文件组不能由多个数据库使用&lt;/li>
+&lt;li>日志不能作为文件组的一部分&lt;/li>
+&lt;/ul>
+&lt;h3 id="sql-server-权限">
+ SQL Server 权限
+ &lt;a class="anchor" href="#sql-server-%e6%9d%83%e9%99%90">#&lt;/a>
+&lt;/h3>
+&lt;p>SQL Server 中的权限控制被分成服务器和数据库两个级别，一个服务器可以包含多个数据库。服务器级别权限可以让我们控制登录、服务器资源操作等等；数据库级别的权限可以让我们对具体的表、视图、数据等数据库内资源进行操作。&lt;/p></description></item><item><title>MySQL 读写文件与 getshell</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/mysql%E8%AF%BB%E5%86%99%E6%96%87%E4%BB%B6/</link><pubDate>Tue, 10 Nov 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/mysql%E8%AF%BB%E5%86%99%E6%96%87%E4%BB%B6/</guid><description>&lt;h1 id="mysql-读写文件与-getshell">
+ MySQL 读写文件与 getshell
+ &lt;a class="anchor" href="#mysql-%e8%af%bb%e5%86%99%e6%96%87%e4%bb%b6%e4%b8%8e-getshell">#&lt;/a>
+&lt;/h1>
+&lt;h2 id="前言">
+ 前言
+ &lt;a class="anchor" href="#%e5%89%8d%e8%a8%80">#&lt;/a>
+&lt;/h2>
+&lt;p>前段时间疯狂地推进 Java，这段时间准备好好沉淀一下，顺便复习一下之前学习的内容，然后深入一点。&lt;/p>
+&lt;h2 id="读写文件">
+ 读写文件
+ &lt;a class="anchor" href="#%e8%af%bb%e5%86%99%e6%96%87%e4%bb%b6">#&lt;/a>
+&lt;/h2>
+&lt;h3 id="权限与配置">
+ 权限与配置
+ &lt;a class="anchor" href="#%e6%9d%83%e9%99%90%e4%b8%8e%e9%85%8d%e7%bd%ae">#&lt;/a>
+&lt;/h3>
+&lt;p>MySQL 中想要直接读写服务器主机文件一般需要&lt;code>FILE&lt;/code>权限，并且会受到&lt;code>secure_file_priv&lt;/code>这个系统变量的限制。&lt;/p>
+&lt;p>&lt;code>FILE&lt;/code>权限是 MySQL 的一个全局管理权限，它允许拥有该权限的用户，以 &lt;strong>MySQL 服务进程&lt;/strong>的身份去读取或者写入服务器主机上的文件。这个权限非常敏感，因为它把数据库的操作边界扩展到了操作系统的层面。&lt;/p>
+&lt;ul>
+&lt;li>**任意文件读取：**拥有&lt;code>FILE&lt;/code>权限的用户，可以读取到 MySQL 服务进程有权限访问的任何文件（比如&lt;code>/etc/passwd&lt;/code>），并将其内容导入到数据库表中，再查询出来。&lt;/li>
+&lt;li>**任意文件写入：**该权限允许用户将查询结果写入服务器文件系统。如果 MySQL 以高权限用户（如 root）运行，攻击者可以利用它写入恶意文件（如计划任务、配置文件），从而提权。&lt;/li>
+&lt;/ul>
+&lt;blockquote>
+&lt;p>如何设置 FILE 权限&lt;/p>
+&lt;/blockquote>
+&lt;p>&lt;code>FILE&lt;/code>权限是全局权限，作用域必须是&lt;code>*.*&lt;/code>，不能指定到那个数据库或表。操作需要由拥有&lt;code>GRANT&lt;/code>权限的管理员账号来执行。&lt;/p>
+&lt;p>&lt;strong>授予权限：&lt;/strong>&lt;/p>
+&lt;p>使用&lt;code>GRANT&lt;/code>语句给指定用户授权：&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">&lt;code class="language-sql" data-lang="sql">&lt;span style="display:flex;">&lt;span>&lt;span style="color:#66d9ef">GRANT&lt;/span> FILE &lt;span style="color:#66d9ef">ON&lt;/span> &lt;span style="color:#f92672">*&lt;/span>.&lt;span style="color:#f92672">*&lt;/span> &lt;span style="color:#66d9ef">TO&lt;/span> &lt;span style="color:#e6db74">&amp;#39;username&amp;#39;&lt;/span>&lt;span style="color:#f92672">@&lt;/span>&lt;span style="color:#e6db74">&amp;#39;host&amp;#39;&lt;/span>;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>执行之后通常运行&lt;code>FLUSH PRIVILEGES;&lt;/code>来让权限立即生效。&lt;/p>
+&lt;p>&lt;strong>验证权限：&lt;/strong>&lt;/p>
+&lt;p>最可靠的方式是使用&lt;code>SHOW GRANTS&lt;/code>命令：&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">&lt;code class="language-sql" data-lang="sql">&lt;span style="display:flex;">&lt;span>&lt;span style="color:#66d9ef">SHOW&lt;/span> GRANTS &lt;span style="color:#66d9ef">FOR&lt;/span> &lt;span style="color:#e6db74">&amp;#39;username&amp;#39;&lt;/span>&lt;span style="color:#f92672">@&lt;/span>&lt;span style="color:#e6db74">&amp;#39;host&amp;#39;&lt;/span>;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>如果结果中出现 &lt;code>GRANT FILE ON *.* TO ...&lt;/code>，说明权限已生效。&lt;/p>
+&lt;p>&lt;strong>回收权限：&lt;/strong>&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">&lt;code class="language-sql" data-lang="sql">&lt;span style="display:flex;">&lt;span>&lt;span style="color:#66d9ef">REVOKE&lt;/span> FILE &lt;span style="color:#66d9ef">ON&lt;/span> &lt;span style="color:#f92672">*&lt;/span>.&lt;span style="color:#f92672">*&lt;/span> &lt;span style="color:#66d9ef">FROM&lt;/span> &lt;span style="color:#e6db74">&amp;#39;username&amp;#39;&lt;/span>&lt;span style="color:#f92672">@&lt;/span>&lt;span style="color:#e6db74">&amp;#39;host&amp;#39;&lt;/span>;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>同样，回收后需验证。我们可以用该用户身份尝试执行 &lt;code>SELECT ... INTO OUTFILE&lt;/code>，预期会收到“Access denied”错误。&lt;/p>
+&lt;p>但是仅仅拥有&lt;code>FILE&lt;/code>权限并不能保证文件操作一定能成功，它实际能读写的路径还受到&lt;code>secure_file_priv&lt;/code>这个系统变量的严格限制。&lt;/p>
+&lt;ul>
+&lt;li>如果&lt;code>secure_file_priv&lt;/code>被设置为一个&lt;strong>具体目录&lt;/strong>（如&lt;code>/var/lib&lt;/code>），那么&lt;code>FILE&lt;/code>权限的文件操作就只能在这个目录中进行。&lt;/li>
+&lt;li>如果&lt;code>secure_file_priv&lt;/code>被设置为&lt;code>NULL&lt;/code>，则会&lt;strong>完全禁用&lt;/strong>文件的导出导入功能，此时即使有&lt;code>FILE&lt;/code>权限也没用。&lt;/li>
+&lt;li>如果&lt;code>secure_file_priv&lt;/code>被设置为&lt;strong>空字符串(&amp;quot;&amp;quot;)&lt;/strong>，则没有路径限制。&lt;/li>
+&lt;/ul>
+&lt;h3 id="语句">
+ 语句
+ &lt;a class="anchor" href="#%e8%af%ad%e5%8f%a5">#&lt;/a>
+&lt;/h3>
+&lt;p>&lt;strong>&lt;code>SELECT ... INTO OUTFILE&lt;/code>：将查询结果导出到文件&lt;/strong>&lt;/p></description></item><item><title>SQLite下的SQL注入</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</link><pubDate>Sat, 23 May 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/sqlite%E4%B8%8B%E7%9A%84sql%E6%B3%A8%E5%85%A5/</guid><description>&lt;h1 id="sqlite下的sql注入">
+ SQLite下的SQL注入
+ &lt;a class="anchor" href="#sqlite%e4%b8%8b%e7%9a%84sql%e6%b3%a8%e5%85%a5">#&lt;/a>
+&lt;/h1>
+&lt;p>在极客大挑战复现的时候遇到了 SQLite 数据库的 SQL 注入，所以现在在此记录一下，也是扩展一下关于数据库的知识。&lt;/p>
+&lt;h2 id="sqlite-基础">
+ SQLite 基础
+ &lt;a class="anchor" href="#sqlite-%e5%9f%ba%e7%a1%80">#&lt;/a>
+&lt;/h2>
+&lt;p>SQLite 和 MySQL 的区别还是比较大的，由于架构设计、语法和内置函数的不同，所以 MySQL 的注入技巧在 SQLite 上大部分会失效。&lt;/p>
+&lt;p>下面是 MySQL 和 SQLite 的一些区别：&lt;/p>
+&lt;table>
+ &lt;thead>
+ &lt;tr>
+ &lt;th>差异&lt;/th>
+ &lt;th>MySQL&lt;/th>
+ &lt;th>SQLite&lt;/th>
+ &lt;th>注意点&lt;/th>
+ &lt;/tr>
+ &lt;/thead>
+ &lt;tbody>
+ &lt;tr>
+ &lt;td>数据库架构&lt;/td>
+ &lt;td>客户端-服务器模式，有独立的服务进程&lt;/td>
+ &lt;td>嵌入式数据据库，整个数据库是一个独立文件&lt;/td>
+ &lt;td>攻击 SQLite时，可能通过文件读取漏洞直接获取&lt;code>.db&lt;/code>文件，而在 MySQL 中几乎不可能&lt;/td>
+ &lt;/tr>
+ &lt;tr>
+ &lt;td>元数据表&lt;/td>
+ &lt;td>通过&lt;code>information_schema&lt;/code>数据库查询所有表、列信息&lt;/td>
+ &lt;td>使用&lt;code>sqlite_master&lt;/code>表存储所有表结构信息&lt;/td>
+ &lt;td>所有基于&lt;code>information_schema&lt;/code>的语句都会失效&lt;/td>
+ &lt;/tr>
+ &lt;tr>
+ &lt;td>多语句执行&lt;/td>
+ &lt;td>PHP等连接器默认不支持堆叠注入&lt;/td>
+ &lt;td>支持使用&lt;code>;&lt;/code>执行多条SQL语句&lt;/td>
+ &lt;td>SQLite的注入理论上危害更大，可以直接执行&lt;code>INSERT/UPDATE/DELETE&lt;/code>等语句&lt;/td>
+ &lt;/tr>
+ &lt;tr>
+ &lt;td>盲注函数&lt;/td>
+ &lt;td>常用&lt;code>sleep()&lt;/code>或&lt;code>benchmark()&lt;/code>制造时间延迟来判断条件&lt;/td>
+ &lt;td>无&lt;code>sleep()&lt;/code>函数，需要找替代方案&lt;/td>
+ &lt;td>所有基于&lt;code>sleep()&lt;/code>的延时注入脚本和工具都无法直接使用&lt;/td>
+ &lt;/tr>
+ &lt;tr>
+ &lt;td>用户与权限&lt;/td>
+ &lt;td>有完整的用户和权限系统，可高权限跨库操作或读写文件&lt;/td>
+ &lt;td>无用户概念，其权限完全基于操作系统对文件的读写权限&lt;/td>
+ &lt;td>无法使用&lt;code>load_file&lt;/code>、&lt;code>into outfile()&lt;/code>这类需要MySQL特定权限的函数&lt;/td>
+ &lt;/tr>
+ &lt;tr>
+ &lt;td>文件操作&lt;/td>
+ &lt;td>拥有&lt;code>FILE&lt;/code>权限时可使用&lt;code>load_file()&lt;/code>和&lt;code>into outfile()&lt;/code>读写文件&lt;/td>
+ &lt;td>没有内置的文件读写函数，可通过附加数据库等方式间接操作&lt;/td>
+ &lt;td>直接的读写文件操作无法执行&lt;/td>
+ &lt;/tr>
+ &lt;/tbody>
+&lt;/table>
+&lt;h3 id="sqlite简介">
+ SQLite简介
+ &lt;a class="anchor" href="#sqlite%e7%ae%80%e4%bb%8b">#&lt;/a>
+&lt;/h3>
+&lt;p>SQLite 是一个轻量级、无服务器、直接读写文件的数据库。它的架构是嵌入式，不是独立进程，而是一个链接到程序中的库，数据库就是一个文件，这点可以理解为C语言中 include 文件，一个程序&lt;code>include&lt;/code>SQLite，就把 SQLite 中所有的函数声明都引入进来了。&lt;/p>
+&lt;p>由于 SQLite 是一个独立文件，所以 SQLite 没有用户验证，读写操作完全依赖于操作系统的权限。&lt;/p></description></item><item><title>堆叠注入之利用handler语句获取数据</title><link>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/</link><pubDate>Tue, 24 Mar 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/web%E5%AE%89%E5%85%A8/sql%E6%B3%A8%E5%85%A5/%E5%88%A9%E7%94%A8handler%E8%BF%9B%E8%A1%8C%E5%A0%86%E5%8F%A0%E6%B3%A8%E5%85%A5/</guid><description>&lt;h1 id="buuctf之gyctf2020blacklist">
+ BUUCTF之[GYCTF2020]Blacklist
+ &lt;a class="anchor" href="#buuctf%e4%b9%8bgyctf2020blacklist">#&lt;/a>
+&lt;/h1>
+&lt;h2 id="handler语句">
+ handler语句
+ &lt;a class="anchor" href="#handler%e8%af%ad%e5%8f%a5">#&lt;/a>
+&lt;/h2>
+&lt;p>HANDLER 是 MySQL 中用于直接访问表存储引擎接口的语句，类似于文件操作：&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">&lt;code class="language-mysql" data-lang="mysql">&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">-- 打开表
+&lt;/span>&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">&lt;/span>HANDLER table_name OPEN [&lt;span style="color:#66d9ef">AS&lt;/span> alias];
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">-- 读取数据
+&lt;/span>&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">&lt;/span>HANDLER table_name &lt;span style="color:#66d9ef">READ&lt;/span> FIRST; &lt;span style="color:#75715e">-- 读取第一行
+&lt;/span>&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">&lt;/span>HANDLER table_name &lt;span style="color:#66d9ef">READ&lt;/span> NEXT; &lt;span style="color:#75715e">-- 读取下一行
+&lt;/span>&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">&lt;/span>HANDLER table_name &lt;span style="color:#66d9ef">READ&lt;/span> &lt;span style="color:#960050;background-color:#1e0010">{索引名}&lt;/span> &lt;span style="color:#960050;background-color:#1e0010">{操作}&lt;/span>;
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">-- 关闭表
+&lt;/span>&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#75715e">&lt;/span>HANDLER table_name CLOSE;
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;h3 id="与union的对比">
+ 与union的对比
+ &lt;a class="anchor" href="#%e4%b8%8eunion%e7%9a%84%e5%af%b9%e6%af%94">#&lt;/a>
+&lt;/h3>
+&lt;h4 id="handler的优势">
+ handler的优势
+ &lt;a class="anchor" href="#handler%e7%9a%84%e4%bc%98%e5%8a%bf">#&lt;/a>
+&lt;/h4>
+&lt;ul>
+&lt;li>不需要知道列数，即不需要&lt;code>order by&lt;/code>来查询&lt;/li>
+&lt;li>不受&lt;code>select&lt;/code>限制，如果&lt;code>select&lt;/code>被ban了也能查询到数据&lt;/li>
+&lt;li>访问数据更灵活，可以精确控制读取到哪一行&lt;/li>
+&lt;/ul>
+&lt;h2 id="注入过程">
+ 注入过程
+ &lt;a class="anchor" href="#%e6%b3%a8%e5%85%a5%e8%bf%87%e7%a8%8b">#&lt;/a>
+&lt;/h2>
+&lt;p>&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-01.png" alt="1" />&lt;/p>
+&lt;p>首先测试一下是什么类型的注入，输入&lt;code>1'&lt;/code>报错，即为字符型注入。&lt;/p>
+&lt;p>&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-02.png" alt="2" />&lt;/p>
+&lt;p>然后测试了&lt;code>1' order by 3&lt;/code>，没有这一列，测试&lt;code>order by 2&lt;/code>则通过。&lt;/p>
+&lt;p>尝试经典的联合查询注入，结果回显：&lt;/p>
+&lt;p>&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-03.png" alt="3" />&lt;/p>
+&lt;p>回显了waf，&lt;code>select&lt;/code>等查询字符被过滤。大概率是堆叠注入。然后测试&lt;code>show&lt;/code>语句，输入&lt;code>1';show databases;#&lt;/code>，回显：&lt;/p>
+&lt;p>&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-04.png" alt="4" />&lt;/p>
+&lt;p>确认是堆叠注入，也能看到这些数据库名。然后看一下当前数据库的数据表，输入&lt;code>1';show tables;#&lt;/code>，回显：&lt;/p>
+&lt;p>&lt;img src="https://s0lowalker.github.io/images/screenshots/handler-05.png" alt="5" />&lt;/p></description></item></channel></rss>
